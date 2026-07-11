@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "tabellio-validation-result/v0.1",
+  "runId": "validation-2b814ab7-0321-481f-b6a0-2a4593604f04",
+  "repository": {
+    "id": "IntelIP/Tabellio"
+  },
+  "revision": {
+    "baseCommit": "e65d93ac1fbc6e5ed8320b74cb5d26ce23955c8c",
+    "mergeBase": "e65d93ac1fbc6e5ed8320b74cb5d26ce23955c8c",
+    "headCommit": "5277fe5975ee85e8dc3cd54230ecdcedd89aee1d"
+  },
+  "suite": {
+    "id": "tabellio-default",
+    "manifestPath": "tabellio.validation.json",
+    "manifestDigest": "f15c45a92ef2b73eaf886f9ae4f82692c7d184412e485749b0481f54ab19280f"
+  },
+  "runner": {
+    "id": "codex-local",
+    "runtime": "node-v26.3.1"
+  },
+  "status": "failed",
+  "checkpoints": [
+    "61229f2bfcff"
+  ],
+  "commands": [
+    {
+      "id": "repository-check",
+      "argv": [
+        "npm",
+        "run",
+        "check"
+      ],
+      "cwd": ".",
+      "required": true,
+      "status": "failed",
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 27809,
+      "stdout": {
+        "bytes": 5802,
+        "digest": "147dcdf5f5218d79bb24450bff977c2e8ea582a69aab7cb8620ff85c440c040d",
+        "tail": "\n> @intelip/tabellio@0.1.0 check\n> npm test && npm run tabellio:run:example:check && npm run tabellio:stack:example:check && npm run tabellio:stack:operation:example:check && npm run tabellio:review:example:check && npm run tabellio:validate:example:check && npm run tabellio:ledger:example:check && npm run tabellio:context:example:check && npm run tabellio:evidence:example:check && node scripts/check-tabellio-external-actions.mjs --evidence examples/tabellio-evidence/minimal-evidence.json\n\n\n> @intelip/tabellio@0.1.0 test\n> node --test tests/*.test.mjs\n\n✔ agent-run CLI completes checkpointed work and promotes exact validated head (7678.711ms)\n✔ agent-run CLI anchors its default state root to the target repository (1931.118125ms)\n✔ agent-run CLI records failed validation and blocks promotion (2479.460375ms)\n✔ agent-run promotion rejects a target branch that moved after start (2737.612833ms)\n✔ agent-run checkpoint rejects uncommitted workspace changes (1733.192833ms)\n✔ agent-run finish rejects validation that changes branch HEAD (1983.191792ms)\n✔ agent-run finish rejects a workspace switched away from its run branch (1344.524792ms)\n✔ agent-run finish records validation that switches the workspace branch as failed (2122.418709ms)\n✔ agent-run start validates branch before creating durable state (1111.985709ms)\n✔ agent-run start removes provisional state when worktree creation fails (4.722958ms)\n✔ agent-run promotion fast-forwards a checked-out target without desynchronizing it (3645.962583ms)\n✔ context integrity rejects tampering (11.081167ms)\n✔ runtime context validation rejects schema-disallowed properties (0.237958ms)\n✔ runtime agent-run validation rejects path leaks and unsupported properties (5.875792ms)\n✔ context creation rejects undefined fields and impossible object IDs (0.347917ms)\n✔ local repository IDs never expose Windows or POSIX parent paths (0.13075ms)\n✔ capture CLI hashes Windows local origin paths (2156.968958ms)\n✔ context capture freezes refs and diffs merge-base to head (2.026ms)\n✔ capture CLI binds native Git context into evidence (2345.006416ms)\n✔ policy checks reject omitted approval booleans (268.985667ms)\n✔ file-byte integrity requires a SHA-256 digest (288.546792ms)\n✔ GitHub adapter checks out immutable PR commits and runs the full repository gate (4.765958ms)\n✔ adoption docs do not pin the pre-context release (6.754875ms)\n✔ required repository validation is recorded in evidence (1054.255625ms)\n✔ Entire adapter captures metadata-only checkpoints and binds context (2958.551542ms)\n✔ mandatory Entire mode rejects a change without checkpoint trailers (2558.802166ms)\n✔ Entire adapter rejects partial checkpoint metadata (2646.698209ms)\n✔ Forgejo provider normalizes repositories, change requests, reviews, comments, and checks (78.644875ms)\n✔ Forgejo provider rejects credential-bearing URLs and redacts tokens from failures (12.582791ms)\n✔ Git JSON ledger persists immutable versioned state without touching the worktree (2628.604166ms)\n✔ Git JSON ledger works in a bare repository (1763.277542ms)\n✔ approved git-spice operations execute exact safe argument sets and consume approvals (4534.305625ms)\n✔ stack operations fail closed on tampering, expiry, stale heads, and dirty worktrees (3178.361959ms)\n✔ failed execution consumes approval and stores only a safe error (1859.646042ms)\n✔ git-spice adapter produces provider-neutral stack snapshots (2034.850375ms)\n✔ git-spice adapter rejects malformed JSON output (1711.171792ms)\n✔ git-spice adapter rejects upstream JSON shape drift (2153.774958ms)\n✔ git-spice adapter reports a missing executable (2151.580292ms)\n✔ stack validation rejects inconsistent relationships (0.443917ms)\n✔ native store reads Git state and isolates worktrees (1710.085833ms)\n✔ merge preview reports conflicts without mutating refs (2196.095958ms)\n✔ compare-and-swap rejects a stale ref update (2723.24225ms)\n✔ prepared ref update locks the expected commit while synchronizing a checked-out worktree (2086.688209ms)\n✔ worktree paths cannot escape the managed root (894.426583ms)\n✔ checkpoint notes expose digestable content (910.2975ms)\n✔ NUL-delimited reads preserve unusual Git paths (1031.409875ms)\n✔ compare-and-swap creates refs in SHA-256 repositories (292.382917ms)\n✔ Git process rejects commands terminated by timeout (14.996416ms)\n✔ review cycle persists forge and agent feedback through triage and checkpoint-bound fixes (6328.4275ms)\n✔ review readiness consumes only the latest validation for the exact PR head (2390.3105ms)\n✖ validation runner executes exact committed manifests and stores bounded results (3511.241583ms)\n✔ validation manifest rejects shell-like ambiguity and missing checkpoint ranges (1056.610292ms)\nℹ tests 52\nℹ suites 0\nℹ pass 51\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 27012.274458\n\n✖ failing tests:\n\ntest at tests/validation-runner.test.mjs:17:1\n✖ validation runner executes exact committed manifests and stores bounded results (3511.241583ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  true !== false\n  \n      at TestContext.<anonymous> (file:///Users/hudson/Documents/GitHub/agentic-git-workflow/.git/tabellio/validation-workspaces/validation-2b814ab7-0321-481f-b6a0-2a4593604f04/tests/validation-runner.test.mjs:67:10)\n      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n      at async Test.run (node:internal/test_runner/test:1389:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: true,\n    expected: false,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n",
+        "truncated": false
+      },
+      "stderr": {
+        "bytes": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tail": "",
+        "truncated": false
+      },
+      "startedAt": "2026-07-11T02:11:41.506Z",
+      "completedAt": "2026-07-11T02:12:09.315Z",
+      "error": null
+    }
+  ],
+  "startedAt": "2026-07-11T02:11:41.309Z",
+  "completedAt": "2026-07-11T02:12:09.355Z",
+  "integrity": {
+    "algorithm": "sha256",
+    "digest": "8efbfb88b28f05a44e9a4d2b6b444f390245418db3cea15146cf878529ed56fb"
+  }
+}
