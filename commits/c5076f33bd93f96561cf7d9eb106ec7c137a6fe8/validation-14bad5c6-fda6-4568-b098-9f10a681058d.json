@@ -1,0 +1,284 @@
+{
+  "schemaVersion": "tabellio-validation-result/v0.3",
+  "runId": "validation-14bad5c6-fda6-4568-b098-9f10a681058d",
+  "repository": {
+    "id": "IntelIP/Tabellio"
+  },
+  "revision": {
+    "baseCommit": "5ce0fbca2adf1bc68b795123c0e1934d1dcd1a27",
+    "mergeBase": "5ce0fbca2adf1bc68b795123c0e1934d1dcd1a27",
+    "headCommit": "c5076f33bd93f96561cf7d9eb106ec7c137a6fe8"
+  },
+  "checkpointRevision": {
+    "baseCommit": "5ce0fbca2adf1bc68b795123c0e1934d1dcd1a27",
+    "mergeBase": "5ce0fbca2adf1bc68b795123c0e1934d1dcd1a27",
+    "headCommit": "c5076f33bd93f96561cf7d9eb106ec7c137a6fe8"
+  },
+  "suite": {
+    "id": "tabellio-product-validity",
+    "manifestPath": "tabellio.validation.json",
+    "manifestDigest": "0d64971c32384c4802216e9e77c3bdeb314f6e7118748e03f90f32664a32fe44"
+  },
+  "runner": {
+    "id": "local",
+    "runtime": "node-v26.3.1"
+  },
+  "status": "blocked",
+  "checkpoints": [
+    "32fbf2c327b4"
+  ],
+  "commands": [
+    {
+      "id": "control-plane-static",
+      "argv": [
+        "tabellio-validator",
+        "--profile",
+        "static"
+      ],
+      "cwd": ".",
+      "required": true,
+      "status": "error",
+      "exitCode": -2,
+      "signal": null,
+      "durationMs": 9,
+      "stdout": {
+        "bytes": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tail": "",
+        "truncated": false
+      },
+      "stderr": {
+        "bytes": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tail": "",
+        "truncated": false
+      },
+      "startedAt": "2026-07-17T01:30:10.157Z",
+      "completedAt": "2026-07-17T01:30:10.166Z",
+      "error": "spawn tabellio-validator ENOENT"
+    },
+    {
+      "id": "control-plane-schema",
+      "argv": [
+        "tabellio-validator",
+        "--profile",
+        "schema",
+        "--validator-id",
+        "control-plane-schema",
+        "--out",
+        ".artifacts/tabellio/schema.json"
+      ],
+      "cwd": ".",
+      "required": true,
+      "status": "error",
+      "exitCode": -2,
+      "signal": null,
+      "durationMs": 7,
+      "stdout": {
+        "bytes": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tail": "",
+        "truncated": false
+      },
+      "stderr": {
+        "bytes": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tail": "",
+        "truncated": false
+      },
+      "startedAt": "2026-07-17T01:30:10.166Z",
+      "completedAt": "2026-07-17T01:30:10.173Z",
+      "error": "spawn tabellio-validator ENOENT"
+    },
+    {
+      "id": "control-plane-semantic",
+      "argv": [
+        "tabellio-validator",
+        "--profile",
+        "semantic",
+        "--validator-id",
+        "control-plane-semantic",
+        "--out",
+        ".artifacts/tabellio/semantic.json"
+      ],
+      "cwd": ".",
+      "required": true,
+      "status": "error",
+      "exitCode": -2,
+      "signal": null,
+      "durationMs": 3,
+      "stdout": {
+        "bytes": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tail": "",
+        "truncated": false
+      },
+      "stderr": {
+        "bytes": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tail": "",
+        "truncated": false
+      },
+      "startedAt": "2026-07-17T01:30:10.173Z",
+      "completedAt": "2026-07-17T01:30:10.176Z",
+      "error": "spawn tabellio-validator ENOENT"
+    },
+    {
+      "id": "control-plane-workflow",
+      "argv": [
+        "tabellio-validator",
+        "--profile",
+        "workflow",
+        "--validator-id",
+        "control-plane-workflow",
+        "--out",
+        ".artifacts/tabellio/workflow.json"
+      ],
+      "cwd": ".",
+      "required": true,
+      "status": "error",
+      "exitCode": -2,
+      "signal": null,
+      "durationMs": 3,
+      "stdout": {
+        "bytes": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tail": "",
+        "truncated": false
+      },
+      "stderr": {
+        "bytes": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tail": "",
+        "truncated": false
+      },
+      "startedAt": "2026-07-17T01:30:10.176Z",
+      "completedAt": "2026-07-17T01:30:10.179Z",
+      "error": "spawn tabellio-validator ENOENT"
+    },
+    {
+      "id": "control-plane-security",
+      "argv": [
+        "tabellio-validator",
+        "--profile",
+        "security",
+        "--validator-id",
+        "control-plane-security",
+        "--out",
+        ".artifacts/tabellio/security.json"
+      ],
+      "cwd": ".",
+      "required": true,
+      "status": "error",
+      "exitCode": -2,
+      "signal": null,
+      "durationMs": 4,
+      "stdout": {
+        "bytes": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tail": "",
+        "truncated": false
+      },
+      "stderr": {
+        "bytes": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tail": "",
+        "truncated": false
+      },
+      "startedAt": "2026-07-17T01:30:10.179Z",
+      "completedAt": "2026-07-17T01:30:10.183Z",
+      "error": "spawn tabellio-validator ENOENT"
+    }
+  ],
+  "startedAt": "2026-07-17T01:30:09.872Z",
+  "completedAt": "2026-07-17T01:30:10.218Z",
+  "integrity": {
+    "algorithm": "sha256",
+    "digest": "2618a35c45095929334a0cb710f54ac4fdf33506c3e6e4d03755ab81c5416676"
+  },
+  "acceptance": {
+    "id": "tabellio-v0.4-control-plane",
+    "source": "repository product contract and docs/product-validation.md",
+    "risk": "high",
+    "digest": "04256a61c60b8f2efa5ec980a77a324cdc2377efe33f560af9c4893f8fe5ce72",
+    "requiredValidatorTypes": [
+      "static",
+      "schema",
+      "semantic",
+      "workflow",
+      "security"
+    ]
+  },
+  "validators": [
+    {
+      "id": "control-plane-static",
+      "type": "static",
+      "required": true,
+      "status": "blocked",
+      "evidence": null,
+      "reasons": [
+        "command_error"
+      ]
+    },
+    {
+      "id": "control-plane-schema",
+      "type": "schema",
+      "required": true,
+      "status": "blocked",
+      "evidence": null,
+      "reasons": [
+        "command_error",
+        "cost_telemetry_unavailable"
+      ]
+    },
+    {
+      "id": "control-plane-semantic",
+      "type": "semantic",
+      "required": true,
+      "status": "blocked",
+      "evidence": null,
+      "reasons": [
+        "command_error",
+        "cost_telemetry_unavailable"
+      ]
+    },
+    {
+      "id": "control-plane-workflow",
+      "type": "workflow",
+      "required": true,
+      "status": "blocked",
+      "evidence": null,
+      "reasons": [
+        "command_error",
+        "cost_telemetry_unavailable"
+      ]
+    },
+    {
+      "id": "control-plane-security",
+      "type": "security",
+      "required": true,
+      "status": "blocked",
+      "evidence": null,
+      "reasons": [
+        "command_error",
+        "cost_telemetry_unavailable"
+      ]
+    }
+  ],
+  "decision": {
+    "status": "blocked",
+    "reasons": [
+      "control-plane-schema:command_error",
+      "control-plane-schema:cost_telemetry_unavailable",
+      "control-plane-security:command_error",
+      "control-plane-security:cost_telemetry_unavailable",
+      "control-plane-semantic:command_error",
+      "control-plane-semantic:cost_telemetry_unavailable",
+      "control-plane-static:command_error",
+      "control-plane-workflow:command_error",
+      "control-plane-workflow:cost_telemetry_unavailable"
+    ],
+    "totalCostUsd": 0,
+    "costTelemetryComplete": false
+  }
+}
