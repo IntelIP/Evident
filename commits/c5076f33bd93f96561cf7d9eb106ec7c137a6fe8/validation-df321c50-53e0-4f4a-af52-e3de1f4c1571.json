@@ -1,0 +1,352 @@
+{
+  "schemaVersion": "tabellio-validation-result/v0.3",
+  "runId": "validation-df321c50-53e0-4f4a-af52-e3de1f4c1571",
+  "repository": {
+    "id": "IntelIP/Tabellio"
+  },
+  "revision": {
+    "baseCommit": "5ce0fbca2adf1bc68b795123c0e1934d1dcd1a27",
+    "mergeBase": "5ce0fbca2adf1bc68b795123c0e1934d1dcd1a27",
+    "headCommit": "c5076f33bd93f96561cf7d9eb106ec7c137a6fe8"
+  },
+  "checkpointRevision": {
+    "baseCommit": "5ce0fbca2adf1bc68b795123c0e1934d1dcd1a27",
+    "mergeBase": "5ce0fbca2adf1bc68b795123c0e1934d1dcd1a27",
+    "headCommit": "c5076f33bd93f96561cf7d9eb106ec7c137a6fe8"
+  },
+  "suite": {
+    "id": "tabellio-product-validity",
+    "manifestPath": "tabellio.validation.json",
+    "manifestDigest": "0d64971c32384c4802216e9e77c3bdeb314f6e7118748e03f90f32664a32fe44"
+  },
+  "runner": {
+    "id": "local",
+    "runtime": "node-v26.3.1"
+  },
+  "status": "passed",
+  "checkpoints": [
+    "32fbf2c327b4"
+  ],
+  "commands": [
+    {
+      "id": "control-plane-static",
+      "argv": [
+        "tabellio-validator",
+        "--profile",
+        "static"
+      ],
+      "cwd": ".",
+      "required": true,
+      "status": "passed",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 41367,
+      "stdout": {
+        "bytes": 18456,
+        "digest": "386107cd83a5290caa5a44e401699e2ff0bc3e044ea2f5af92372eb9f2f03102",
+        "tail": "shes Windows local origin paths (3000.48575ms)\n✔ context capture freezes refs and diffs merge-base to head (1.775042ms)\n✔ capture CLI binds native Git context into evidence (3691.159667ms)\n✔ policy checks reject omitted approval booleans (703.052209ms)\n✔ file-byte integrity requires a SHA-256 digest (155.309791ms)\n✔ core runtime and adoption docs do not require GitHub Actions (2.220958ms)\n✔ stable schema identifiers keep external references and released contracts resolvable (8.15575ms)\n✔ required repository validation is recorded in evidence (547.574333ms)\n✔ local evidence fallback does not enumerate unrelated untracked paths (1907.82725ms)\n✔ approved control refs publish and fetch exact fast-forward state (4837.261042ms)\n✔ control ref operations reject tampering, expiry, and changed refs (3787.727708ms)\n✔ control ref transport opens bare repositories (1510.870334ms)\n✔ control ref transport pins an approved target when the remote name changes (3169.783417ms)\n✔ multi-ref publication is atomic when one remote ref is rejected (3278.583042ms)\n✔ code-storage remote rejects control-state publication (1627.193375ms)\n✔ control-ref JSON schema encodes runtime uniqueness and required OIDs (1.919375ms)\n✔ example design memory is valid and internally consistent (13.211292ms)\n✔ capture finalizer requires complete PNG matrix and emits exact-commit candidate (12.481667ms)\n✔ structured UI review binds model judgment and cost to exact evidence (1.194291ms)\n✔ design memory rejects unsupported fields and ephemeral artifacts (0.845625ms)\n✔ design memory blocks when a canonical source drifts (6.616041ms)\n✔ Entire adapter captures metadata-only checkpoints and binds context (4536.100208ms)\n✔ mandatory Entire mode rejects a change without checkpoint trailers (3010.373459ms)\n✔ Entire adapter rejects partial checkpoint metadata (2066.09925ms)\n✔ Git JSON ledger persists immutable versioned state without touching the worktree (3436.807917ms)\n✔ Git JSON ledger works in a bare repository (2440.924417ms)\n✔ Git JSON ledger atomically moves and rewrites an entry (3299.658833ms)\n✔ concurrent Git JSON ledger writers allow exactly one compare-and-swap winner (1903.013792ms)\n✔ approved git-spice operations execute exact safe argument sets and consume approvals (8954.190917ms)\n✔ stack operations fail closed on tampering, expiry, stale heads, and dirty worktrees (2191.645ms)\n✔ failed execution consumes approval and stores only a safe error (2991.845666ms)\n✔ git-spice adapter produces GitHub stack snapshots (2775.76375ms)\n✔ git-spice adapter rejects malformed JSON output (2611.129042ms)\n✔ git-spice adapter rejects upstream JSON shape drift (2515.165584ms)\n✔ git-spice adapter reports a missing executable (1507.2905ms)\n✔ stack validation rejects inconsistent relationships (0.379792ms)\n✔ GitHub provider normalizes repositories, pull requests, reviews, comments, statuses, and checks (356.859292ms)\n✔ GitHub provider enforces safe API URLs and redacts tokens from failures (11.120208ms)\n✔ native store reads Git state and isolates worktrees (1751.015583ms)\n✔ merge preview reports conflicts without mutating refs (2734.718583ms)\n✔ compare-and-swap rejects a stale ref update (1766.553583ms)\n✔ prepared ref update locks the expected commit while synchronizing a checked-out worktree (1767.711333ms)\n✔ worktree paths cannot escape the managed root (1504.183042ms)\n✔ checkpoint notes expose digestable content (1357.042ms)\n✔ NUL-delimited reads preserve unusual Git paths (1497.605375ms)\n✔ compare-and-swap creates refs in SHA-256 repositories (296.589334ms)\n✔ Git process rejects commands terminated by timeout (36.42625ms)\n✔ operation lock blocks a live owner and releases after completion (451.11525ms)\n✔ operation lock recovers a dead process owner (378.437ms)\n✔ concurrent stale-lock recovery produces one owner (501.033292ms)\n✔ operation lock recovers repeatedly without a secondary recovery gate (1284.934542ms)\n✔ operation lock never steals a valid owner from another host (513.935125ms)\n✔ operation lock release never removes a replacement owner (260.033291ms)\n✔ platform v0.3 makes GitHub code-only storage and private GitHub control state explicit (18.773833ms)\n✔ platform v0.3 rejects provider drift and private-state publication (1.420875ms)\n✔ preflight proves GitHub and Entire readiness without exposing credentials (1551.526209ms)\n✔ preflight fails early with exact Codex hook approval remedy (2239.858958ms)\n✔ release preflight requires clean main equal to origin main (1672.236667ms)\n✔ preflight requires executable Entire hook commands, not empty event keys (1634.452208ms)\n✔ preflight normalizes GitHub remote identities and requires private control storage (2730.2035ms)\n✔ release preflight binds configured control remote and live origin main (1665.05525ms)\n✔ release intent binds merged commit, validation, control refs, notes, and approval (7.038916ms)\n✔ release executor reconciles completed publication phases after a failure (58.481708ms)\n✔ release executor rechecks approval expiry before every publish phase (13.359167ms)\n✔ release executor serializes concurrent execution of the same approval (2203.842625ms)\n✔ release executor rejects worktree-local state roots before writing receipts (1353.538541ms)\n✔ approved release publishes exact control ref, annotated tag, and GitHub release in isolated repos (14523.35ms)\n✔ release planning binds merged PR proof after exact validation and terminal review sync (4252.801459ms)\n✔ release receipt schema fixes every phase to its canonical position (0.920542ms)\n✔ review cycle persists GitHub and agent feedback through triage and checkpoint-bound fixes (8749.437417ms)\n✔ review readiness consumes only the latest validation for the exact PR head (3298.660583ms)\n✔ agent review contract bounds finding count and text size (0.830667ms)\n✔ repository adapter emits passed, failed, blocked, and extracted evidence (773.552375ms)\n✔ validation gate exits zero only for a passed exact-head result (4565.449792ms)\n✔ validation runner executes exact committed manifests and stores bounded results (5428.334208ms)\n✔ validation manifest rejects shell-like ambiguity and missing checkpoint ranges (1494.633916ms)\n✔ validation runner terminates timed-out commands and skips remaining fail-fast work (1806.04325ms)\n✔ typed validators enforce semantic metrics and cost budgets with durable evidence (1799.583917ms)\n✔ typed validation distinguishes product failure from blocked evidence (1876.43025ms)\n✔ typed validation preserves failure and blocked boundaries across validator kinds (1689.331041ms)\n✔ typed validation contracts reject incomplete product gates and invalid evidence (0.608708ms)\nℹ tests 97\nℹ suites 0\nℹ pass 97\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 34568.550666\n\n> @intelip/tabellio@0.4.0 tabellio:platform:check\n> node scripts/check-tabellio-platform.mjs\n\n{\n  \"ok\": true,\n  \"status\": \"platform_ready\",\n  \"path\": \"/Users/hudson/Documents/GitHub/agentic-git-workflow/.git/tabellio/validation-workspaces/validation-df321c50-53e0-4f4a-af52-e3de1f4c1571/tabellio.platform.json\",\n  \"codeStorage\": \"github\",\n  \"codeRemote\": \"origin\",\n  \"publicSurface\": \"code-and-thin-pr\",\n  \"controlState\": \"external\",\n  \"controlProvider\": \"github\",\n  \"controlRemote\": \"control\",\n  \"publishesControlRefsToCodeStorage\": false\n}\n\n> @intelip/tabellio@0.4.0 tabellio:run:example:check\n> node scripts/check-tabellio-run.mjs --state examples/tabellio-run/minimal-run.json\n\n{\n  \"ok\": true,\n  \"status\": \"tabellio_run_state_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:30.170Z\",\n  \"statePath\": \"/Users/hudson/Documents/GitHub/agentic-git-workflow/.git/tabellio/validation-workspaces/validation-df321c50-53e0-4f4a-af52-e3de1f4c1571/examples/tabellio-run/minimal-run.json\",\n  \"schemaPath\": \"schemas/agent-run-state.schema.json\",\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-run/v0.1\",\n    \"runId\": \"example-run-001\",\n    \"lifecycleStatus\": \"active\",\n    \"checkpointCount\": 0\n  },\n  \"blockers\": []\n}\n\n> @intelip/tabellio@0.4.0 tabellio:stack:example:check\n> node scripts/check-tabellio-stack.mjs --stack examples/tabellio-stack/minimal-stack.json\n\n{\n  \"ok\": true,\n  \"status\": \"tabellio_stack_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:30.487Z\",\n  \"stackPath\": \"/Users/hudson/Documents/GitHub/agentic-git-workflow/.git/tabellio/validation-workspaces/validation-df321c50-53e0-4f4a-af52-e3de1f4c1571/examples/tabellio-stack/minimal-stack.json\",\n  \"schemaPath\": \"schemas/stack-snapshot.schema.json\",\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-stack/v0.1\",\n    \"provider\": \"git-spice\",\n    \"branchCount\": 3,\n    \"currentBranch\": \"agent/implementation\"\n  },\n  \"blockers\": []\n}\n\n> @intelip/tabellio@0.4.0 tabellio:stack:operation:example:check\n> node scripts/check-tabellio-stack-operation.mjs --intent examples/tabellio-stack-operation/minimal-intent.json --approval examples/tabellio-stack-operation/minimal-approval.json --at 2026-07-10T12:02:00.000Z\n\n{\n  \"ok\": true,\n  \"status\": \"stack_operation_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:30.840Z\",\n  \"intentPath\": \"examples/tabellio-stack-operation/minimal-intent.json\",\n  \"approvalPath\": \"examples/tabellio-stack-operation/minimal-approval.json\",\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-stack-operation/v0.1\",\n    \"operation\": \"update\",\n    \"repository\": \"example/tabellio\",\n    \"branch\": \"agent/example\",\n    \"approvalId\": \"example-approval-001\"\n  },\n  \"blockers\": []\n}\n\n> @intelip/tabellio@0.4.0 tabellio:review:example:check\n> node scripts/check-tabellio-review-cycle.mjs --cycle examples/tabellio-review/minimal-cycle.json && node scripts/check-tabellio-agent-review.mjs --review examples/tabellio-review/minimal-agent-review.json\n\n{\n  \"ok\": true,\n  \"status\": \"review_cycle_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:31.195Z\",\n  \"cyclePath\": \"examples/tabellio-review/minimal-cycle.json\",\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-review-cycle/v0.3\",\n    \"id\": \"review-example-001\",\n    \"status\": \"ready\",\n    \"feedbackCount\": 0,\n    \"fixCount\": 0\n  },\n  \"blockers\": []\n}\n{\n  \"ok\": true,\n  \"status\": \"agent_review_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:31.310Z\",\n  \"reviewPath\": \"examples/tabellio-review/minimal-agent-review.json\",\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-agent-review/v0.1\",\n    \"reviewId\": \"codex-review-example-001\",\n    \"reviewer\": \"codex\",\n    \"findingCount\": 1\n  },\n  \"blockers\": []\n}\n\n> @intelip/tabellio@0.4.0 tabellio:validate:example:check\n> node scripts/check-tabellio-validation.mjs --manifest tabellio.validation.json && node scripts/check-tabellio-validation.mjs --manifest examples/tabellio-validation/product-manifest.json && node scripts/check-tabellio-validation.mjs --evidence examples/tabellio-validation/minimal-validator-evidence.json && node scripts/check-tabellio-validation.mjs --result examples/tabellio-validation/minimal-result.json\n\n{\n  \"ok\": true,\n  \"status\": \"validation_contract_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:31.645Z\",\n  \"type\": \"manifest\",\n  \"path\": \"tabellio.validation.json\",\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-validation/v0.2\",\n    \"id\": \"tabellio-product-validity\",\n    \"commandCount\": null,\n    \"validatorCount\": 5,\n    \"metricCount\": null\n  },\n  \"blockers\": []\n}\n{\n  \"ok\": true,\n  \"status\": \"validation_contract_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:31.787Z\",\n  \"type\": \"manifest\",\n  \"path\": \"examples/tabellio-validation/product-manifest.json\",\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-validation/v0.2\",\n    \"id\": \"product-validity\",\n    \"commandCount\": null,\n    \"validatorCount\": 2,\n    \"metricCount\": null\n  },\n  \"blockers\": []\n}\n{\n  \"ok\": true,\n  \"status\": \"validation_contract_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:32.140Z\",\n  \"type\": \"evidence\",\n  \"path\": \"examples/tabellio-validation/minimal-validator-evidence.json\",\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-validator-evidence/v0.1\",\n    \"id\": \"semantic-golden-set\",\n    \"commandCount\": null,\n    \"validatorCount\": null,\n    \"metricCount\": 1\n  },\n  \"blockers\": []\n}\n{\n  \"ok\": true,\n  \"status\": \"validation_contract_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:32.297Z\",\n  \"type\": \"result\",\n  \"path\": \"examples/tabellio-validation/minimal-result.json\",\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-validation-result/v0.2\",\n    \"id\": \"validation-example-001\",\n    \"commandCount\": 1,\n    \"validatorCount\": null,\n    \"metricCount\": null\n  },\n  \"blockers\": []\n}\n\n> @intelip/tabellio@0.4.0 tabellio:design-memory:example:check\n> node scripts/check-tabellio-design-memory.mjs --repo . --profile examples/tabellio-design-memory/product.design.json\n\n{\n  \"ok\": true,\n  \"status\": \"design_memory_ready\",\n  \"profile\": {\n    \"productId\": \"example/product\",\n    \"schemaVersion\": \"tabellio-product-design/v0.1\"\n  },\n  \"baselines\": {\n    \"schemaVersion\": \"tabellio-visual-baselines/v0.1\",\n    \"captureCount\": 1\n  },\n  \"blockers\": []\n}\n\n> @intelip/tabellio@0.4.0 tabellio:ledger:example:check\n> node scripts/check-tabellio-ledger.mjs --ledger examples/tabellio-ledger/minimal-ledger.json\n\n{\n  \"ok\": true,\n  \"status\": \"tabellio_ledger_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:33.045Z\",\n  \"ledgerPath\": \"/Users/hudson/Documents/GitHub/agentic-git-workflow/.git/tabellio/validation-workspaces/validation-df321c50-53e0-4f4a-af52-e3de1f4c1571/examples/tabellio-ledger/minimal-ledger.json\",\n  \"schemaPath\": \"schemas/ledger-snapshot.schema.json\",\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-ledger/v0.1\",\n    \"provider\": \"entire\",\n    \"checkpointCount\": 1\n  },\n  \"blockers\": []\n}\n\n> @intelip/tabellio@0.4.0 tabellio:release:example:check\n> node scripts/check-tabellio-release.mjs --intent examples/tabellio-release/minimal-intent.json\n\n{\n  \"ok\": true,\n  \"status\": \"release_intent_ready\",\n  \"path\": \"examples/tabellio-release/minimal-intent.json\",\n  \"summary\": {\n    \"version\": \"0.3.0\",\n    \"tag\": \"v0.3.0\",\n    \"commit\": \"dddddddddddddddddddddddddddddddddddddddd\",\n    \"pullRequest\": 42,\n    \"controlRefCount\": 3\n  }\n}\n\n> @intelip/tabellio@0.4.0 tabellio:context:example:check\n> node scripts/check-tabellio-context.mjs --context examples/tabellio-context/minimal-context.json\n\n{\n  \"ok\": true,\n  \"status\": \"tabellio_context_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:33.846Z\",\n  \"contextPath\": \"/Users/hudson/Documents/GitHub/agentic-git-workflow/.git/tabellio/validation-workspaces/validation-df321c50-53e0-4f4a-af52-e3de1f4c1571/examples/tabellio-context/minimal-context.json\",\n  \"schemaPath\": \"schemas/context-packet.schema.json\",\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-context/v0.1\",\n    \"runId\": \"local-context-example-001\",\n    \"repository\": \"example/tabellio\",\n    \"baseCommit\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\n    \"headCommit\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\n    \"changedFileCount\": 1,\n    \"mergeClean\": true\n  },\n  \"blockers\": []\n}\n\n> @intelip/tabellio@0.4.0 tabellio:evidence:example:check\n> node scripts/check-tabellio-evidence-envelope.mjs --evidence examples/tabellio-evidence/minimal-evidence.json\n\n{\n  \"ok\": true,\n  \"status\": \"tabellio_evidence_envelope_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:34.222Z\",\n  \"evidencePath\": \"examples/tabellio-evidence/minimal-evidence.json\",\n  \"schemaPath\": \"schemas/evidence-envelope.schema.json\",\n  \"externalActionPolicySchemaPath\": \"schemas/external-action-policy.schema.json\",\n  \"requiredActionClasses\": [\n    \"deployment\",\n    \"database-migration\",\n    \"infrastructure-change\",\n    \"dns-or-hosting-change\",\n    \"billing-or-live-money\",\n    \"credentialed-provider-read\",\n    \"secret-value-read\",\n    \"destructive-workspace-action\"\n  ],\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-evidence/v0.1\",\n    \"runId\": \"local-example-001\",\n    \"repo\": \"example/tabellio\",\n    \"changedFileCount\": 3,\n    \"commandCount\": 1,\n    \"checkCount\": 1\n  },\n  \"warnings\": [],\n  \"blockers\": []\n}\n{\n  \"ok\": true,\n  \"status\": \"external_action_policy_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:34.347Z\",\n  \"evidencePath\": \"examples/tabellio-evidence/minimal-evidence.json\",\n  \"requiredActionClasses\": [\n    \"deployment\",\n    \"database-migration\",\n    \"infrastructure-change\",\n    \"dns-or-hosting-change\",\n    \"billing-or-live-money\",\n    \"credentialed-provider-read\",\n    \"secret-value-read\",\n    \"destructive-workspace-action\"\n  ],\n  \"actionClassCount\": 8,\n  \"warnings\": [],\n  \"blockers\": []\n}\n",
+        "truncated": true
+      },
+      "stderr": {
+        "bytes": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tail": "",
+        "truncated": false
+      },
+      "startedAt": "2026-07-17T01:30:53.034Z",
+      "completedAt": "2026-07-17T01:31:34.401Z",
+      "error": null
+    },
+    {
+      "id": "control-plane-schema",
+      "argv": [
+        "tabellio-validator",
+        "--profile",
+        "schema",
+        "--validator-id",
+        "control-plane-schema",
+        "--out",
+        ".artifacts/tabellio/schema.json"
+      ],
+      "cwd": ".",
+      "required": true,
+      "status": "passed",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 411,
+      "stdout": {
+        "bytes": 632,
+        "digest": "319dd7b806287f34725f06db60d5aff609f3d7a22eff52e31375746fde0f182b",
+        "tail": "\n> @intelip/tabellio@0.4.0 tabellio:platform:check\n> node scripts/check-tabellio-platform.mjs\n\n{\n  \"ok\": true,\n  \"status\": \"platform_ready\",\n  \"path\": \"/Users/hudson/Documents/GitHub/agentic-git-workflow/.git/tabellio/validation-workspaces/validation-df321c50-53e0-4f4a-af52-e3de1f4c1571/tabellio.platform.json\",\n  \"codeStorage\": \"github\",\n  \"codeRemote\": \"origin\",\n  \"publicSurface\": \"code-and-thin-pr\",\n  \"controlState\": \"external\",\n  \"controlProvider\": \"github\",\n  \"controlRemote\": \"control\",\n  \"publishesControlRefsToCodeStorage\": false\n}\n{\"ok\":true,\"profile\":\"schema\",\"out\":\".artifacts/tabellio/schema.json\",\"status\":\"passed\"}\n",
+        "truncated": false
+      },
+      "stderr": {
+        "bytes": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tail": "",
+        "truncated": false
+      },
+      "startedAt": "2026-07-17T01:31:34.401Z",
+      "completedAt": "2026-07-17T01:31:34.812Z",
+      "error": null
+    },
+    {
+      "id": "control-plane-semantic",
+      "argv": [
+        "tabellio-validator",
+        "--profile",
+        "semantic",
+        "--validator-id",
+        "control-plane-semantic",
+        "--out",
+        ".artifacts/tabellio/semantic.json"
+      ],
+      "cwd": ".",
+      "required": true,
+      "status": "passed",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 746,
+      "stdout": {
+        "bytes": 2093,
+        "digest": "b4faf324d4e26e555688e3ef4406d10eba6fd0c19bac0235a3b66c237d2a798b",
+        "tail": "\n> @intelip/tabellio@0.4.0 tabellio:validate:example:check\n> node scripts/check-tabellio-validation.mjs --manifest tabellio.validation.json && node scripts/check-tabellio-validation.mjs --manifest examples/tabellio-validation/product-manifest.json && node scripts/check-tabellio-validation.mjs --evidence examples/tabellio-validation/minimal-validator-evidence.json && node scripts/check-tabellio-validation.mjs --result examples/tabellio-validation/minimal-result.json\n\n{\n  \"ok\": true,\n  \"status\": \"validation_contract_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:35.204Z\",\n  \"type\": \"manifest\",\n  \"path\": \"tabellio.validation.json\",\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-validation/v0.2\",\n    \"id\": \"tabellio-product-validity\",\n    \"commandCount\": null,\n    \"validatorCount\": 5,\n    \"metricCount\": null\n  },\n  \"blockers\": []\n}\n{\n  \"ok\": true,\n  \"status\": \"validation_contract_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:35.313Z\",\n  \"type\": \"manifest\",\n  \"path\": \"examples/tabellio-validation/product-manifest.json\",\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-validation/v0.2\",\n    \"id\": \"product-validity\",\n    \"commandCount\": null,\n    \"validatorCount\": 2,\n    \"metricCount\": null\n  },\n  \"blockers\": []\n}\n{\n  \"ok\": true,\n  \"status\": \"validation_contract_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:35.423Z\",\n  \"type\": \"evidence\",\n  \"path\": \"examples/tabellio-validation/minimal-validator-evidence.json\",\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-validator-evidence/v0.1\",\n    \"id\": \"semantic-golden-set\",\n    \"commandCount\": null,\n    \"validatorCount\": null,\n    \"metricCount\": 1\n  },\n  \"blockers\": []\n}\n{\n  \"ok\": true,\n  \"status\": \"validation_contract_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:35.543Z\",\n  \"type\": \"result\",\n  \"path\": \"examples/tabellio-validation/minimal-result.json\",\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-validation-result/v0.2\",\n    \"id\": \"validation-example-001\",\n    \"commandCount\": 1,\n    \"validatorCount\": null,\n    \"metricCount\": null\n  },\n  \"blockers\": []\n}\n{\"ok\":true,\"profile\":\"semantic\",\"out\":\".artifacts/tabellio/semantic.json\",\"status\":\"passed\"}\n",
+        "truncated": false
+      },
+      "stderr": {
+        "bytes": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tail": "",
+        "truncated": false
+      },
+      "startedAt": "2026-07-17T01:31:34.814Z",
+      "completedAt": "2026-07-17T01:31:35.560Z",
+      "error": null
+    },
+    {
+      "id": "control-plane-workflow",
+      "argv": [
+        "tabellio-validator",
+        "--profile",
+        "workflow",
+        "--validator-id",
+        "control-plane-workflow",
+        "--out",
+        ".artifacts/tabellio/workflow.json"
+      ],
+      "cwd": ".",
+      "required": true,
+      "status": "passed",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 892,
+      "stdout": {
+        "bytes": 1702,
+        "digest": "e3f890ed6e314c5d050d858210dfa19fb5a02da9112791b665ab9b0f93bb67de",
+        "tail": "\n> @intelip/tabellio@0.4.0 tabellio:run:example:check\n> node scripts/check-tabellio-run.mjs --state examples/tabellio-run/minimal-run.json\n\n{\n  \"ok\": true,\n  \"status\": \"tabellio_run_state_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:35.999Z\",\n  \"statePath\": \"/Users/hudson/Documents/GitHub/agentic-git-workflow/.git/tabellio/validation-workspaces/validation-df321c50-53e0-4f4a-af52-e3de1f4c1571/examples/tabellio-run/minimal-run.json\",\n  \"schemaPath\": \"schemas/agent-run-state.schema.json\",\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-run/v0.1\",\n    \"runId\": \"example-run-001\",\n    \"lifecycleStatus\": \"active\",\n    \"checkpointCount\": 0\n  },\n  \"blockers\": []\n}\n\n> @intelip/tabellio@0.4.0 tabellio:review:example:check\n> node scripts/check-tabellio-review-cycle.mjs --cycle examples/tabellio-review/minimal-cycle.json && node scripts/check-tabellio-agent-review.mjs --review examples/tabellio-review/minimal-agent-review.json\n\n{\n  \"ok\": true,\n  \"status\": \"review_cycle_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:36.317Z\",\n  \"cyclePath\": \"examples/tabellio-review/minimal-cycle.json\",\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-review-cycle/v0.3\",\n    \"id\": \"review-example-001\",\n    \"status\": \"ready\",\n    \"feedbackCount\": 0,\n    \"fixCount\": 0\n  },\n  \"blockers\": []\n}\n{\n  \"ok\": true,\n  \"status\": \"agent_review_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:36.433Z\",\n  \"reviewPath\": \"examples/tabellio-review/minimal-agent-review.json\",\n  \"summary\": {\n    \"schemaVersion\": \"tabellio-agent-review/v0.1\",\n    \"reviewId\": \"codex-review-example-001\",\n    \"reviewer\": \"codex\",\n    \"findingCount\": 1\n  },\n  \"blockers\": []\n}\n{\"ok\":true,\"profile\":\"workflow\",\"out\":\".artifacts/tabellio/workflow.json\",\"status\":\"passed\"}\n",
+        "truncated": false
+      },
+      "stderr": {
+        "bytes": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tail": "",
+        "truncated": false
+      },
+      "startedAt": "2026-07-17T01:31:35.561Z",
+      "completedAt": "2026-07-17T01:31:36.453Z",
+      "error": null
+    },
+    {
+      "id": "control-plane-security",
+      "argv": [
+        "tabellio-validator",
+        "--profile",
+        "security",
+        "--validator-id",
+        "control-plane-security",
+        "--out",
+        ".artifacts/tabellio/security.json"
+      ],
+      "cwd": ".",
+      "required": true,
+      "status": "passed",
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 213,
+      "stdout": {
+        "bytes": 587,
+        "digest": "86f5a42f5adc118a5aaf6a2bc5c11f6dbf8051d888454070158b72717d75371f",
+        "tail": "{\n  \"ok\": true,\n  \"status\": \"external_action_policy_ready\",\n  \"checkedAt\": \"2026-07-17T01:31:36.652Z\",\n  \"evidencePath\": \"examples/tabellio-evidence/minimal-evidence.json\",\n  \"requiredActionClasses\": [\n    \"deployment\",\n    \"database-migration\",\n    \"infrastructure-change\",\n    \"dns-or-hosting-change\",\n    \"billing-or-live-money\",\n    \"credentialed-provider-read\",\n    \"secret-value-read\",\n    \"destructive-workspace-action\"\n  ],\n  \"actionClassCount\": 8,\n  \"warnings\": [],\n  \"blockers\": []\n}\n{\"ok\":true,\"profile\":\"security\",\"out\":\".artifacts/tabellio/security.json\",\"status\":\"passed\"}\n",
+        "truncated": false
+      },
+      "stderr": {
+        "bytes": 0,
+        "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "tail": "",
+        "truncated": false
+      },
+      "startedAt": "2026-07-17T01:31:36.453Z",
+      "completedAt": "2026-07-17T01:31:36.666Z",
+      "error": null
+    }
+  ],
+  "startedAt": "2026-07-17T01:30:52.797Z",
+  "completedAt": "2026-07-17T01:31:36.744Z",
+  "integrity": {
+    "algorithm": "sha256",
+    "digest": "c94c9838e61b94e1ef4543080187a3d0be0999b99a6273610d54d092cc7b2d92"
+  },
+  "acceptance": {
+    "id": "tabellio-v0.4-control-plane",
+    "source": "repository product contract and docs/product-validation.md",
+    "risk": "high",
+    "digest": "04256a61c60b8f2efa5ec980a77a324cdc2377efe33f560af9c4893f8fe5ce72",
+    "requiredValidatorTypes": [
+      "static",
+      "schema",
+      "semantic",
+      "workflow",
+      "security"
+    ]
+  },
+  "validators": [
+    {
+      "id": "control-plane-static",
+      "type": "static",
+      "required": true,
+      "status": "passed",
+      "evidence": null,
+      "reasons": []
+    },
+    {
+      "id": "control-plane-schema",
+      "type": "schema",
+      "required": true,
+      "status": "passed",
+      "evidence": {
+        "path": ".artifacts/tabellio/schema.json",
+        "digest": "11a13f590704701a444fb6202692d2d481d233b4482432f901391a3c92413f94",
+        "report": {
+          "schemaVersion": "tabellio-validator-evidence/v0.1",
+          "validatorId": "control-plane-schema",
+          "status": "passed",
+          "summary": "Platform and schema contract checks all declared commands passed.",
+          "metrics": [
+            {
+              "name": "platform_contract_pass",
+              "value": 1,
+              "unit": "boolean"
+            }
+          ],
+          "cost": {
+            "telemetry": "available",
+            "usd": 0,
+            "modelCalls": 0,
+            "toolCalls": 0
+          },
+          "artifacts": []
+        }
+      },
+      "reasons": []
+    },
+    {
+      "id": "control-plane-semantic",
+      "type": "semantic",
+      "required": true,
+      "status": "passed",
+      "evidence": {
+        "path": ".artifacts/tabellio/semantic.json",
+        "digest": "49643739e63b95dbe238032659b99617694fbc4a6b48d014c8e9d59f421f449b",
+        "report": {
+          "schemaVersion": "tabellio-validator-evidence/v0.1",
+          "validatorId": "control-plane-semantic",
+          "status": "passed",
+          "summary": "Typed validation examples and evidence contracts all declared commands passed.",
+          "metrics": [
+            {
+              "name": "validation_contract_examples_pass",
+              "value": 1,
+              "unit": "boolean"
+            }
+          ],
+          "cost": {
+            "telemetry": "available",
+            "usd": 0,
+            "modelCalls": 0,
+            "toolCalls": 0
+          },
+          "artifacts": []
+        }
+      },
+      "reasons": []
+    },
+    {
+      "id": "control-plane-workflow",
+      "type": "workflow",
+      "required": true,
+      "status": "passed",
+      "evidence": {
+        "path": ".artifacts/tabellio/workflow.json",
+        "digest": "08e0b7c16612e1ed6a1d38febc0929331f9d9b6bfffd1445fe6762297e18ba8d",
+        "report": {
+          "schemaVersion": "tabellio-validator-evidence/v0.1",
+          "validatorId": "control-plane-workflow",
+          "status": "passed",
+          "summary": "Agent run and review lifecycle examples all declared commands passed.",
+          "metrics": [
+            {
+              "name": "run_review_workflows_pass",
+              "value": 1,
+              "unit": "boolean"
+            }
+          ],
+          "cost": {
+            "telemetry": "available",
+            "usd": 0,
+            "modelCalls": 0,
+            "toolCalls": 0
+          },
+          "artifacts": []
+        }
+      },
+      "reasons": []
+    },
+    {
+      "id": "control-plane-security",
+      "type": "security",
+      "required": true,
+      "status": "passed",
+      "evidence": {
+        "path": ".artifacts/tabellio/security.json",
+        "digest": "ecfa9f2ff50855bd43c9e025a03a817c7dea962fe56d6d93ab62314deb946a16",
+        "report": {
+          "schemaVersion": "tabellio-validator-evidence/v0.1",
+          "validatorId": "control-plane-security",
+          "status": "passed",
+          "summary": "External-action and side-effect policy checks all declared commands passed.",
+          "metrics": [
+            {
+              "name": "external_action_policy_pass",
+              "value": 1,
+              "unit": "boolean"
+            }
+          ],
+          "cost": {
+            "telemetry": "available",
+            "usd": 0,
+            "modelCalls": 0,
+            "toolCalls": 0
+          },
+          "artifacts": []
+        }
+      },
+      "reasons": []
+    }
+  ],
+  "decision": {
+    "status": "passed",
+    "reasons": [],
+    "totalCostUsd": 0,
+    "costTelemetryComplete": true
+  }
+}
