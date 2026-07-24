@@ -832,9 +832,31 @@ function assertHeadObserved(committedAt, observedAt) {
 }
 
 function canonicalRepositoryIdentity(remote, id) {
-  const githubRepository = parseGitHubRepositoryRemote(remote);
+  const githubRepository = parsePortableGitHubRepositoryRemote(remote);
   if (githubRepository) return githubRepository.fullName;
   return remote ? normalizeRepositoryRemote(remote) : `local/${id}`;
+}
+
+function parsePortableGitHubRepositoryRemote(remote) {
+  return parseGitHubRepositoryRemote(remote)
+    ?? parseGitHubRepositoryRemote(withoutGitHubRemoteCredentials(remote));
+}
+
+function withoutGitHubRemoteCredentials(remote) {
+  try {
+    const parsed = new URL(remote);
+    const credentialedGitHubHttps = [
+      parsed.protocol === "https:",
+      parsed.hostname.toLowerCase() === "github.com",
+      `${parsed.username}${parsed.password}` !== "",
+    ].every(Boolean);
+    if (!credentialedGitHubHttps) return "";
+    parsed.username = "";
+    parsed.password = "";
+    return parsed.href;
+  } catch {
+    return "";
+  }
 }
 
 function repositoryControlValidator(canonicalRepositoryId, validate) {
@@ -1257,6 +1279,7 @@ function isSafeAnalyticsIdentifier(value) {
   return [
     value.length <= 300,
     !value.startsWith("/"),
+    !/^file:/i.test(value),
     !/^[A-Za-z]:[\\/]/.test(value),
     !value.split("/").includes(".."),
     !/[\u0000-\u001F\u007F|\\]/.test(value),
@@ -1275,11 +1298,24 @@ function isSafeProviderVersion(value) {
 }
 
 function providerVersionShapeSafe(value) {
-  return isHttpEntityTag(value) || !/[\\/]/.test(value);
+  return isHttpEntityTag(value)
+    ? !hasLocalPathShape(httpEntityTagValue(value))
+    : !/[\\/]/.test(value);
 }
 
 function isHttpEntityTag(value) {
   return /^(?:W\/)?"[^"\\\r\n]*"$/.test(value);
+}
+
+function httpEntityTagValue(value) {
+  return value.replace(/^W\//, "").slice(1, -1);
+}
+
+function hasLocalPathShape(value) {
+  return /^file:/i.test(value)
+    || value.startsWith("/")
+    || /^[A-Za-z]:[\\/]/.test(value)
+    || value.startsWith("\\\\");
 }
 
 function hasCredentialShape(value) {
@@ -1446,7 +1482,14 @@ function controlIdentityError(name, record, identity, identities, pathMatches) {
 }
 
 function validationControlPathMatches(name, record) {
-  return name === `commits/${record.revision.headCommit}/${record.runId}.json`;
+  return isSafeControlPathSegment(record.runId)
+    && name === `commits/${record.revision.headCommit}/${record.runId}.json`;
+}
+
+function isSafeControlPathSegment(value) {
+  return isSafeAnalyticsIdentifier(value)
+    && !value.includes("/")
+    && ![".", ".."].includes(value);
 }
 
 function reviewControlPathMatches(name, record) {
@@ -1515,16 +1558,11 @@ async function resolveControlRef(repositoryPath, { id, system, ref, observedAt }
 }
 
 async function resolveObservedRefVersion(repositoryPath, ref, observedAt) {
-  const resolved = await runGit({
-    cwd: repositoryPath,
-    args: ["rev-parse", "--verify", `${ref}^{commit}`],
-    acceptableExitCodes: [0, 1, 128],
-  });
-  if (resolved.exitCode !== 0) {
-    const version = await git(repositoryPath, ["rev-parse", ref]);
+  const version = await git(repositoryPath, ["rev-parse", "--verify", ref]);
+  const objectType = await git(repositoryPath, ["cat-file", "-t", ref]);
+  if (objectType !== "commit") {
     return { version, observed: false, invalid: true };
   }
-  const version = resolved.stdout.trim();
   const committedAt = await git(repositoryPath, ["show", "-s", "--format=%cI", version]);
   return { version, observed: dateNotAfter(committedAt, observedAt), invalid: false };
 }

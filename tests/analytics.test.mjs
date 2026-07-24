@@ -754,6 +754,20 @@ test("repository identity excludes local paths and URL credentials", async (t) =
   assert.equal(credentialDataset.repositories[0].canonicalRepositoryId, "example.com/org/repository");
   assert(!JSON.stringify(credentialDataset).includes("private-token"));
 
+  await runGit({
+    cwd: repo,
+    args: ["remote", "set-url", "origin", "https://agent:private-token@github.com/IntelIP/Tabellio.git"],
+  });
+  const credentialedGitHubDataset = await collectAnalyticsDataset({
+    id: "credentialed-github",
+    repositories: [{ id: "fixture", path: repo }],
+    observedAt: OBSERVED_AT,
+    since: SINCE,
+    until: UNTIL,
+  });
+  assert.equal(credentialedGitHubDataset.repositories[0].canonicalRepositoryId, "IntelIP/Tabellio");
+  assert(!JSON.stringify(credentialedGitHubDataset).includes("private-token"));
+
   for (const [index, remote] of [
     "ssh://git@example.com/home/alice/private/repository.git",
     "git@example.com:/home/alice/private/repository.git",
@@ -1014,6 +1028,18 @@ test("analytics collection rejects unsafe configured identifiers", async () => {
     }),
     /safe portable id/,
   );
+  for (const id of ["file:///home/alice/private-baseline", "FILE:///Users/alice/private-baseline"]) {
+    await assert.rejects(
+      collectAnalyticsDataset({
+        id,
+        repositories: [{ id: "fixture", path: "." }],
+        observedAt: OBSERVED_AT,
+        since: SINCE,
+        until: UNTIL,
+      }),
+      /safe portable id/,
+    );
+  }
 });
 
 test("bare repositories preserve Git analytics while worktree state stays unavailable", async (t) => {
@@ -1198,6 +1224,18 @@ test("provider source metadata is typed, privacy-safe, and case-normalized", asy
   const weakEtagRepository = await collectProviderRepository(fixture, providerSnapshot, "provider-source-etag");
 
   assert.equal(weakEtagRepository.metrics.deliveryChangeCount.status, "measured");
+
+  for (const privateEtag of ['W/"/Users/alice/private"', '"file:///home/alice/private"']) {
+    weakEtag.sources.github.version = privateEtag;
+    await writeFile(providerSnapshot, JSON.stringify(weakEtag));
+    const privateEtagRepository = await collectProviderRepository(
+      fixture,
+      providerSnapshot,
+      "provider-source-private-etag",
+    );
+    assert.equal(privateEtagRepository.metrics.deliveryChangeCount.status, "unavailable");
+    assert(!JSON.stringify(privateEtagRepository).includes(privateEtag));
+  }
 });
 
 test("provider source metadata rejects state-inapplicable fields", async (t) => {
@@ -1672,6 +1710,28 @@ test("misplaced and duplicate control records block inflated metrics", async (t)
   assertControlSourcesBlocked(repository, /path or identity is invalid/);
 });
 
+test("validation run IDs cannot create nested control paths", async (t) => {
+  const { repo } = await createEmptyAnalyticsRepository(t, "tabellio-analytics-nested-run-id-");
+  const head = (await runGit({ cwd: repo, args: ["rev-parse", "HEAD"] })).stdout.trim();
+  const validation = JSON.parse(await controlFixture(
+    "../examples/tabellio-validation/minimal-result.json",
+    "example/analytics",
+    head,
+  ));
+  validation.runId = "nested/forged-run";
+  resignDataset(validation);
+  await createMetadataRef(repo, {
+    branch: "nested-run-id",
+    ref: "refs/tabellio/validations",
+    files: {
+      [`commits/${head}/${validation.runId}.json`]: JSON.stringify(validation),
+    },
+  });
+
+  const repository = await collectSingleRepository(repo, "nested-run-id");
+  assertValidationSourceBlocked(repository, /path or identity is invalid/);
+});
+
 test("schema-invalid control records block their source metrics", async (t) => {
   const { repo } = await createEmptyAnalyticsRepository(t, "tabellio-analytics-invalid-record-");
   await createMetadataRef(repo, {
@@ -1756,10 +1816,7 @@ test("control refs newer than the observation are blocked", async (t) => {
   });
 
   const repository = await collectSingleRepository(repo, "future-control");
-  const source = repository.sources.find((entry) => entry.system === "tabellio-validation");
-  assert.equal(source.status, "blocked");
-  assert.match(source.reason, /newer than the requested observation/);
-  assert.equal(repository.metrics.validationAttemptCount.status, "unavailable");
+  assertValidationSourceBlocked(repository, /newer than the requested observation/);
 });
 
 test("control refs that do not resolve to commits are blocked", async (t) => {
@@ -1778,6 +1835,22 @@ test("control refs that do not resolve to commits are blocked", async (t) => {
   }
   assert.equal(repository.metrics.validationAttemptCount.status, "unavailable");
   assert.equal(repository.metrics.entireCheckpointCount.status, "unavailable");
+
+  await runGit({
+    cwd: repo,
+    args: ["tag", "-a", "control-tag", "-m", "annotated control ref", "HEAD"],
+    env: identityEnv(),
+  });
+  const tag = (await runGit({ cwd: repo, args: ["rev-parse", "control-tag"] })).stdout.trim();
+  await runGit({ cwd: repo, args: ["update-ref", "refs/tabellio/validations", tag] });
+  await writeFile(entireRef, `${tag}\n`);
+
+  const taggedRepository = await collectSingleRepository(repo, "tag-control");
+  for (const system of ["tabellio-validation", "entire"]) {
+    const source = taggedRepository.sources.find((entry) => entry.system === system);
+    assert.equal(source.status, "blocked");
+    assert.match(source.reason, /does not resolve to a commit/);
+  }
 });
 
 test("Entire metadata is collected from the configured control remote", async (t) => {
@@ -2493,6 +2566,13 @@ function assertControlSourcesBlocked(repository, reason) {
   for (const system of ["tabellio-validation", "tabellio-review"]) {
     assert.match(repository.sources.find((source) => source.system === system).reason, reason);
   }
+}
+
+function assertValidationSourceBlocked(repository, reason) {
+  const source = repository.sources.find((entry) => entry.system === "tabellio-validation");
+  assert.equal(source.status, "blocked");
+  assert.match(source.reason, reason);
+  assert.equal(repository.metrics.validationAttemptCount.status, "unavailable");
 }
 
 async function controlFixture(relativeUrl, repositoryId, headCommit = null) {
