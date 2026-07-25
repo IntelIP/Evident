@@ -44,6 +44,13 @@ function servingRevision(payload) {
   const service = payload?.service;
   const revision = payload?.revision;
   const traffic = Array.isArray(service?.status?.traffic) ? service.status.traffic : [];
-  const entry = traffic.find((candidate) => candidate?.percent === 100 && candidate?.revisionName === revision?.metadata?.name);
+  const entry = servingTrafficEntry(traffic, revision?.metadata?.name);
   return entry ? revision : null;
+}
+
+function servingTrafficEntry(traffic, revisionName) {
+  for (const candidate of traffic) {
+    if (candidate?.percent === 100 && candidate?.revisionName === revisionName) return candidate;
+  }
+  return null;
 }

@@ -9,19 +9,22 @@ export async function collectBuildkiteBuildSnapshot({ organization, pipeline, ca
   try {
     const raw = await request(`/v2/organizations/${organization}/pipelines/${pipeline}/builds?exclude_jobs=true&exclude_pipeline=true&per_page=100`);
     if (!Array.isArray(raw)) throw new Error("Unexpected Buildkite build response.");
-    const builds = await Promise.all(raw.map(async (build) => {
-      const normalized = normalizeBuild(build);
-      const prefix = `/v2/organizations/${organization}/pipelines/${pipeline}/builds/${normalized.number}`;
-      const [jobs, artifacts] = await Promise.all([request(`${prefix}/jobs?per_page=100`), request(`${prefix}/artifacts?per_page=100`)]);
-      const jobItems = Array.isArray(jobs) ? jobs : jobs?.items;
-      if (!Array.isArray(jobItems) || !Array.isArray(artifacts)) throw new Error("Unexpected Buildkite detail response.");
-      return { ...normalized, jobCount: jobItems.length, artifactCount: artifacts.length };
-    }));
+    const detailRequests = [];
+    for (const build of raw) detailRequests.push(collectBuildDetails({ build, organization, pipeline, request }));
+    const builds = await Promise.all(detailRequests);
     builds.sort((a, b) => b.number - a.number);
     return validateBuildkiteBuildSnapshot({ schemaVersion: VERSION, organization, pipeline, capturedAt, status: "available", reason: null, builds });
   } catch {
     return validateBuildkiteBuildSnapshot({ schemaVersion: VERSION, organization, pipeline, capturedAt, status: "blocked", reason: "Buildkite build collection unavailable.", builds: [] });
   }
+}
+async function collectBuildDetails({ build, organization, pipeline, request }) {
+  const normalized = normalizeBuild(build);
+  const prefix = `/v2/organizations/${organization}/pipelines/${pipeline}/builds/${normalized.number}`;
+  const [jobs, artifacts] = await Promise.all([request(`${prefix}/jobs?per_page=100`), request(`${prefix}/artifacts?per_page=100`)]);
+  const jobItems = Array.isArray(jobs) ? jobs : jobs?.items;
+  if (!Array.isArray(jobItems) || !Array.isArray(artifacts)) throw new Error("Unexpected Buildkite detail response.");
+  return { ...normalized, jobCount: jobItems.length, artifactCount: artifacts.length };
 }
 export function validateBuildkiteBuildSnapshot(snapshot) {
   const errors = validateJsonSchema(snapshot, SCHEMA);

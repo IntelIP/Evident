@@ -114,5 +114,8 @@
     "git-spice",
     "entire",
     "codex"
-  ]
+  ],
+  "devDependencies": {
+    "c8": "10.1.3"
+  }
 }
