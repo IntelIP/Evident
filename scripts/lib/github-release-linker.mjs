@@ -1,7 +1,10 @@
 import { validateGitHubReleaseSnapshot } from "./github-release-collector.mjs";
+import { validateProviderSnapshot } from "./analytics.mjs";
 
 export function linkGitHubReleases({ providerSnapshot, releaseSnapshot }) {
   validateGitHubReleaseSnapshot(releaseSnapshot);
+  const providerErrors = validateProviderSnapshot(providerSnapshot, providerSnapshot?.repository, laterTimestamp(providerSnapshot?.capturedAt, releaseSnapshot?.capturedAt));
+  if (providerErrors.length) throw new Error(`Invalid provider snapshot: ${providerErrors.join("; ")}`);
   if (releaseSnapshot.status !== "available") throw new Error("Cannot link a blocked GitHub release snapshot.");
   if (!sameRepository(providerSnapshot?.repository, releaseSnapshot.repository)) {
     throw new Error("Provider and GitHub release snapshots must name the same repository.");
@@ -26,7 +29,7 @@ export function linkGitHubReleases({ providerSnapshot, releaseSnapshot }) {
 
 function linkChange(change, releasesByCommit) {
   const release = releasesByCommit.get(change?.headCommit);
-  if (!release) return structuredClone(change);
+  if (!release || (change.mergedAt && Date.parse(release.publishedAt) < Date.parse(change.mergedAt))) return structuredClone(change);
   if (change.releasedAt && change.releasedAt !== release.publishedAt) {
     throw new Error(`Conflicting GitHub release timestamp for delivery change ${change.id}.`);
   }

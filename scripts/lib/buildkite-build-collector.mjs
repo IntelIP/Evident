@@ -3,21 +3,22 @@ import { isJsonDateTime, validateJsonSchema } from "./json-schema-validator.mjs"
 const VERSION = "tabellio-buildkite-build-snapshot/v0.1";
 const SCHEMA = JSON.parse(readFileSync(new URL("../../schemas/buildkite-build-snapshot.v0.1.schema.json", import.meta.url), "utf8"));
 const SLUG = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
+const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9._-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 const OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
-export async function collectBuildkiteBuildSnapshot({ organization, pipeline, capturedAt, request }) {
-  if (!SLUG.test(organization ?? "") || !SLUG.test(pipeline ?? "") || !isJsonDateTime(capturedAt) || typeof request !== "function") throw new Error("Buildkite collector requires organization, pipeline, capturedAt, and request.");
+export async function collectBuildkiteBuildSnapshot({ repository, organization, pipeline, capturedAt, request }) {
+  if (!REPOSITORY.test(repository ?? "") || !SLUG.test(organization ?? "") || !SLUG.test(pipeline ?? "") || !isJsonDateTime(capturedAt) || typeof request !== "function") throw new Error("Buildkite collector requires repository, organization, pipeline, capturedAt, and request.");
   try {
-    const raw = await request(`/v2/organizations/${organization}/pipelines/${pipeline}/builds?exclude_jobs=true&exclude_pipeline=true&per_page=100`);
-    if (!Array.isArray(raw)) throw new Error("Unexpected Buildkite build response.");
+    const raw = await collectAll(`/v2/organizations/${organization}/pipelines/${pipeline}/builds?exclude_jobs=true&exclude_pipeline=true&per_page=100`, request);
     const detailRequests = [];
     for (const build of raw) detailRequests.push(collectBuildDetails({ build, organization, pipeline, request }));
     const builds = await Promise.all(detailRequests);
     builds.sort((a, b) => b.number - a.number);
-    return validateBuildkiteBuildSnapshot({ schemaVersion: VERSION, organization, pipeline, capturedAt, status: "available", reason: null, builds });
+    return validateBuildkiteBuildSnapshot({ schemaVersion: VERSION, repository, organization, pipeline, capturedAt, status: "available", reason: null, builds });
   } catch {
-    return validateBuildkiteBuildSnapshot({ schemaVersion: VERSION, organization, pipeline, capturedAt, status: "blocked", reason: "Buildkite build collection unavailable.", builds: [] });
+    return validateBuildkiteBuildSnapshot({ schemaVersion: VERSION, repository, organization, pipeline, capturedAt, status: "blocked", reason: "Buildkite build collection unavailable.", builds: [] });
   }
 }
+async function collectAll(path, request) { const all=[]; for(let pageNumber=1;;pageNumber+=1){const separator=path.includes("?")?"&":"?";const target=pageNumber===1?path:`${path}${separator}page=${pageNumber}`;const page=await request(target); const values=Array.isArray(page)?page:page?.items; if(!Array.isArray(values)) throw new Error("Unexpected Buildkite build response."); all.push(...values); if(values.length<100) return all;} }
 async function collectBuildDetails({ build, organization, pipeline, request }) {
   const normalized = normalizeBuild(build);
   const prefix = `/v2/organizations/${organization}/pipelines/${pipeline}/builds/${normalized.number}`;

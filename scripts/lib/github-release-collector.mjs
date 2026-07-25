@@ -8,7 +8,7 @@ const SCHEMA = JSON.parse(readFileSync(
   "utf8",
 ));
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9._-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
-const TAG = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const TAG = /^[A-Za-z0-9][A-Za-z0-9._-]*(?:\/[A-Za-z0-9][A-Za-z0-9._-]*)*$/;
 const OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 
 export async function collectGitHubReleaseSnapshot({ repository, capturedAt, request }) {
@@ -16,10 +16,9 @@ export async function collectGitHubReleaseSnapshot({ repository, capturedAt, req
   if (!isJsonDateTime(capturedAt)) throw new Error("GitHub release collector requires capturedAt.");
   if (typeof request !== "function") throw new Error("GitHub release collector requires a request function.");
   try {
-    const payload = await request(`/repos/${repository}/releases?per_page=100`);
-    if (!Array.isArray(payload)) throw new Error("Unexpected releases response.");
+    const payload = await collectAll(`/repos/${repository}/releases?per_page=100`, request);
     const releases = await Promise.all(payload
-      .filter((release) => release?.draft !== true && isPublishedRelease(release))
+      .filter((release) => release?.draft !== true && isPublishedRelease(release) && Date.parse(release.published_at) <= Date.parse(capturedAt))
       .map(async (release) => normalizeRelease({ repository, release, request })));
     const snapshot = { schemaVersion: SCHEMA_VERSION, repository, capturedAt, status: "available", reason: null, releases };
     return validateGitHubReleaseSnapshot(snapshot);
@@ -34,6 +33,7 @@ export async function collectGitHubReleaseSnapshot({ repository, capturedAt, req
     });
   }
 }
+async function collectAll(path, request) { const all=[]; for(let pageNumber=1;;pageNumber+=1){const separator=path.includes("?")?"&":"?";const target=pageNumber===1?path:`${path}${separator}page=${pageNumber}`;const page=await request(target); if(!Array.isArray(page)) throw new Error("Unexpected releases response."); all.push(...page); if(page.length<100) return all;} }
 
 export function validateGitHubReleaseSnapshot(snapshot) {
   const errors = validateJsonSchema(snapshot, SCHEMA);

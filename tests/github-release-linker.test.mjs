@@ -2,15 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { linkGitHubReleases } from "../scripts/lib/github-release-linker.mjs";
+import { provider as deliveryProvider } from "./helpers/delivery-evidence-fixture.mjs";
 
 const COMMIT = "a".repeat(40);
-const providerSnapshot = {
-  schemaVersion: "tabellio-analytics-provider-snapshot/v0.1",
-  repository: "IntelIP/Tabellio",
-  capturedAt: "2026-07-25T10:00:00.000Z",
-  sources: { github: { status: "available", version: "2026-07-25T10:00:00.000Z" } },
-  deliveryChanges: [{ id: "change-1", headCommit: COMMIT, releasedAt: null }],
-};
+const providerSnapshot = (() => { const snapshot=deliveryProvider(); snapshot.deliveryChanges[0]={...snapshot.deliveryChanges[0],headCommit:COMMIT,storyCreatedAt:"2026-07-25T09:00:00.000Z",firstActivityAt:"2026-07-25T09:30:00.000Z",mergedAt:"2026-07-25T10:00:00.000Z",releasedAt:null}; return snapshot; })();
 const releaseSnapshot = {
   schemaVersion: "tabellio-github-release-snapshot/v0.1",
   repository: "IntelIP/Tabellio",
@@ -24,7 +19,7 @@ test("GitHub release linker attaches an exact release timestamp to matching deli
   const linked = linkGitHubReleases({ providerSnapshot, releaseSnapshot });
   assert.equal(linked.deliveryChanges[0].releasedAt, "2026-07-25T10:30:00.000Z");
   assert.equal(linked.sources.github.version, "2026-07-25T11:00:00.000Z");
-  assert.equal(linked.capturedAt, "2026-07-25T11:00:00.000Z");
+  assert.equal(linked.capturedAt, providerSnapshot.capturedAt);
   assert.equal(providerSnapshot.deliveryChanges[0].releasedAt, null);
 });
 

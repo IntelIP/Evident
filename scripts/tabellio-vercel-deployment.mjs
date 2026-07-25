@@ -6,6 +6,7 @@ main().catch(reportCliError);
 async function main() {
   const options = parseCommandOptions(process.argv.slice(2), { collect: ["repository", "environment", "projectId", "out"] });
   requireOptions(options, ["repository", "environment", "projectId", "out"], "collect");
+  if (options.environment !== "production") throw new Error("Vercel deployment evidence requires --environment production.");
   const token = process.env.VERCEL_API_TOKEN;
   if (!token) throw new Error("VERCEL_API_TOKEN is required at runtime.");
   await writeDeploymentCollection({ collector: collectVercelDeploymentReceipt, provider: "vercel", out: options.out, input: { repository: options.repository, environment: options.environment, projectId: options.projectId, capturedAt: new Date().toISOString(), request: async () => {

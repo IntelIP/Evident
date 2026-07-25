@@ -18,5 +18,8 @@ export function validateDeploymentReceipt(receipt) {
   if (receipt.deployedAt && Date.parse(receipt.deployedAt) > Date.parse(receipt.observedAt)) {
     throw new Error("Deployment receipt deployedAt cannot be after observedAt.");
   }
+  for (const value of [receipt.externalId, receipt.releaseTag, receipt.provenancePointer].filter((item) => item !== null)) {
+    if (/\b(?:token|secret|password|authorization)\s*[=:]|:\/\/[^/\s:@]+:[^/\s@]+@|\b(?:file|https?):\/{2,}(?:Users|home|tmp|private|workspace)\//i.test(value)) throw new Error("Deployment receipt contains unsafe portable provenance.");
+  }
   return receipt;
 }

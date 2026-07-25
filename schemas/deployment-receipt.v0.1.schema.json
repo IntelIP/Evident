@@ -27,7 +27,7 @@
     "observedAt": { "type": "string", "format": "date-time" },
     "provider": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" },
     "externalId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$" },
-    "releaseTag": { "type": ["string", "null"], "maxLength": 128 },
-    "provenancePointer": { "type": ["string", "null"], "maxLength": 500 }
+    "releaseTag": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$" },
+    "provenancePointer": { "type": ["string", "null"], "pattern": "^[A-Za-z][A-Za-z0-9+.-]{0,31}:[A-Za-z0-9/][A-Za-z0-9._:/?&=-]{0,467}$" }
   }
 }

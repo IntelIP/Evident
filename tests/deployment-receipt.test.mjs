@@ -36,3 +36,8 @@ test("deployment cannot be observed before it occurred", () => {
 test("receipt rejects secrets and unknown fields", () => {
   assert.throws(() => validateDeploymentReceipt({ ...receipt, token: "private" }), /Invalid deployment receipt/);
 });
+
+test("receipt rejects credentialed and local provenance pointers", () => {
+  assert.throws(() => validateDeploymentReceipt({ ...receipt, provenancePointer: "https://user:secret@example.test/deploy" }), /Invalid deployment receipt|unsafe portable provenance/);
+  assert.throws(() => validateDeploymentReceipt({ ...receipt, provenancePointer: "file:///home/user/receipt.json" }), /Invalid deployment receipt|unsafe portable provenance/);
+});
