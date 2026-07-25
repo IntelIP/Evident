@@ -4,7 +4,7 @@ import { collectVercelDeploymentReceipt } from "./lib/vercel-deployment-collecto
 import { writeDeploymentCollection } from "./lib/deployment-cli.mjs";
 main().catch(reportCliError);
 async function main() {
-  const options = parseCommandOptions(process.argv.slice(2), { collect: ["repository", "environment", "project-id", "out"] });
+  const options = parseCommandOptions(process.argv.slice(2), { collect: ["repository", "environment", "projectId", "out"] });
   requireOptions(options, ["repository", "environment", "projectId", "out"], "collect");
   const token = process.env.VERCEL_API_TOKEN;
   if (!token) throw new Error("VERCEL_API_TOKEN is required at runtime.");

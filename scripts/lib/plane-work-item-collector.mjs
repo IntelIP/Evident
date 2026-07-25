@@ -30,7 +30,8 @@ export function validatePlaneWorkItemSnapshot(snapshot) {
   if (snapshot.status === "blocked" && (snapshot.projects.length || snapshot.states.length || snapshot.workItems.length)) throw new Error("Blocked Plane snapshot cannot contain evidence.");
   const projects = new Set(snapshot.projects.map((project) => project.id));
   const states = new Set(snapshot.states.map((state) => state.id));
-  if (projects.size !== snapshot.projects.length || states.size !== snapshot.states.length) throw new Error("Plane snapshot IDs must be unique.");
+  const items = new Set(snapshot.workItems.map((item) => item.id));
+  if (projects.size !== snapshot.projects.length || states.size !== snapshot.states.length || items.size !== snapshot.workItems.length) throw new Error("Plane snapshot IDs must be unique.");
   if (snapshot.states.some((state) => !projects.has(state.projectId)) || snapshot.workItems.some((item) => !projects.has(item.projectId) || !states.has(item.stateId))) throw new Error("Plane snapshot contains dangling project or state references.");
   return snapshot;
 }

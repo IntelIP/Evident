@@ -9,6 +9,7 @@ import { validatePlaneWorkItemSnapshot } from "./plane-work-item-collector.mjs";
 
 const SCHEMA_VERSION = "tabellio-delivery-evidence-snapshot/v0.1";
 const SCHEMA = JSON.parse(readFileSync(new URL("../../schemas/delivery-evidence-snapshot.v0.1.schema.json", import.meta.url), "utf8"));
+const DELIVERY_RECORD_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 
 export function joinDeliveryEvidence({ providerSnapshot, planeSnapshot, buildkiteSnapshots = [], releaseSnapshot, deploymentReceipts = [] }) {
   const capturedAt = latestTimestamp([providerSnapshot?.capturedAt, planeSnapshot?.capturedAt, releaseSnapshot?.capturedAt, ...buildkiteSnapshots.map((snapshot) => snapshot?.capturedAt), ...deploymentReceipts.map((receipt) => receipt?.observedAt)]);
@@ -35,6 +36,7 @@ export function validateDeliveryEvidenceSnapshot(snapshot) {
   const errors = validateJsonSchema(snapshot, SCHEMA);
   if (errors.length) throw new Error(`Invalid delivery evidence snapshot: ${errors.join("; ")}`);
   if (!isJsonDateTime(snapshot.capturedAt)) throw new Error("Delivery evidence snapshot capturedAt is invalid.");
+  if (snapshot.deliveryRecords.some((record) => !DELIVERY_RECORD_ID.test(record.id ?? ""))) throw new Error("Delivery evidence record IDs must be portable single-line identifiers.");
   return snapshot;
 }
 

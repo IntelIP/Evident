@@ -4,11 +4,18 @@ import { resolve } from "node:path";
 
 import { parseCommandOptions, reportCliError, requireOptions } from "./lib/cli-options.mjs";
 import { joinDeliveryEvidence } from "./lib/delivery-evidence-joiner.mjs";
+import { assertOutputBoundary } from "./lib/output-boundary.mjs";
 
 main().catch(reportCliError);
 async function main() {
   const options = parseCommandOptions(process.argv.slice(2), { join: ["provider", "plane", "buildkite", "releases", "out"] });
   requireOptions(options, ["provider", "plane", "buildkite", "releases", "out"], "join");
+  await assertOutputBoundary({
+    outputs: [options.out], protectedInputs: [options.provider, options.plane, options.buildkite, options.releases],
+    duplicatePathMessage: "--out must identify one output path.", symbolicLinkMessage: "--out must not be a symbolic link.",
+    outputAliasMessage: "--out must identify one output file.", inputAliasMessage: "--out must not alias an input snapshot.",
+    protectedRootMessage: "--out must not be inside a protected input root.",
+  });
   const [providerSnapshot, planeSnapshot, buildkiteSnapshot, releaseSnapshot] = await Promise.all([options.provider, options.plane, options.buildkite, options.releases].map(readJson));
   const snapshot = joinDeliveryEvidence({ providerSnapshot, planeSnapshot, buildkiteSnapshots: [buildkiteSnapshot], releaseSnapshot });
   const out = resolve(options.out); await writeFile(out, `${JSON.stringify(snapshot, null, 2)}\n`);

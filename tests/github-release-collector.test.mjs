@@ -62,3 +62,11 @@ test("GitHub release snapshot rejects contradictory exact-commit claims", () => 
     releases: [{ id: "12", tagName: "v0.6.0", publishedAt: "2026-07-25T11:00:00.000Z", commit: null, commitStatus: "resolved" }],
   }), /Resolved release/);
 });
+
+test("GitHub release snapshot rejects releases published after capture", () => {
+  assert.throws(() => validateGitHubReleaseSnapshot({
+    schemaVersion: "tabellio-github-release-snapshot/v0.1", repository: "IntelIP/Tabellio", capturedAt: CAPTURED_AT,
+    status: "available", reason: null,
+    releases: [{ id: "12", tagName: "v0.6.0", publishedAt: "2026-07-25T12:00:01.000Z", commit: COMMIT, commitStatus: "resolved" }],
+  }), /publishedAt cannot be newer than capturedAt/);
+});

@@ -42,11 +42,18 @@ export function validateGitHubReleaseSnapshot(snapshot) {
   if (snapshot.status === "blocked" && (!snapshot.reason || snapshot.releases.length !== 0)) {
     throw new Error("Blocked GitHub release snapshot requires a reason and no releases.");
   }
-  for (const release of snapshot.releases) {
-    if (release.commitStatus === "resolved" && !OID.test(release.commit ?? "")) throw new Error("Resolved release requires an exact commit.");
-    if (release.commitStatus === "blocked" && release.commit !== null) throw new Error("Blocked release cannot claim an exact commit.");
-  }
+  for (const release of snapshot.releases) assertReleaseEvidence(release, snapshot.capturedAt);
   return snapshot;
+}
+
+function assertReleaseEvidence(release, capturedAt) {
+  assertCommitEvidence(release);
+  if (Date.parse(release.publishedAt) > Date.parse(capturedAt)) throw new Error("Release publishedAt cannot be newer than capturedAt.");
+}
+
+function assertCommitEvidence(release) {
+  if (release.commitStatus === "resolved" && !OID.test(release.commit ?? "")) throw new Error("Resolved release requires an exact commit.");
+  if (release.commitStatus === "blocked" && release.commit !== null) throw new Error("Blocked release cannot claim an exact commit.");
 }
 
 async function normalizeRelease({ repository, release, request }) {
