@@ -59,7 +59,7 @@ function normalizedScpRemote(match) {
 
 function normalizedRemoteParts(path) {
   const parts = path.replace(/^\/+|\/+$/g, "").split("/");
-  if (parts.length < 2 || !parts.every(safeRemoteSegment)) return null;
+  if (!parts.every(safeRemoteSegment)) return null;
   return PRIVATE_REMOTE_ROOTS.has(parts[0].toLowerCase()) ? null : parts;
 }
 

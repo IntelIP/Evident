@@ -826,6 +826,8 @@ test("repository identity excludes local paths and URL credentials", async (t) =
   }
 
   for (const [remote, expected] of [
+    ["ssh://git@example.com/repository.git", "example.com/repository"],
+    ["git@example.com:repository.git", "example.com/repository"],
     ["ssh://git@gitlab.com/acme/project.git", "gitlab.com/acme/project"],
     ["ssh://deploy@gitlab.com/acme/project.git", "gitlab.com/acme/project"],
     ["git@gitlab.com:acme/project.git", "gitlab.com/acme/project"],
