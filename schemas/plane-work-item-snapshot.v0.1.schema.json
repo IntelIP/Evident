@@ -32,9 +32,9 @@
     },
     "workItem": {
       "type": "object", "additionalProperties": false,
-      "required": ["id", "projectId", "stateId", "createdAt", "updatedAt", "targetDate"],
+      "required": ["id", "projectId", "stateId", "sequenceNumber", "createdAt", "updatedAt", "targetDate"],
       "properties": {
-        "id": { "$ref": "#/$defs/uuid" }, "projectId": { "$ref": "#/$defs/uuid" }, "stateId": { "$ref": "#/$defs/uuid" },
+        "id": { "$ref": "#/$defs/uuid" }, "projectId": { "$ref": "#/$defs/uuid" }, "stateId": { "$ref": "#/$defs/uuid" }, "sequenceNumber": { "type": "integer", "minimum": 1 },
         "createdAt": { "type": "string", "format": "date-time" }, "updatedAt": { "type": "string", "format": "date-time" },
         "targetDate": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
       }

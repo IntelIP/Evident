@@ -13,7 +13,7 @@ export async function collectPlaneWorkItemSnapshot({ workspace, capturedAt, requ
   if (!/^[a-z0-9-]{1,100}$/.test(workspace ?? "") || !isJsonDateTime(capturedAt) || typeof request !== "function") throw new Error("Plane collector requires workspace, capturedAt, and request.");
   try {
     const projects = await collectAll(`/api/v1/workspaces/${workspace}/projects/?per_page=100`, request);
-    const items = await collectAll(`/api/v1/workspaces/${workspace}/work-items/?per_page=100&fields=id,project,state,created_at,updated_at,target_date`, request);
+    const items = await collectAll(`/api/v1/workspaces/${workspace}/work-items/?per_page=100&fields=id,project,state,sequence_id,created_at,updated_at,target_date`, request);
     const normalizedProjects = projects.map(normalizeProject).filter(Boolean);
     const states = (await Promise.all(normalizedProjects.map(async (project) =>
       (await collectAll(`/api/v1/workspaces/${workspace}/projects/${project.id}/states/?per_page=100`, request))
@@ -37,4 +37,4 @@ export function validatePlaneWorkItemSnapshot(snapshot) {
 async function collectAll(path, request) { const output=[]; let next=path; while(next){const page=await request(next); if(!Array.isArray(page?.results)) throw new Error("Unexpected Plane response."); output.push(...page.results); next=page.next_page_results === true && page.next_cursor ? `${path}${path.includes("?")?"&":"?"}cursor=${encodeURIComponent(page.next_cursor)}` : null;} return output; }
 function normalizeProject(project) { return UUID.test(project?.id ?? "") && typeof project.identifier === "string" && project.identifier.length > 0 && project.identifier.length <= 32 ? { id: project.id, identifier: project.identifier } : null; }
 function normalizeState(state, projectId) { return UUID.test(state?.id ?? "") && typeof state.group === "string" && STATE_GROUPS.has(state.group) ? { id: state.id, projectId, group: state.group } : null; }
-function normalizeItem(item) { if (!UUID.test(item?.id ?? "") || !UUID.test(item?.project ?? "") || !UUID.test(item?.state ?? "") || !isJsonDateTime(item?.created_at) || !isJsonDateTime(item?.updated_at)) return null; return { id:item.id, projectId:item.project, stateId:item.state, createdAt:item.created_at, updatedAt:item.updated_at, targetDate: typeof item.target_date === "string" ? item.target_date : null }; }
+function normalizeItem(item) { if (!UUID.test(item?.id ?? "") || !UUID.test(item?.project ?? "") || !UUID.test(item?.state ?? "") || !Number.isInteger(item?.sequence_id) || item.sequence_id < 1 || !isJsonDateTime(item?.created_at) || !isJsonDateTime(item?.updated_at)) return null; return { id:item.id, projectId:item.project, stateId:item.state, sequenceNumber:item.sequence_id, createdAt:item.created_at, updatedAt:item.updated_at, targetDate: typeof item.target_date === "string" ? item.target_date : null }; }
