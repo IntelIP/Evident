@@ -196,6 +196,7 @@ test("unsafe provider versions are blocked before portable export", async (t) =>
   for (const [index, credential] of [
     "https://alice:hunter2@example.com/private",
     "sk_live_1234567890abcdef",
+    "sk-proj-1234567890abcdef",
     "AKIAIOSFODNN7EXAMPLE",
     "xoxb-1234567890-abcdefghij",
     "npm_12345678901234567890",
@@ -438,6 +439,31 @@ test("dataset validation rejects not-applicable repository metrics", async (t) =
   resignDataset(dataset);
 
   assert.throws(() => validateAnalyticsDataset(dataset), /must be one of|invalid status/i);
+});
+
+test("dataset validation requires source-backed counts when their source is available", async (t) => {
+  const fixture = await createAnalyticsFixture();
+  t.after(() => rm(fixture.root, { recursive: true, force: true }));
+  const dataset = await collectAnalyticsDataset({
+    id: "source-backed-count-baseline",
+    repositories: [{ id: "fixture", path: fixture.repo }],
+    observedAt: OBSERVED_AT,
+    since: SINCE,
+    until: UNTIL,
+  });
+
+  dataset.repositories[0].metrics.commitCount = {
+    ...dataset.repositories[0].metrics.commitCount,
+    status: "unavailable",
+    value: null,
+    reason: "Commit count withheld.",
+  };
+  resignDataset(dataset);
+
+  assert.throws(
+    () => validateAnalyticsDataset(dataset),
+    /sources do not support the metric state or definition/,
+  );
 });
 
 test("dataset validation requires the canonical metric set and definitions", async (t) => {

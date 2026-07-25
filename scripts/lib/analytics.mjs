@@ -573,9 +573,19 @@ function hasEveryRequiredSourceSystem(sources, requiredSystems) {
 }
 
 function metricSourceAvailabilityMatches(metricId, metric, sources) {
-  return AVAILABILITY_METRICS.has(metricId)
-    ? availabilityMetricMatchesSources(metric, sources)
-    : metric.status !== "measured" || sources.every((source) => source?.status === "available");
+  if (AVAILABILITY_METRICS.has(metricId)) return availabilityMetricMatchesSources(metric, sources);
+  if (metric.status === "measured") return sources.every((source) => source?.status === "available");
+  return !requiresMeasuredValueWhenSourcesAvailable(metric)
+    || sources.some((source) => source?.status !== "available")
+    || worktreeStateIsNotApplicable(metricId, metric);
+}
+
+function requiresMeasuredValueWhenSourcesAvailable(metric) {
+  return ["count", "boolean"].includes(metric?.unit);
+}
+
+function worktreeStateIsNotApplicable(metricId, metric) {
+  return metricId === "worktreeDirty" && metric?.reason === "Bare repository has no worktree.";
 }
 
 function availabilityMetricMatchesSources(metric, sources) {
@@ -1327,7 +1337,7 @@ function hasCredentialShape(value) {
     /(?:bearer\s|github_pat_|gh[pousr]_)/i,
     /(?:api[_-]?key|apikey|authorization|access[_-]?token|client[_-]?secret|private[_-]?key|password|token|secret)\s*[=:]/i,
     /\b[a-z][a-z0-9+.-]*:\/\/[^/\s:@]+:[^@\s/]+@/i,
-    /\bsk_(?:live|test)_[A-Za-z0-9]{8,}\b/,
+    /\bsk(?:[-_]proj)?[-_][A-Za-z0-9_-]{8,}\b/i,
     /\bAKIA[0-9A-Z]{16}\b/,
     /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/,
     /\bnpm_[A-Za-z0-9]{20,}\b/,
