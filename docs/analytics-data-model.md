@@ -178,6 +178,33 @@ commit and environment, but does not create or replace the release event.
 Missing provider evidence is reported as `deployed: blocked`; it never turns a
 published GitHub Release into a guessed event.
 
+### Runtime receipt collectors
+
+Cloud Run collection is read-only. It accepts a receipt only where one revision
+receives 100% of traffic and that revision carries a full 40- or 64-character
+`commit-sha` label. Short labels, split traffic, and missing immutable commit
+metadata remain `blocked`; they never become a deployment claim.
+
+Vercel collection is read-only. It accepts only a `READY`, `production`
+deployment with a full `meta.githubCommitSha`. It requires `VERCEL_API_TOKEN`
+only at invocation and never writes it to a report or receipt. A local project
+link or preview deployment is not production runtime proof.
+
+```sh
+node scripts/tabellio-cloud-run-deployment.mjs collect \
+  --repository IntelIP/Condere --environment production \
+  --service intelip-agentos-prod --project intelip-prod-2025 --region us-east1 \
+  --out /private/tmp/condere-cloud-run.json
+
+node scripts/tabellio-vercel-deployment.mjs collect \
+  --repository IntelIP/vaticor --environment production \
+  --project-id prj_example --out /private/tmp/vaticor-vercel.json
+```
+
+Both commands produce a sanitized `blocked` result when the provider cannot
+prove the exact commit. Only an `available` result contains a receipt suitable
+for the delivery joiner.
+
 ## Timeline Tables
 
 ### `change_events`

@@ -66,6 +66,8 @@
     "tabellio:preflight": "node scripts/tabellio-preflight.mjs",
     "tabellio:release": "node scripts/tabellio-release.mjs",
     "tabellio:deployment:check": "node scripts/check-tabellio-deployment-receipt.mjs --receipt examples/tabellio-deployment-receipt/minimal-receipt.json",
+    "tabellio:deployment:cloud-run": "node scripts/tabellio-cloud-run-deployment.mjs",
+    "tabellio:deployment:vercel": "node scripts/tabellio-vercel-deployment.mjs",
     "tabellio:github-releases": "node scripts/tabellio-github-releases.mjs",
     "tabellio:buildkite-builds": "node scripts/tabellio-buildkite-builds.mjs",
     "tabellio:delivery:evidence": "node scripts/tabellio-delivery-evidence.mjs",
