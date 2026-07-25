@@ -172,10 +172,11 @@ A deployment is counted only when a provider emits a validated
 `tabellio-deployment-receipt/v0.1` document. The receipt binds a repository,
 exact commit, environment, provider-native external ID, event time, and
 observation time. It excludes credentials, response bodies, and deployment
-configuration. A published GitHub Release remains the shipping boundary; a
-deployment receipt is required evidence before that release can be reported as
-fully delivered. Missing provider evidence is `blocked`, never inferred from a
-merge or release tag.
+configuration. A published GitHub Release is the shipping boundary. A
+deployment receipt is separate operational evidence: it proves the deployed
+commit and environment, but does not create or replace the release event.
+Missing provider evidence is reported as `deployed: blocked`; it never turns a
+published GitHub Release into a guessed event.
 
 ## Timeline Tables
 
