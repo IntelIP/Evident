@@ -9,20 +9,22 @@ fi
 base_branch="${BUILDKITE_PULL_REQUEST_BASE_BRANCH:-main}"
 git fetch --no-tags origin "+refs/heads/${base_branch}:refs/remotes/origin/${base_branch}"
 npm ci
-rm -rf coverage
+coverage_dir="$(pwd -P)/coverage"
+coverage_tmp="${coverage_dir}/tmp"
+rm -rf "$coverage_dir"
 ./node_modules/.bin/c8 \
-  --temp-directory coverage/tmp \
-  --reports-dir coverage \
+  --temp-directory "$coverage_tmp" \
+  --reports-dir "$coverage_dir" \
   --reporter=none \
   node --test tests/*.test.mjs
 ./node_modules/.bin/c8 report \
-  --temp-directory coverage/tmp \
-  --reports-dir coverage \
+  --temp-directory "$coverage_tmp" \
+  --reports-dir "$coverage_dir" \
   --reporter=json
 node .buildkite/scripts/normalize-istanbul-coverage.mjs \
-  coverage/coverage-final.json \
-  coverage/coverage-final.fallow.json
-test -s coverage/coverage-final.fallow.json
+  "$coverage_dir/coverage-final.json" \
+  "$coverage_dir/coverage-final.fallow.json"
+test -s "$coverage_dir/coverage-final.fallow.json"
 npm install --global fallow@2.89.0
 
 FALLOW_AGENT_SOURCE=codex fallow audit \
@@ -30,7 +32,7 @@ FALLOW_AGENT_SOURCE=codex fallow audit \
   --gate new-only \
   --health-baseline quality-baselines/fallow-health.json \
   --dupes-baseline quality-baselines/fallow-dupes.json \
-  --coverage coverage/coverage-final.fallow.json \
+  --coverage "$coverage_dir/coverage-final.fallow.json" \
   --coverage-root "$PWD" \
   --format json \
   --quiet \
