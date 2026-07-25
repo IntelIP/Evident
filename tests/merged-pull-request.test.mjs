@@ -45,7 +45,8 @@ test("merged pull-request resolution fails closed on ambiguous or malformed evid
 test("Buildkite product validation preserves merged execution and exact checkpoint proof", async () => {
   const script = await readFile(new URL("../.buildkite/scripts/product-validation.sh", import.meta.url), "utf8");
   assert.match(script, /BUILDKITE_PULL_REQUEST:-false/);
-  assert.match(script, /git show -s --format=%s HEAD/);
+  assert.match(script, /commits\/\$\{candidate\}\/pulls/);
+  assert.match(script, /resolve-merged-checkpoint\.mjs --commit "\$candidate"/);
   assert.match(script, /refs\/pull\/\$\{pull_request\}\/head/);
   assert.match(script, /checkpoint_head=.*git rev-parse/);
   assert.match(script, /--checkpoint-base "\$base_ref" --checkpoint-head "\$checkpoint_head"/);

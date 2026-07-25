@@ -13,15 +13,22 @@ test "$(git rev-parse HEAD^{commit})" = "$(git rev-parse "${candidate}^{commit}"
 
 if [[ "${BUILDKITE_PULL_REQUEST:-false}" == "false" && "$base_branch" == "main" ]]; then
   base_ref="HEAD^"
-  subject="$(git show -s --format=%s HEAD)"
-  if [[ "$subject" =~ \(#([0-9]+)\)$ ]]; then
-    pull_request="${BASH_REMATCH[1]}"
+  checkpoint_output="$(mktemp)"
+  if curl --fail --silent --show-error \
+    -H "Accept: application/vnd.github+json" \
+    "https://api.github.com/repos/IntelIP/Tabellio/commits/${candidate}/pulls" \
+    | node scripts/resolve-merged-checkpoint.mjs --commit "$candidate" --github-output "$checkpoint_output"; then
+    pull_request="$(awk -F= '$1 == "number" { print $2 }' "$checkpoint_output")"
+    checkpoint_head="$(awk -F= '$1 == "head" { print $2 }' "$checkpoint_output")"
+    if [[ -n "$pull_request" && -n "$checkpoint_head" ]]; then
     checkpoint_ref="refs/tabellio/checkpoints/${pull_request}"
     if git fetch --no-tags origin "+refs/pull/${pull_request}/head:${checkpoint_ref}"; then
       checkpoint_head="$(git rev-parse "${checkpoint_ref}^{commit}")"
       checkpoint_args=(--checkpoint-base "$base_ref" --checkpoint-head "$checkpoint_head")
     fi
+    fi
   fi
+  rm -f "$checkpoint_output"
 fi
 
 validator_dir="$(mktemp -d)"

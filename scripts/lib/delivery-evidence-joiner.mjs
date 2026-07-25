@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 
 import { validateProviderSnapshot } from "./analytics.mjs";
 import { validateBuildkiteBuildSnapshot } from "./buildkite-build-collector.mjs";
@@ -29,7 +30,12 @@ export function joinDeliveryEvidence({ providerSnapshot, planeSnapshot, buildkit
   const records = providerSnapshot.deliveryChanges.map((change) => recordFor(change, { itemByKey, stateById, planeSnapshot, buildkiteSnapshots, releaseSnapshot, deploymentReceipts, repository: providerSnapshot.repository }));
   return validateDeliveryEvidenceSnapshot({
     schemaVersion: SCHEMA_VERSION, repository: providerSnapshot.repository, capturedAt,
-    sources: { plane: sourceState(planeSnapshot.status), buildkite: aggregateBuildkite(buildkiteSnapshots), githubRelease: sourceState(releaseSnapshot.status), deployment: deploymentReceipts.length ? { status: "available", reason: null } : { status: "unavailable", reason: "No deployment receipts collected." } },
+    sources: {
+      plane: sourceState(planeSnapshot.status, planeSnapshot, `plane:${planeSnapshot.workspace}`),
+      buildkite: aggregateBuildkite(buildkiteSnapshots),
+      githubRelease: sourceState(releaseSnapshot.status, releaseSnapshot, `github-release:${releaseSnapshot.repository}`),
+      deployment: deploymentReceipts.length ? availableSource(deploymentReceipts.map((receipt) => observation(`deployment:${receipt.provider}:${receipt.externalId}`, receipt.observedAt, receipt))) : unavailableSource("No deployment receipts collected."),
+    },
     wipByProject: wipByProject(planeSnapshot, capturedAt),
     deliveryRecords: records,
   });
@@ -63,8 +69,15 @@ function recordFor(change, context) {
 }
 
 function ciStatus(state) { return state === "passed" ? "passed" : state === "failed" || state === "canceled" || state === "cancelled" ? "failed" : "in_progress"; }
-function sourceState(status) { return status === "available" ? { status: "available", reason: null } : { status: "blocked", reason: "Collector unavailable." }; }
-function aggregateBuildkite(snapshots) { return snapshots.length === 0 ? { status: "unavailable", reason: "No Buildkite snapshots collected." } : snapshots.every((snapshot) => snapshot.status === "available") ? { status: "available", reason: null } : { status: "blocked", reason: "At least one Buildkite collector was unavailable." }; }
+function sourceState(status, snapshot, identity) { return status === "available" ? availableSource([observation(identity, snapshot.capturedAt, snapshot)]) : unavailableSource("Collector unavailable.", "blocked"); }
+function aggregateBuildkite(snapshots) {
+  if (snapshots.length === 0) return unavailableSource("No Buildkite snapshots collected.");
+  if (!snapshots.every((snapshot) => snapshot.status === "available")) return unavailableSource("At least one Buildkite collector was unavailable.", "blocked");
+  return availableSource(snapshots.map((snapshot) => observation(`buildkite:${snapshot.organization}/${snapshot.pipeline}`, snapshot.capturedAt, snapshot)));
+}
+function availableSource(observations) { return { status: "available", reason: null, observations }; }
+function unavailableSource(reason, status = "unavailable") { return { status, reason, observations: [] }; }
+function observation(id, version, value) { return { id, version, digest: createHash("sha256").update(JSON.stringify(value)).digest("hex") }; }
 function latestTimestamp(values) { const valid = values.filter(isJsonDateTime); if (!valid.length) throw new Error("Delivery evidence requires at least one capture timestamp."); return valid.sort((left, right) => Date.parse(right) - Date.parse(left))[0]; }
 function wipByProject(snapshot, capturedAt) {
   if (snapshot.status !== "available") return [];
