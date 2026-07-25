@@ -29,7 +29,7 @@ The earlier design draft listed `not_applicable`, but the v0.1 portable dataset 
 | `evidenceCompleteness` | ratio | Available declared sources | All declared sources |
 | `taskToPrTraceability` | ratio | Story-to-publication linkage | Plane and GitHub |
 | `leadTimeHours` | hours | Work-item creation to merge | Plane and GitHub |
-| `cycleTimeHours` | hours | First implementation activity to merge | Git, Plane, GitHub |
+| `cycleTimeHours` | hours | First implementation activity to merge | Plane and GitHub provider snapshot |
 | `ciDisagreementRate` | ratio | Hosted CI versus exact validation divergence | GitHub Actions and Tabellio |
 | `releaseLagHours` | hours | Merge-to-release delay | GitHub |
 | `repositoryAdoption` | ratio | Native Tabellio evidence-source availability | Validation, review, Entire |

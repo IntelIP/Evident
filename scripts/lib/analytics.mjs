@@ -29,7 +29,7 @@ const METRIC_DEFINITIONS = Object.freeze([
   defineMetric("deliveryChangeCount", "count", "Delivery changes explicitly included in the sanitized provider snapshot.", ["plane", "github"], "Unavailable when no provider snapshot is supplied."),
   defineMetric("taskToPrTraceability", "ratio", "Delivery changes linked to both a Plane story and GitHub pull request divided by eligible delivery changes.", ["plane", "github"], "Unavailable until compatible Plane and GitHub snapshots are supplied."),
   defineMetric("leadTimeHours", "hours", "Elapsed time from work-item creation to merge for linked delivery changes.", ["plane", "github"], "Unavailable until linked timestamps are supplied."),
-  defineMetric("cycleTimeHours", "hours", "Elapsed time from first implementation activity to merge for linked delivery changes.", ["git", "plane", "github"], "Unavailable until linked timestamps are supplied."),
+  defineMetric("cycleTimeHours", "hours", "Elapsed time from first implementation activity to merge for linked delivery changes.", ["plane", "github"], "Unavailable until linked timestamps are supplied."),
   defineMetric("ciDisagreementRate", "ratio", "Candidates where hosted CI and exact-candidate validation disagree divided by compared candidates.", ["github-actions", "tabellio-validation"], "Unavailable until hosted-check evidence is supplied."),
   defineMetric("releaseLagHours", "hours", "Elapsed time from merge to first containing release.", ["github"], "Unavailable until merge and release evidence is supplied."),
   defineMetric("repositoryAdoption", "ratio", "Available Tabellio-native evidence sources divided by validation, review, and Entire sources.", ["tabellio-validation", "tabellio-review", "entire"], "Measured from source availability, not commit volume or developer ranking.")
@@ -239,7 +239,7 @@ export function validateDeliveryMetricConsistency(repository) {
     deliveryChangeCount: deliveryCountProjection(repository, changes),
     taskToPrTraceability: traceabilityProjection(repository, changes, linked),
     leadTimeHours: averageDeliveryProjection(repository, ["plane", "github"], linked, "storyCreatedAt", "mergedAt"),
-    cycleTimeHours: averageDeliveryProjection(repository, ["git", "plane", "github"], linked, "firstActivityAt", "mergedAt"),
+    cycleTimeHours: averageDeliveryProjection(repository, ["plane", "github"], linked, "firstActivityAt", "mergedAt"),
     ciDisagreementRate: ciDisagreementProjection(repository, changes),
     releaseLagHours: averageDeliveryProjection(repository, ["github"], changes, "mergedAt", "releasedAt"),
   };
@@ -344,6 +344,10 @@ function validateDeliverySourceConsistency(repository) {
     errorUnless(
       sourceAvailable("github-actions") || change.hostedStatus === "unavailable",
       `${repository.id}: hosted status requires available GitHub Actions evidence.`,
+    ),
+    errorUnless(
+      sourceAvailable("tabellio-validation") || change.validationStatus === "unavailable",
+      `${repository.id}: exact validation status requires available Tabellio validation evidence.`,
     ),
   ]));
 }
@@ -920,7 +924,7 @@ function buildRepositoryMetrics({ commits, status, since, until, gitSource, vali
     deliveryChangeCount: providerMetric(provider, measured(changes.length, "count", providerSourceIds), "count", providerSourceIds),
     taskToPrTraceability: providerMetric(provider, ratioOrMissing(linkedChanges.length, changes.length, "ratio", providerSourceIds, "No eligible delivery changes in the provider snapshot."), "ratio", providerSourceIds),
     leadTimeHours: providerMetric(provider, averageOrMissing(leadTimes, "hours", providerSourceIds, "No linked story creation and merge timestamps."), "hours", providerSourceIds),
-    cycleTimeHours: providerMetric(provider, averageOrMissing(cycleTimes, "hours", [gitSource.id, ...providerSourceIds], "No linked first-activity and merge timestamps."), "hours", [gitSource.id, ...providerSourceIds]),
+    cycleTimeHours: providerMetric(provider, averageOrMissing(cycleTimes, "hours", providerSourceIds, "No linked first-activity and merge timestamps."), "hours", providerSourceIds),
     ciDisagreementRate: sourceMetric([validation.source, provider.sources[2]], ratioOrMissing(ciDisagreements.length, ciComparisons.length, "ratio", [validation.source.id, provider.sources[2].id], "No candidates have both hosted and exact validation outcomes."), "ratio"),
     releaseLagHours: sourceMetric([provider.sources[1]], averageOrMissing(releaseLags, "hours", [provider.sources[1].id], "No linked merge and release timestamps."), "hours"),
     repositoryAdoption: measured(nativeAvailable / nativeSources.length, "ratio", nativeSources.map((source) => source.id), nativeAvailable, nativeSources.length),

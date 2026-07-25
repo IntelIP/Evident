@@ -129,7 +129,6 @@
       "unit": "hours",
       "definition": "Elapsed time from first implementation activity to merge for linked delivery changes.",
       "sourceSystems": [
-        "git",
         "plane",
         "github"
       ],
@@ -385,7 +384,6 @@
           "value": null,
           "unit": "hours",
           "sourceIds": [
-            "condere:git",
             "condere:plane",
             "condere:github"
           ],
@@ -650,7 +648,6 @@
           "value": null,
           "unit": "hours",
           "sourceIds": [
-            "probanda:git",
             "probanda:plane",
             "probanda:github"
           ],
@@ -915,7 +912,6 @@
           "value": 21.05,
           "unit": "hours",
           "sourceIds": [
-            "tabellio:git",
             "tabellio:plane",
             "tabellio:github"
           ],
@@ -1195,7 +1191,6 @@
           "value": null,
           "unit": "hours",
           "sourceIds": [
-            "vaticor:git",
             "vaticor:plane",
             "vaticor:github"
           ],
@@ -1245,6 +1240,6 @@
   ],
   "integrity": {
     "algorithm": "sha256",
-    "digest": "ebfad995403d4cbd7af750f254dda6c73f9ad3da4ab1cb5d33d3d1866b40b103"
+    "digest": "ec00961d8837f5fb2b0247b619f66ec06d6ea62ee385beef529b201ee03c1cf6"
   }
 }

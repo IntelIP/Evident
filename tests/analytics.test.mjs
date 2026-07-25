@@ -320,6 +320,19 @@ test("dataset validation binds Git provenance and revalidates delivery rows", as
   });
   const repository = dataset.repositories[0];
   const gitSource = repository.sources.find((source) => source.system === "git");
+  const unsupportedValidation = structuredClone(dataset);
+  const validationSource = unsupportedValidation.repositories[0].sources.find(
+    (source) => source.system === "tabellio-validation",
+  );
+  validationSource.status = "blocked";
+  validationSource.contentDigest = null;
+  validationSource.reason = "Validation evidence blocked.";
+  resignDataset(unsupportedValidation);
+  assert.throws(
+    () => validateAnalyticsDataset(unsupportedValidation),
+    /exact validation status requires available Tabellio validation evidence/,
+  );
+
   gitSource.sourceVersion = "a".repeat(40);
   resignDataset(dataset);
 
