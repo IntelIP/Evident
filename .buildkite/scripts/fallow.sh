@@ -11,8 +11,10 @@ git fetch --no-tags origin "+refs/heads/${base_branch}:refs/remotes/origin/${bas
 npm ci
 coverage_dir="$(pwd -P)/coverage"
 coverage_tmp="${coverage_dir}/tmp"
+# The Tests job runs the full suite. Keep V8 coverage to delivery tests that do
+# not spawn fixture CLIs; Node propagates NODE_V8_COVERAGE to those children,
+# which prevents the hosted runner from exiting after the tests complete.
 coverage_tests=(
-  tests/analytics.test.mjs
   tests/buildkite-build-collector.test.mjs
   tests/delivery-evidence-joiner.test.mjs
   tests/delivery-report.test.mjs
