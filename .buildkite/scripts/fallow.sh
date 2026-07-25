@@ -26,11 +26,8 @@ coverage_tests=(
   tests/plane-work-item-collector.test.mjs
 )
 rm -rf "$coverage_dir"
-./node_modules/.bin/c8 \
-  --temp-directory "$coverage_tmp" \
-  --reports-dir "$coverage_dir" \
-  --reporter=none \
-  node --test "${coverage_tests[@]}"
+mkdir -p "$coverage_tmp"
+NODE_V8_COVERAGE="$coverage_tmp" node --test "${coverage_tests[@]}"
 ./node_modules/.bin/c8 report \
   --temp-directory "$coverage_tmp" \
   --reports-dir "$coverage_dir" \
