@@ -898,6 +898,11 @@ test("analytics collector rejects colliding dataset and report paths", async (t)
   );
   await assert.rejects(readFile(outputPath), (error) => error.code === "ENOENT");
 
+  const caseDataset = join(root, "case-output.json");
+  const caseReport = join(root, "CASE-OUTPUT.JSON");
+  await assertAnalyticsOutputCollision(caseDataset, caseReport, /must resolve to distinct files/);
+  await assert.rejects(readFile(caseDataset), (error) => error.code === "ENOENT");
+
   const shared = join(root, "shared-output");
   const datasetLink = join(root, "dataset-link");
   const reportLink = join(root, "report-link");
@@ -950,6 +955,30 @@ test("analytics collector rejects colliding dataset and report paths", async (t)
     reportPath,
   );
   assert.match(await readFile(providerSnapshotPath, "utf8"), /deliveryChanges/);
+
+  const repositoryFixture = await createEmptyAnalyticsRepository(t, "tabellio-analytics-in-repo-output-");
+  const repositoryConfig = join(repositoryFixture.root, "repositories.json");
+  const generatedDirectory = join(repositoryFixture.repo, "generated");
+  const inRepositoryDataset = join(generatedDirectory, "analytics.json");
+  const inRepositoryReport = join(generatedDirectory, "analytics.md");
+  await writeFile(repositoryConfig, JSON.stringify({
+    repositories: [{ id: "fixture", path: repositoryFixture.repo }],
+  }));
+  await assert.rejects(
+    execFileAsync(process.execPath, [
+      fileURLToPath(new URL("../scripts/tabellio-analytics.mjs", import.meta.url)),
+      "collect",
+      "--config", repositoryConfig,
+      "--id", "in-repository-output",
+      "--since", SINCE,
+      "--until", UNTIL,
+      "--out", inRepositoryDataset,
+      "--report", inRepositoryReport,
+    ], { encoding: "utf8" }),
+    (error) => error.code === 1 && /must not be inside collected repositories/.test(error.stderr),
+  );
+  await assert.rejects(readFile(inRepositoryDataset), (error) => error.code === "ENOENT");
+  await assert.rejects(readFile(generatedDirectory), (error) => error.code === "ENOENT");
 
   await assert.rejects(
     assertOutputBoundary({

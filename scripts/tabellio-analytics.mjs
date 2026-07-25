@@ -25,6 +25,7 @@ try {
       options.out,
       options.report,
       [options.config, ...providerSnapshotPaths(config.repositories)],
+      repositoryPaths(config.repositories),
     );
     const dataset = await collectAnalyticsDataset({
       id: options.id,
@@ -73,13 +74,22 @@ function providerSnapshotPaths(repositories) {
     .filter((path) => typeof path === "string");
 }
 
-async function assertDistinctOutputs(datasetPath, reportPath, protectedInputs) {
+function repositoryPaths(repositories) {
+  if (!Array.isArray(repositories)) return [];
+  return repositories
+    .map((repository) => repository?.path)
+    .filter((path) => typeof path === "string");
+}
+
+async function assertDistinctOutputs(datasetPath, reportPath, protectedInputs, protectedRoots) {
   await assertOutputBoundary({
     outputs: [datasetPath, reportPath],
     protectedInputs,
+    protectedRoots,
     duplicatePathMessage: "--out and --report must resolve to distinct paths.",
     symbolicLinkMessage: "--out and --report must not be symbolic links.",
     outputAliasMessage: "--out and --report must resolve to distinct files.",
     inputAliasMessage: "--out and --report must not alias --config or provider snapshots.",
+    protectedRootMessage: "--out and --report must not be inside collected repositories.",
   });
 }

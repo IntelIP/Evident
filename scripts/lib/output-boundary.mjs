@@ -1,22 +1,26 @@
-import { lstat, mkdir, realpath, stat } from "node:fs/promises";
-import { basename, dirname, join, resolve } from "node:path";
+import { lstat, realpath, stat } from "node:fs/promises";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 export async function assertOutputBoundary({
   outputs,
   protectedInputs = [],
+  protectedRoots = [],
   duplicatePathMessage,
   symbolicLinkMessage,
   outputAliasMessage,
   inputAliasMessage,
+  protectedRootMessage,
 }) {
   const targets = outputs.map((target) => resolve(target));
   const inputTargets = protectedInputs.map((target) => resolve(target));
+  const rootTargets = protectedRoots.map((target) => resolve(target));
   assertUniqueOutputPaths(targets, duplicatePathMessage);
   assertNoProtectedPathMatches(targets, inputTargets, inputAliasMessage);
-  await Promise.all(targets.map((target) => mkdir(dirname(target), { recursive: true })));
   const outputIdentities = await Promise.all(targets.map(outputIdentity));
   assertNoSymbolicLinks(outputIdentities, symbolicLinkMessage);
   assertNoIdentityCollision(outputIdentities, outputAliasMessage);
+  const rootIdentities = await Promise.all(rootTargets.map(optionalCanonicalPath));
+  assertNoProtectedRootContains(outputIdentities, rootIdentities, protectedRootMessage);
   const inputIdentities = await Promise.all(
     inputTargets.map((target) => optionalExistingIdentity(target)),
   );
@@ -46,6 +50,23 @@ function assertNoInputIdentityCollision(outputs, inputs, message) {
   if (aliasesInput) throw new Error(message);
 }
 
+function assertNoProtectedRootContains(outputs, roots, message) {
+  const insideRoot = outputs.some((output) =>
+    roots.some((root) => root !== null && pathIsWithin(output.canonicalPath, root))
+  );
+  if (insideRoot) throw new Error(message);
+}
+
+function pathIsWithin(target, root) {
+  if (target === null) return false;
+  const path = relative(root, target);
+  return !pathEscapesRoot(path);
+}
+
+function pathEscapesRoot(path) {
+  return [path === "..", path.startsWith(`..${sep}`), isAbsolute(path)].some(Boolean);
+}
+
 async function outputIdentity(target) {
   const entry = await optionalFilesystemEntry(() => lstat(target));
   if (entry?.isSymbolicLink()) {
@@ -53,12 +74,27 @@ async function outputIdentity(target) {
   }
   if (!entry) {
     return {
-      canonicalPath: join(await realpath(dirname(target)), basename(target)),
+      canonicalPath: await canonicalFuturePath(target),
       inode: null,
       symbolicLink: false,
     };
   }
   return existingIdentity(target);
+}
+
+async function canonicalFuturePath(target) {
+  try {
+    return await realpath(target);
+  } catch (error) {
+    return canonicalMissingPath(target, error);
+  }
+}
+
+async function canonicalMissingPath(target, error) {
+  if (error?.code !== "ENOENT") throw error;
+  const parent = dirname(target);
+  if (parent === target) throw error;
+  return join(await canonicalFuturePath(parent), basename(target));
 }
 
 async function existingIdentity(target) {
@@ -79,6 +115,15 @@ async function optionalExistingIdentity(target) {
   }
 }
 
+async function optionalCanonicalPath(target) {
+  try {
+    return await realpath(target);
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
 function hasIdentityCollision(identities) {
   return identities.some((identity, index) =>
     identities.slice(index + 1).some((candidate) => sameIdentity(identity, candidate))
@@ -86,8 +131,12 @@ function hasIdentityCollision(identities) {
 }
 
 function sameIdentity(left, right) {
-  if (left.canonicalPath === right.canonicalPath) return true;
+  if (portablePathKey(left.canonicalPath) === portablePathKey(right.canonicalPath)) return true;
   return left.inode !== null && left.inode === right.inode;
+}
+
+function portablePathKey(path) {
+  return path?.normalize("NFC").toLowerCase() ?? null;
 }
 
 async function optionalFilesystemEntry(read) {
