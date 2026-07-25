@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tabellio.dev/schemas/buildkite-build-snapshot.v0.1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "organization", "pipeline", "capturedAt", "status", "builds"],
+  "properties": {
+    "schemaVersion": { "const": "tabellio-buildkite-build-snapshot/v0.1" },
+    "organization": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$" },
+    "pipeline": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$" },
+    "capturedAt": { "type": "string", "format": "date-time" },
+    "status": { "enum": ["available", "blocked"] },
+    "reason": { "type": ["string", "null"], "maxLength": 200 },
+    "builds": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["number", "commit", "state", "createdAt", "finishedAt"], "properties": { "number": { "type": "integer", "minimum": 1 }, "commit": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" }, "state": { "type": "string", "pattern": "^[a-z_]{1,32}$" }, "createdAt": { "type": "string", "format": "date-time" }, "finishedAt": { "type": ["string", "null"], "format": "date-time" } } } }
+  }
+}
