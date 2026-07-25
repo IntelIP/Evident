@@ -30,6 +30,7 @@ async function main() {
     releaseCount: snapshot.releases.length,
     out,
   }, null, 2));
+  if (snapshot.status !== "available") process.exitCode = 1;
 }
 
 async function githubRequest(path) {
