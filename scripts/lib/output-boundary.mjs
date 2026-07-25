@@ -27,6 +27,14 @@ export async function assertOutputBoundary({
   assertNoInputIdentityCollision(outputIdentities, inputIdentities, inputAliasMessage);
 }
 
+export async function outputPathWithinRoot(target, root) {
+  const [targetPath, rootPath] = await Promise.all([
+    canonicalFuturePath(resolve(target)),
+    optionalCanonicalPath(resolve(root)),
+  ]);
+  return rootPath !== null && pathIsWithin(targetPath, rootPath);
+}
+
 function assertUniqueOutputPaths(targets, message) {
   if (new Set(targets).size !== targets.length) throw new Error(message);
 }

@@ -980,6 +980,27 @@ test("analytics collector rejects colliding dataset and report paths", async (t)
   await assert.rejects(readFile(inRepositoryDataset), (error) => error.code === "ENOENT");
   await assert.rejects(readFile(generatedDirectory), (error) => error.code === "ENOENT");
 
+  await commitFixtureFile(
+    repositoryFixture.repo,
+    ".gitignore",
+    "ignored/\n",
+    "2026-07-10T12:00:00.000Z",
+  );
+  const ignoredDataset = join(repositoryFixture.repo, "ignored", "analytics.json");
+  const ignoredReport = join(repositoryFixture.repo, "ignored", "analytics.md");
+  await execFileAsync(process.execPath, [
+    fileURLToPath(new URL("../scripts/tabellio-analytics.mjs", import.meta.url)),
+    "collect",
+    "--config", repositoryConfig,
+    "--id", "ignored-repository-output",
+    "--since", SINCE,
+    "--until", UNTIL,
+    "--out", ignoredDataset,
+    "--report", ignoredReport,
+  ], { encoding: "utf8" });
+  assert.match(await readFile(ignoredDataset, "utf8"), /tabellio-analytics-dataset\/v0\.1/);
+  assert.equal((await runGit({ cwd: repositoryFixture.repo, args: ["status", "--porcelain=v1"] })).stdout, "");
+
   await assert.rejects(
     assertOutputBoundary({
       outputs: [configPath],

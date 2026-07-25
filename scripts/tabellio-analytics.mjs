@@ -9,7 +9,8 @@ import {
   renderAnalyticsReport,
   validateAnalyticsDataset,
 } from "./lib/analytics.mjs";
-import { assertOutputBoundary } from "./lib/output-boundary.mjs";
+import { runGit } from "./lib/git-process.mjs";
+import { assertOutputBoundary, outputPathWithinRoot } from "./lib/output-boundary.mjs";
 
 const allowed = {
   collect: ["config", "id", "observedAt", "since", "until", "out", "report"],
@@ -21,11 +22,16 @@ try {
   if (options.command === "collect") {
     requireOptions(options, ["config", "id", "since", "until", "out", "report"], "collect");
     const config = JSON.parse(await readFile(resolve(options.config), "utf8"));
+    const repositoryRoots = repositoryPaths(config.repositories);
+    const protectedRoots = await unignoredRepositoryRoots(
+      [options.out, options.report],
+      repositoryRoots,
+    );
     await assertDistinctOutputs(
       options.out,
       options.report,
       [options.config, ...providerSnapshotPaths(config.repositories)],
-      repositoryPaths(config.repositories),
+      protectedRoots,
     );
     const dataset = await collectAnalyticsDataset({
       id: options.id,
@@ -79,6 +85,27 @@ function repositoryPaths(repositories) {
   return repositories
     .map((repository) => repository?.path)
     .filter((path) => typeof path === "string");
+}
+
+async function unignoredRepositoryRoots(outputs, roots) {
+  const protectedRoots = [];
+  for (const root of roots) {
+    if (await hasUnignoredRepositoryOutput(outputs, root)) protectedRoots.push(root);
+  }
+  return protectedRoots;
+}
+
+async function hasUnignoredRepositoryOutput(outputs, root) {
+  for (const output of outputs) {
+    if (!await outputPathWithinRoot(output, root)) continue;
+    const ignored = await runGit({
+      cwd: resolve(root),
+      args: ["check-ignore", "--quiet", "--", resolve(output)],
+      acceptableExitCodes: [0, 1, 128],
+    });
+    if (ignored.exitCode !== 0) return true;
+  }
+  return false;
 }
 
 async function assertDistinctOutputs(datasetPath, reportPath, protectedInputs, protectedRoots) {
