@@ -24,7 +24,9 @@
     "tabellio-ledger": "scripts/tabellio-ledger.mjs",
     "tabellio-preflight": "scripts/tabellio-preflight.mjs",
     "tabellio-release": "scripts/tabellio-release.mjs",
-    "tabellio-analytics": "scripts/tabellio-analytics.mjs"
+    "tabellio-analytics": "scripts/tabellio-analytics.mjs",
+    "tabellio-analytics-releases": "scripts/tabellio-analytics-releases.mjs",
+    "tabellio-plane-work-items": "scripts/tabellio-plane-work-items.mjs"
   },
   "bugs": {
     "url": "https://github.com/IntelIP/Tabellio/issues"
