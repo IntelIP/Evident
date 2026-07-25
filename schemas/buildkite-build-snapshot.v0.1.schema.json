@@ -11,6 +11,6 @@
     "capturedAt": { "type": "string", "format": "date-time" },
     "status": { "enum": ["available", "blocked"] },
     "reason": { "type": ["string", "null"], "maxLength": 200 },
-    "builds": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["number", "commit", "state", "createdAt", "finishedAt"], "properties": { "number": { "type": "integer", "minimum": 1 }, "commit": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" }, "state": { "type": "string", "pattern": "^[a-z_]{1,32}$" }, "createdAt": { "type": "string", "format": "date-time" }, "finishedAt": { "type": ["string", "null"], "format": "date-time" } } } }
+    "builds": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["number", "commit", "state", "createdAt", "finishedAt", "jobCount", "artifactCount"], "properties": { "number": { "type": "integer", "minimum": 1 }, "commit": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" }, "state": { "type": "string", "pattern": "^[a-z_]{1,32}$" }, "createdAt": { "type": "string", "format": "date-time" }, "finishedAt": { "type": ["string", "null"], "format": "date-time" }, "jobCount": { "type": "integer", "minimum": 0 }, "artifactCount": { "type": "integer", "minimum": 0 } } } }
   }
 }
