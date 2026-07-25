@@ -8,7 +8,7 @@ The flow has three separate authorities:
 2. `tabellio-merge-ready plan` reads the newest matching validation and creates an integrity-bound status intent. Planning performs no network write.
 3. `tabellio-merge-ready execute` requires a separate, active approval plus a scoped GitHub credential before it publishes `Tabellio / exact-head-validation`.
 
-GitHub Actions, a self-hosted service, Buildkite, a local coordinator, or a Codex PR workflow may invoke these commands. The scheduler supplies capacity. Tabellio owns the exact-candidate validation decision.
+Buildkite, a self-hosted service, a local coordinator, or a Codex PR workflow may invoke these commands. The scheduler supplies capacity. Tabellio owns the exact-candidate validation decision.
 
 This status means only that the repository's committed validation manifest passed for the named commit. It does not claim review clearance, passing unrelated checks, policy approval, mergeability, or authorization to merge. Those remain separate PR-workflow gates.
 

@@ -42,13 +42,13 @@ test("merged pull-request resolution fails closed on ambiguous or malformed evid
   );
 });
 
-test("product validation workflow preserves merged execution and exact checkpoint proof", async () => {
-  const workflow = await readFile(new URL("../.github/workflows/product-validation.yml", import.meta.url), "utf8");
-  assert.match(workflow, /pull-requests: read/);
-  assert.match(workflow, /commits\/\$MERGED_COMMIT\/pulls/);
-  assert.match(workflow, /set -o pipefail/);
-  assert.match(workflow, /test "\$actual_head" = "\$CHECKPOINT_EXPECTED_HEAD"/);
-  assert.match(workflow, /--checkpoint-base "\$base_ref" --checkpoint-head "\$CHECKPOINT_HEAD"/);
+test("Buildkite product validation preserves merged execution and exact checkpoint proof", async () => {
+  const script = await readFile(new URL("../.buildkite/scripts/product-validation.sh", import.meta.url), "utf8");
+  assert.match(script, /BUILDKITE_PULL_REQUEST:-false/);
+  assert.match(script, /git show -s --format=%s HEAD/);
+  assert.match(script, /refs\/pull\/\$\{pull_request\}\/head/);
+  assert.match(script, /checkpoint_head=.*git rev-parse/);
+  assert.match(script, /--checkpoint-base "\$base_ref" --checkpoint-head "\$checkpoint_head"/);
 });
 
 function pullRequest({ mergeCommit: mergedCommit, headCommit: head, number }) {
