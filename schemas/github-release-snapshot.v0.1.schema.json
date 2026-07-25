@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tabellio.dev/schemas/github-release-snapshot.v0.1.schema.json",
+  "title": "Tabellio GitHub release snapshot v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "repository", "capturedAt", "status", "releases"],
+  "properties": {
+    "schemaVersion": { "const": "tabellio-github-release-snapshot/v0.1" },
+    "repository": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,38}/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$" },
+    "capturedAt": { "type": "string", "format": "date-time" },
+    "status": { "enum": ["available", "blocked"] },
+    "reason": { "type": ["string", "null"], "maxLength": 200 },
+    "releases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "tagName", "publishedAt", "commit", "commitStatus"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,128}$" },
+          "tagName": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+          "publishedAt": { "type": "string", "format": "date-time" },
+          "commit": { "type": ["string", "null"], "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
+          "commitStatus": { "enum": ["resolved", "blocked"] }
+        }
+      }
+    }
+  }
+}
