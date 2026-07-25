@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tabellio.dev/schemas/deployment-receipt.v0.1.schema.json",
+  "title": "Tabellio deployment receipt v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "repository",
+    "environment",
+    "commit",
+    "status",
+    "deployedAt",
+    "observedAt",
+    "provider",
+    "externalId"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "tabellio-deployment-receipt/v0.1" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
+    "repository": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$" },
+    "environment": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" },
+    "commit": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
+    "status": { "enum": ["passed", "failed", "blocked"] },
+    "deployedAt": { "type": ["string", "null"], "format": "date-time" },
+    "observedAt": { "type": "string", "format": "date-time" },
+    "provider": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" },
+    "externalId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$" },
+    "releaseTag": { "type": ["string", "null"], "maxLength": 128 },
+    "provenancePointer": { "type": ["string", "null"], "maxLength": 500 }
+  }
+}
