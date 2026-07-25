@@ -44,10 +44,10 @@ export function normalizeRepositoryRemote(remote) {
 }
 
 function normalizedSshUrl(parsed) {
-  if (`${parsed.password}${parsed.port}${parsed.search}${parsed.hash}` !== "") return null;
+  if (`${parsed.password}${parsed.search}${parsed.hash}` !== "") return null;
   const parts = normalizedRemoteParts(parsed.pathname);
   if (!parts) return null;
-  return `${parsed.hostname}/${parts.join("/")}`.replace(/\.git$/, "");
+  return `${parsed.host}/${parts.join("/")}`.replace(/\.git$/, "");
 }
 
 function normalizedScpRemote(match) {

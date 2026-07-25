@@ -790,6 +790,7 @@ test("repository identity excludes local paths and URL credentials", async (t) =
     ["ssh://deploy@gitlab.com/acme/project.git", "gitlab.com/acme/project"],
     ["git@gitlab.com:acme/project.git", "gitlab.com/acme/project"],
     ["ssh://git@gitlab.com/group/subgroup/project.git", "gitlab.com/group/subgroup/project"],
+    ["ssh://git@gitlab.com:2222/group/subgroup/project.git", "gitlab.com:2222/group/subgroup/project"],
     ["git@gitlab.com:group/subgroup/project.git", "gitlab.com/group/subgroup/project"],
   ]) {
     await runGit({ cwd: repo, args: ["remote", "set-url", "origin", remote] });
