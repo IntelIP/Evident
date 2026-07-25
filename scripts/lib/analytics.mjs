@@ -1700,7 +1700,17 @@ async function listTreeNames(cwd, version) {
   return result.stdout.split("\0").filter(Boolean);
 }
 
-function validationCostComplete(result) {
+export function validationCostComplete(result) {
+  const decision = costTelemetryDecision(result);
+  return decision ?? legacyValidationCostComplete(result);
+}
+
+function costTelemetryDecision(result) {
+  const value = result?.decision?.costTelemetryComplete;
+  return typeof value === "boolean" ? value : null;
+}
+
+function legacyValidationCostComplete(result) {
   if (!Array.isArray(result?.validators)) return false;
   return result.validators.every((validator) => {
     if (!validator.required || validator.type === "static") return true;

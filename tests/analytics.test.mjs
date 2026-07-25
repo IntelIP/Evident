@@ -12,6 +12,7 @@ import {
   collectAnalyticsDataset,
   renderAnalyticsReport,
   validateAnalyticsDataset,
+  validationCostComplete,
 } from "../scripts/lib/analytics.mjs";
 import { canonicalJson } from "../scripts/lib/context-packet.mjs";
 import { runGit } from "../scripts/lib/git-process.mjs";
@@ -83,6 +84,32 @@ test("analytics collection is deterministic, provenance-bound, and preserves unk
   assert(!JSON.stringify(first).includes("private transcript"));
   assert.match(renderAnalyticsReport(first), /Missing Evidence/);
   assert.match(renderAnalyticsReport(first), /taskToPrTraceability/);
+});
+
+test("validation cost coverage follows the policy-aware validation decision", () => {
+  assert.equal(validationCostComplete({
+    decision: { costTelemetryComplete: true },
+    validators: [{
+      required: true,
+      type: "semantic",
+      evidence: { report: { cost: { telemetry: "not_applicable" } } },
+    }],
+  }), true);
+  assert.equal(validationCostComplete({
+    decision: { costTelemetryComplete: false },
+    validators: [{
+      required: true,
+      type: "static",
+      evidence: { report: { cost: { telemetry: "available" } } },
+    }],
+  }), false);
+  assert.equal(validationCostComplete({
+    validators: [{
+      required: true,
+      type: "semantic",
+      evidence: { report: { cost: { telemetry: "available" } } },
+    }],
+  }), true);
 });
 
 test("repository ordering is locale-independent", async (t) => {
