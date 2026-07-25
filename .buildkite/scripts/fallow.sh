@@ -11,12 +11,26 @@ git fetch --no-tags origin "+refs/heads/${base_branch}:refs/remotes/origin/${bas
 npm ci
 coverage_dir="$(pwd -P)/coverage"
 coverage_tmp="${coverage_dir}/tmp"
+coverage_tests=(
+  tests/analytics.test.mjs
+  tests/buildkite-build-collector.test.mjs
+  tests/delivery-evidence-joiner.test.mjs
+  tests/delivery-report.test.mjs
+  tests/deployment-cli.test.mjs
+  tests/deployment-provider-collector.test.mjs
+  tests/deployment-receipt.test.mjs
+  tests/github-release-cli.test.mjs
+  tests/github-release-collector.test.mjs
+  tests/github-release-linker.test.mjs
+  tests/istanbul-coverage-normalizer.test.mjs
+  tests/plane-work-item-collector.test.mjs
+)
 rm -rf "$coverage_dir"
 ./node_modules/.bin/c8 \
   --temp-directory "$coverage_tmp" \
   --reports-dir "$coverage_dir" \
   --reporter=none \
-  node --test tests/*.test.mjs
+  node --test "${coverage_tests[@]}"
 ./node_modules/.bin/c8 report \
   --temp-directory "$coverage_tmp" \
   --reports-dir "$coverage_dir" \
