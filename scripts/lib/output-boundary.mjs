@@ -19,7 +19,7 @@ export async function assertOutputBoundary({
   const outputIdentities = await Promise.all(targets.map(outputIdentity));
   assertNoSymbolicLinks(outputIdentities, symbolicLinkMessage);
   assertNoIdentityCollision(outputIdentities, outputAliasMessage);
-  const rootIdentities = await Promise.all(rootTargets.map(optionalCanonicalPath));
+  const rootIdentities = await Promise.all(rootTargets.map(canonicalFuturePath));
   assertNoProtectedRootContains(outputIdentities, rootIdentities, protectedRootMessage);
   const inputIdentities = await Promise.all(
     inputTargets.map((target) => optionalExistingIdentity(target)),
@@ -30,9 +30,9 @@ export async function assertOutputBoundary({
 export async function outputPathWithinRoot(target, root) {
   const [targetPath, rootPath] = await Promise.all([
     canonicalFuturePath(resolve(target)),
-    optionalCanonicalPath(resolve(root)),
+    canonicalFuturePath(resolve(root)),
   ]);
-  return rootPath !== null && pathIsWithin(targetPath, rootPath);
+  return pathIsWithin(targetPath, rootPath);
 }
 
 function assertUniqueOutputPaths(targets, message) {
@@ -117,15 +117,6 @@ async function existingIdentity(target) {
 async function optionalExistingIdentity(target) {
   try {
     return await existingIdentity(target);
-  } catch (error) {
-    if (error?.code === "ENOENT") return null;
-    throw error;
-  }
-}
-
-async function optionalCanonicalPath(target) {
-  try {
-    return await realpath(target);
   } catch (error) {
     if (error?.code === "ENOENT") return null;
     throw error;

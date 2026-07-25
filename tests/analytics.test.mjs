@@ -1001,6 +1001,32 @@ test("analytics collector rejects colliding dataset and report paths", async (t)
   assert.match(await readFile(ignoredDataset, "utf8"), /tabellio-analytics-dataset\/v0\.1/);
   assert.equal((await runGit({ cwd: repositoryFixture.repo, args: ["status", "--porcelain=v1"] })).stdout, "");
 
+  const missingRepository = join(root, "missing-repository");
+  const missingConfig = join(root, "missing-repository-config.json");
+  await writeFile(missingConfig, JSON.stringify({
+    repositories: [{ id: "missing", path: missingRepository, required: false }],
+  }));
+  await assert.rejects(
+    execFileAsync(process.execPath, [
+      fileURLToPath(new URL("../scripts/tabellio-analytics.mjs", import.meta.url)),
+      "collect",
+      "--config", missingConfig,
+      "--id", "missing-repository-output",
+      "--since", SINCE,
+      "--until", UNTIL,
+      "--out", join(missingRepository, "data.json"),
+      "--report", join(missingRepository, "report.md"),
+    ], { encoding: "utf8" }),
+    (error) => error.code === 1 && /must not be inside collected repositories/.test(error.stderr),
+  );
+  await assert.rejects(readFile(missingRepository), (error) => error.code === "ENOENT");
+
+  const partialDataset = join(root, "partial-dataset.json");
+  const invalidReport = join(root, "report-directory");
+  await mkdir(invalidReport);
+  await assertAnalyticsOutputCollision(partialDataset, invalidReport, /must be regular files/);
+  await assert.rejects(readFile(partialDataset), (error) => error.code === "ENOENT");
+
   await assert.rejects(
     assertOutputBoundary({
       outputs: [configPath],

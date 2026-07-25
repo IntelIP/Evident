@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 
 import { parseCommandOptions, reportCliError, requireOptions } from "./lib/cli-options.mjs";
 import {
@@ -9,6 +9,7 @@ import {
   renderAnalyticsReport,
   validateAnalyticsDataset,
 } from "./lib/analytics.mjs";
+import { writeOutputPair } from "./lib/atomic-output-pair.mjs";
 import { runGit } from "./lib/git-process.mjs";
 import { assertOutputBoundary, outputPathWithinRoot } from "./lib/output-boundary.mjs";
 
@@ -41,8 +42,10 @@ try {
       until: options.until,
     });
     validateAnalyticsDataset(dataset);
-    await writeOutput(options.out, `${JSON.stringify(dataset, null, 2)}\n`);
-    await writeOutput(options.report, renderAnalyticsReport(dataset));
+    await writeOutputPair([
+      { path: options.out, content: `${JSON.stringify(dataset, null, 2)}\n` },
+      { path: options.report, content: renderAnalyticsReport(dataset) },
+    ]);
     console.log(JSON.stringify({
       ok: true,
       status: "analytics_baseline_ready",
@@ -65,12 +68,6 @@ try {
   }
 } catch (error) {
   reportCliError(error);
-}
-
-async function writeOutput(path, content) {
-  const target = resolve(path);
-  await mkdir(dirname(target), { recursive: true });
-  await writeFile(target, content);
 }
 
 function providerSnapshotPaths(repositories) {
@@ -98,14 +95,22 @@ async function unignoredRepositoryRoots(outputs, roots) {
 async function hasUnignoredRepositoryOutput(outputs, root) {
   for (const output of outputs) {
     if (!await outputPathWithinRoot(output, root)) continue;
+    if (!await repositoryIgnoresOutput(root, output)) return true;
+  }
+  return false;
+}
+
+async function repositoryIgnoresOutput(root, output) {
+  try {
     const ignored = await runGit({
       cwd: resolve(root),
       args: ["check-ignore", "--quiet", "--", resolve(output)],
       acceptableExitCodes: [0, 1, 128],
     });
-    if (ignored.exitCode !== 0) return true;
+    return ignored.exitCode === 0;
+  } catch {
+    return false;
   }
-  return false;
 }
 
 async function assertDistinctOutputs(datasetPath, reportPath, protectedInputs, protectedRoots) {
