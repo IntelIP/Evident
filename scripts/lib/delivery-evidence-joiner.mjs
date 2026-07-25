@@ -54,10 +54,9 @@ export function validateDeliveryEvidenceSnapshot(snapshot) {
 
 function recordFor(change, context) {
   const item = context.itemByKey.get(change.planeStoryId);
-  const builds = context.buildkiteSnapshots.flatMap((snapshot) => snapshot.status === "available" ? snapshot.builds.filter((build) => build.commit === change.headCommit).map((build) => ({ ...build, pipeline: snapshot.pipeline })) : []);
-  const build = builds.sort((left, right) => Date.parse(right.finishedAt ?? right.createdAt) - Date.parse(left.finishedAt ?? left.createdAt))[0] ?? null;
-  const release = context.releaseSnapshot.status === "available" ? context.releaseSnapshot.releases.find((candidate) => candidate.commitStatus === "resolved" && candidate.commit === change.headCommit) ?? null : null;
-  const receipt = context.deploymentReceipts.filter((candidate) => candidate.commit === change.headCommit && sameRepository(candidate.repository, context.repository)).sort((left, right) => Date.parse(right.observedAt) - Date.parse(left.observedAt))[0] ?? null;
+  const build = latestBuildFor(change.headCommit, context.buildkiteSnapshots);
+  const release = releaseFor(change.headCommit, context.releaseSnapshot);
+  const receipt = latestReceiptFor(change.headCommit, context.deploymentReceipts, context.repository);
   if (release && change.releasedAt && release.publishedAt !== change.releasedAt) throw new Error(`Conflicting GitHub release timestamp for delivery change ${change.id}.`);
   return {
     id: change.id, linkBasis: change.linkBasis, pullRequestNumber: change.pullRequestNumber, headCommit: change.headCommit,
@@ -66,6 +65,24 @@ function recordFor(change, context) {
     release: release ? { status: "shipped", tagName: release.tagName, publishedAt: release.publishedAt } : { status: context.releaseSnapshot.status === "blocked" ? "blocked" : "unreleased", tagName: null, publishedAt: null },
     deployment: receipt ? { status: receipt.status, provider: receipt.provider, deployedAt: receipt.deployedAt } : { status: "unavailable", provider: null, deployedAt: null },
   };
+}
+
+function latestBuildFor(commit, snapshots) {
+  const builds = snapshots.flatMap((snapshot) => snapshot.status === "available" ? snapshot.builds.filter((build) => build.commit === commit).map((build) => ({ ...build, pipeline: snapshot.pipeline })) : []);
+  return latestBy(builds, (build) => build.finishedAt ?? build.createdAt);
+}
+
+function releaseFor(commit, snapshot) {
+  if (snapshot.status !== "available") return null;
+  return snapshot.releases.find((candidate) => candidate.commitStatus === "resolved" && candidate.commit === commit) ?? null;
+}
+
+function latestReceiptFor(commit, receipts, repository) {
+  return latestBy(receipts.filter((receipt) => receipt.commit === commit && sameRepository(receipt.repository, repository)), (receipt) => receipt.observedAt);
+}
+
+function latestBy(values, timestampFor) {
+  return values.sort((left, right) => Date.parse(timestampFor(right)) - Date.parse(timestampFor(left)))[0] ?? null;
 }
 
 function ciStatus(state) { return state === "passed" ? "passed" : state === "failed" || state === "canceled" || state === "cancelled" ? "failed" : "in_progress"; }

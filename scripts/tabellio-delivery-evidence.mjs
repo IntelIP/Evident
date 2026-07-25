@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 
 import { parseCommandOptions, reportCliError, requireOptions } from "./lib/cli-options.mjs";
 import { joinDeliveryEvidence } from "./lib/delivery-evidence-joiner.mjs";
+import { extractDeploymentReceipts } from "./lib/deployment-receipt-input.mjs";
 import { assertOutputBoundary } from "./lib/output-boundary.mjs";
 
 main().catch(reportCliError);
@@ -23,9 +24,3 @@ async function main() {
   console.log(JSON.stringify({ ok: true, repository: snapshot.repository, deliveryRecordCount: snapshot.deliveryRecords.length, out }, null, 2));
 }
 async function readJson(path) { return JSON.parse(await readFile(resolve(path), "utf8")); }
-function extractDeploymentReceipts(input) {
-  if (Array.isArray(input)) return input;
-  if (input?.status === "available" && input.receipt) return [input.receipt];
-  if (input?.schemaVersion === "tabellio-deployment-receipt/v0.1") return [input];
-  throw new Error("--deployments must contain deployment receipts or a collector result.");
-}

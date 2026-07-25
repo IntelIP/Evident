@@ -15,6 +15,7 @@ coverage_tmp="${coverage_dir}/tmp"
 # not spawn fixture CLIs; Node propagates NODE_V8_COVERAGE to those children,
 # which prevents the hosted runner from exiting after the tests complete.
 coverage_tests=(
+  tests/analytics-metric-source.test.mjs
   tests/buildkite-build-collector.test.mjs
   tests/delivery-evidence-joiner.test.mjs
   tests/delivery-report.test.mjs

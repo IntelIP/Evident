@@ -572,7 +572,7 @@ function hasEveryRequiredSourceSystem(sources, requiredSystems) {
   return requiredSystems.every((system) => observedSystems.has(system));
 }
 
-function metricSourceAvailabilityMatches(metricId, metric, sources) {
+export function metricSourceAvailabilityMatches(metricId, metric, sources) {
   if (AVAILABILITY_METRICS.has(metricId)) return availabilityMetricMatchesSources(metric, sources);
   if (metric.status === "measured") return sources.every((source) => source?.status === "available");
   return !requiresMeasuredValueWhenSourcesAvailable(metric)

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { extractDeploymentReceipts } from "../scripts/lib/deployment-receipt-input.mjs";
 
 import { validateDeploymentReceipt } from "../scripts/lib/deployment-receipt.mjs";
 
@@ -40,4 +41,11 @@ test("receipt rejects secrets and unknown fields", () => {
 test("receipt rejects credentialed and local provenance pointers", () => {
   assert.throws(() => validateDeploymentReceipt({ ...receipt, provenancePointer: "https://user:secret@example.test/deploy" }), /Invalid deployment receipt|unsafe portable provenance/);
   assert.throws(() => validateDeploymentReceipt({ ...receipt, provenancePointer: "file:///home/user/receipt.json" }), /Invalid deployment receipt|unsafe portable provenance/);
+});
+
+test("deployment receipt input normalizes supported collector shapes", () => {
+  assert.deepEqual(extractDeploymentReceipts([receipt]), [receipt]);
+  assert.deepEqual(extractDeploymentReceipts({ status: "available", receipt }), [receipt]);
+  assert.deepEqual(extractDeploymentReceipts(receipt), [receipt]);
+  assert.throws(() => extractDeploymentReceipts({ status: "blocked" }), /must contain deployment receipts/);
 });

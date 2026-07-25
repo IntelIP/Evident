@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { isJsonDateTime, validateJsonSchema } from "./json-schema-validator.mjs";
+import { collectPagedApi } from "./paged-api-collector.mjs";
 const VERSION = "tabellio-buildkite-build-snapshot/v0.1";
 const SCHEMA = JSON.parse(readFileSync(new URL("../../schemas/buildkite-build-snapshot.v0.1.schema.json", import.meta.url), "utf8"));
 const SLUG = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
@@ -8,7 +9,7 @@ const OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 export async function collectBuildkiteBuildSnapshot({ repository, organization, pipeline, capturedAt, request }) {
   if (!REPOSITORY.test(repository ?? "") || !SLUG.test(organization ?? "") || !SLUG.test(pipeline ?? "") || !isJsonDateTime(capturedAt) || typeof request !== "function") throw new Error("Buildkite collector requires repository, organization, pipeline, capturedAt, and request.");
   try {
-    const raw = await collectAll(`/v2/organizations/${organization}/pipelines/${pipeline}/builds?exclude_jobs=true&exclude_pipeline=true&per_page=100`, request);
+    const raw = await collectPagedApi({ path: `/v2/organizations/${organization}/pipelines/${pipeline}/builds?exclude_jobs=true&exclude_pipeline=true&per_page=100`, request, valuesFor: (page) => Array.isArray(page) ? page : page?.items, invalidPageMessage: "Unexpected Buildkite build response." });
     const detailRequests = [];
     for (const build of raw) detailRequests.push(collectBuildDetails({ build, organization, pipeline, request }));
     const builds = await Promise.all(detailRequests);
@@ -18,7 +19,6 @@ export async function collectBuildkiteBuildSnapshot({ repository, organization, 
     return validateBuildkiteBuildSnapshot({ schemaVersion: VERSION, repository, organization, pipeline, capturedAt, status: "blocked", reason: "Buildkite build collection unavailable.", builds: [] });
   }
 }
-async function collectAll(path, request) { const all=[]; for(let pageNumber=1;;pageNumber+=1){const separator=path.includes("?")?"&":"?";const target=pageNumber===1?path:`${path}${separator}page=${pageNumber}`;const page=await request(target); const values=Array.isArray(page)?page:page?.items; if(!Array.isArray(values)) throw new Error("Unexpected Buildkite build response."); all.push(...values); if(values.length<100) return all;} }
 async function collectBuildDetails({ build, organization, pipeline, request }) {
   const normalized = normalizeBuild(build);
   const prefix = `/v2/organizations/${organization}/pipelines/${pipeline}/builds/${normalized.number}`;

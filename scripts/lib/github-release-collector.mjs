@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 
 import { isJsonDateTime, validateJsonSchema } from "./json-schema-validator.mjs";
+import { collectPagedApi } from "./paged-api-collector.mjs";
 
 const SCHEMA_VERSION = "tabellio-github-release-snapshot/v0.1";
 const SCHEMA = JSON.parse(readFileSync(
@@ -16,7 +17,7 @@ export async function collectGitHubReleaseSnapshot({ repository, capturedAt, req
   if (!isJsonDateTime(capturedAt)) throw new Error("GitHub release collector requires capturedAt.");
   if (typeof request !== "function") throw new Error("GitHub release collector requires a request function.");
   try {
-    const payload = await collectAll(`/repos/${repository}/releases?per_page=100`, request);
+    const payload = await collectPagedApi({ path: `/repos/${repository}/releases?per_page=100`, request, valuesFor: (page) => page, invalidPageMessage: "Unexpected releases response." });
     const releases = await Promise.all(payload
       .filter((release) => release?.draft !== true && isPublishedRelease(release) && Date.parse(release.published_at) <= Date.parse(capturedAt))
       .map(async (release) => normalizeRelease({ repository, release, request })));
@@ -33,7 +34,6 @@ export async function collectGitHubReleaseSnapshot({ repository, capturedAt, req
     });
   }
 }
-async function collectAll(path, request) { const all=[]; for(let pageNumber=1;;pageNumber+=1){const separator=path.includes("?")?"&":"?";const target=pageNumber===1?path:`${path}${separator}page=${pageNumber}`;const page=await request(target); if(!Array.isArray(page)) throw new Error("Unexpected releases response."); all.push(...page); if(page.length<100) return all;} }
 
 export function validateGitHubReleaseSnapshot(snapshot) {
   const errors = validateJsonSchema(snapshot, SCHEMA);
