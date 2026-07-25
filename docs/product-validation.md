@@ -92,7 +92,7 @@ tabellio-validate gate \
   --manifest tabellio.validation.json
 ```
 
-GitHub Actions resolves the merged pull request from the exact push commit, fetches GitHub's durable pull-request head ref, and supplies the separate checkpoint range. Direct pushes keep using the landed commit range and must carry their own checkpoint evidence.
+Buildkite resolves a squash-merged pull request from the landed commit subject, fetches GitHub's durable pull-request head ref, and supplies the separate checkpoint range. Direct pushes keep using the landed commit range and must carry their own checkpoint evidence.
 
 The runner creates a private `TabellioValidation-*` session under the system temporary directory and removes the detached worktree plus isolated `HOME` after every run. Use `--workspace-root /absolute/external/path` to choose another external parent. Repository-internal and `.git/**` roots are rejected.
 

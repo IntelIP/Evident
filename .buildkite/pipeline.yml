@@ -1,0 +1,57 @@
+env:
+  CI: "1"
+  NO_COLOR: "1"
+
+agents:
+  queue: "linux-small"
+
+steps:
+  - label: ":git: Git 2.50.1"
+    key: "git-toolchain"
+    command: ".buildkite/scripts/build-modern-git.sh"
+    timeout_in_minutes: 15
+    artifact_paths:
+      - ".artifacts/toolchain/git-2.50.1-linux-amd64.tar.gz"
+
+  - label: ":test_tube: Tests"
+    key: "tests"
+    command: ".buildkite/scripts/tests.sh"
+    depends_on: "git-toolchain"
+    timeout_in_minutes: 10
+    plugins:
+      - mise#v1.1.4:
+          version: "2026.2.11"
+
+  - label: ":mag: Fallow changed-code"
+    key: "fallow"
+    command: ".buildkite/scripts/fallow.sh"
+    timeout_in_minutes: 10
+    artifact_paths:
+      - "fallow-audit.json"
+    plugins:
+      - mise#v1.1.4:
+          version: "2026.2.11"
+
+  - label: ":package: Package dry-run"
+    key: "package"
+    command: ".buildkite/scripts/package.sh"
+    timeout_in_minutes: 10
+    artifact_paths:
+      - "package-dry-run.json"
+    plugins:
+      - mise#v1.1.4:
+          version: "2026.2.11"
+
+  - label: ":shield: Product validation"
+    key: "product-validation"
+    command: ".buildkite/scripts/product-validation.sh"
+    depends_on: "git-toolchain"
+    if: build.pull_request.id != null || build.branch == pipeline.default_branch
+    timeout_in_minutes: 50
+    artifact_paths:
+      - "tabellio-validation-result.json"
+      - "refs/tabellio/validations/**/*"
+      - ".artifacts/tabellio/**/*"
+    plugins:
+      - mise#v1.1.4:
+          version: "2026.2.11"
