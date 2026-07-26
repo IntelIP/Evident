@@ -50,7 +50,8 @@ test("Buildkite collector bounds concurrent detail requests", async () => {
       await new Promise((resolve) => setTimeout(resolve, 2));
       active -= 1;
       if (path.includes("/artifacts?")) return [];
-      const number = Number(path.match(/\/builds\/(\d+)$/)?.[1]);
+      const match = path.match(/\/builds\/(\d+)$/);
+      const number = Number(match[1]);
       return { number, commit, state: "passed", created_at: "2026-07-25T11:00:00.000Z", finished_at: "2026-07-25T11:02:00.000Z", jobs: [] };
     },
   });

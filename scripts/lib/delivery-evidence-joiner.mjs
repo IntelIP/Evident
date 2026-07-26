@@ -84,21 +84,27 @@ export function validateDeliveryEvidenceSnapshot(snapshot) {
 }
 
 function recordFor(change, context) {
-  const item = context.itemByKey.get(change.planeStoryId);
-  const linkedItem = item?.createdAt === change.storyCreatedAt ? item : null;
   const build = latestBuildFor(change.headCommit, context.buildkiteSnapshots);
   const release = releaseFor(change, context.releaseSnapshot);
   const receipt = latestReceiptFor(change.headCommit, context.deploymentReceipts, context.repository);
   if (release && change.releasedAt && release.publishedAt !== change.releasedAt) throw new Error(`Conflicting GitHub release timestamp for delivery change ${change.id}.`);
   return {
     id: change.id, linkBasis: change.linkBasis, pullRequestNumber: change.pullRequestNumber, headCommit: change.headCommit,
-    plane: linkedItem ? { status: "linked", key: change.planeStoryId, stateGroup: context.stateById.get(linkedItem.stateId) ?? null, updatedAt: linkedItem.updatedAt } : { status: context.planeSnapshot.status === "available" ? "unlinked" : "blocked", key: change.planeStoryId, stateGroup: null, updatedAt: null },
+    plane: planeEvidenceFor(change, context),
     ci: build ? { status: ciStatus(build.state), pipeline: build.pipeline, buildNumber: build.number, finishedAt: build.finishedAt } : { status: context.buildkiteSnapshots.some((snapshot) => snapshot.status === "blocked") ? "blocked" : "unavailable", pipeline: null, buildNumber: null, finishedAt: null },
     release: release ? { status: "shipped", tagName: release.tagName, publishedAt: release.publishedAt } : { status: context.releaseSnapshot.status === "blocked" ? "blocked" : "unreleased", tagName: null, publishedAt: null },
     deployment: receipt
       ? { status: receipt.status, environment: receipt.environment, provider: receipt.provider, deployedAt: receipt.deployedAt }
       : { status: context.deploymentBlockedReason ? "blocked" : "unavailable", environment: context.deploymentEnvironment, provider: null, deployedAt: null },
   };
+}
+
+function planeEvidenceFor(change, context) {
+  const item = context.itemByKey.get(change.planeStoryId);
+  if (item?.createdAt === change.storyCreatedAt) {
+    return { status: "linked", key: change.planeStoryId, stateGroup: context.stateById.get(item.stateId) ?? null, updatedAt: item.updatedAt };
+  }
+  return { status: context.planeSnapshot.status === "available" ? "unlinked" : "blocked", key: change.planeStoryId, stateGroup: null, updatedAt: null };
 }
 
 function latestBuildFor(commit, snapshots) {
