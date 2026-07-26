@@ -77,7 +77,7 @@ export function validateDeliveryEvidenceSnapshot(snapshot) {
   if (snapshot.deliveryRecords.some((record) => !DELIVERY_RECORD_ID.test(record.id ?? ""))) throw new Error("Delivery evidence record IDs must be portable single-line identifiers.");
   if (new Set(snapshot.deliveryRecords.map((record) => record.id)).size !== snapshot.deliveryRecords.length) throw new Error("Delivery evidence record IDs must be unique.");
   if (Object.values(snapshot.sources).some((source) => source.reason !== null && !SAFE_REASON.test(source.reason))) throw new Error("Delivery evidence source reasons must be portable single-line text.");
-  for (const [name, source] of Object.entries(snapshot.sources)) assertSourceState(name, source);
+  for (const [name, source] of Object.entries(snapshot.sources)) assertSourceState(name, source, snapshot.capturedAt);
   for (const row of snapshot.wipByProject) if (row.overLimit !== (row.activeItemCount > 3) || row.aging3dCount > row.activeItemCount) throw new Error("Delivery evidence WIP counts conflict.");
   for (const record of snapshot.deliveryRecords) assertRecordEvidence(record, snapshot.sources);
   return snapshot;
@@ -85,13 +85,14 @@ export function validateDeliveryEvidenceSnapshot(snapshot) {
 
 function recordFor(change, context) {
   const item = context.itemByKey.get(change.planeStoryId);
+  const linkedItem = item?.createdAt === change.storyCreatedAt ? item : null;
   const build = latestBuildFor(change.headCommit, context.buildkiteSnapshots);
   const release = releaseFor(change, context.releaseSnapshot);
   const receipt = latestReceiptFor(change.headCommit, context.deploymentReceipts, context.repository);
   if (release && change.releasedAt && release.publishedAt !== change.releasedAt) throw new Error(`Conflicting GitHub release timestamp for delivery change ${change.id}.`);
   return {
     id: change.id, linkBasis: change.linkBasis, pullRequestNumber: change.pullRequestNumber, headCommit: change.headCommit,
-    plane: item ? { status: "linked", key: change.planeStoryId, stateGroup: context.stateById.get(item.stateId) ?? null, updatedAt: item.updatedAt } : { status: context.planeSnapshot.status === "available" ? "unlinked" : "blocked", key: change.planeStoryId, stateGroup: null, updatedAt: null },
+    plane: linkedItem ? { status: "linked", key: change.planeStoryId, stateGroup: context.stateById.get(linkedItem.stateId) ?? null, updatedAt: linkedItem.updatedAt } : { status: context.planeSnapshot.status === "available" ? "unlinked" : "blocked", key: change.planeStoryId, stateGroup: null, updatedAt: null },
     ci: build ? { status: ciStatus(build.state), pipeline: build.pipeline, buildNumber: build.number, finishedAt: build.finishedAt } : { status: context.buildkiteSnapshots.some((snapshot) => snapshot.status === "blocked") ? "blocked" : "unavailable", pipeline: null, buildNumber: null, finishedAt: null },
     release: release ? { status: "shipped", tagName: release.tagName, publishedAt: release.publishedAt } : { status: context.releaseSnapshot.status === "blocked" ? "blocked" : "unreleased", tagName: null, publishedAt: null },
     deployment: receipt
@@ -114,7 +115,7 @@ function releaseFor(change, snapshot) {
 
 function releaseMatches(change, candidate) {
   if (candidate.commitStatus !== "resolved") return false;
-  if (candidate.commit !== change.headCommit && candidate.publishedAt !== change.releasedAt) return false;
+  if (candidate.commit !== change.headCommit) return false;
   return !change.mergedAt || Date.parse(candidate.publishedAt) >= Date.parse(change.mergedAt);
 }
 
@@ -153,12 +154,15 @@ function wipByProject(snapshot, capturedAt) {
   }).sort((left, right) => left.project.localeCompare(right.project));
 }
 function sameRepository(left, right) { return typeof left === "string" && left.toLowerCase() === String(right ?? "").toLowerCase(); }
-function assertSourceState(name, source) {
+function assertSourceState(name, source, capturedAt) {
   if (source.status === "available" && (source.reason !== null || source.observations.length === 0)) {
     throw new Error(`Available ${name} source requires observations and no reason.`);
   }
   if (source.status !== "available" && (!source.reason || source.observations.length !== 0)) {
     throw new Error(`Unavailable ${name} source requires a reason and no observations.`);
+  }
+  if (source.observations.some((item) => isJsonDateTime(item.version) && Date.parse(item.version) > Date.parse(capturedAt))) {
+    throw new Error(`${name} source observation cannot be newer than the delivery snapshot.`);
   }
 }
 function assertRecordEvidence(record, sources) {

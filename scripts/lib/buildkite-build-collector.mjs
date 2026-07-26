@@ -54,32 +54,12 @@ async function boundedMap(values, concurrency, mapper) {
 async function collectBuildDetails({ build, organization, pipeline, request }) {
   const normalized = normalizeBuild(build);
   const prefix = `/v2/organizations/${organization}/pipelines/${pipeline}/builds/${normalized.number}`;
-  const jobs = await collectJobDetails(`${prefix}/jobs?per_page=100`, request);
+  const detail = await request(prefix);
+  const jobs = detail?.jobs;
+  if (!Array.isArray(jobs) || jobs.length > 1000) throw new Error("Buildkite job details are unavailable or exceed the bounded limit.");
   const artifacts = await request(`${prefix}/artifacts?per_page=100`);
   if (!Array.isArray(artifacts) || artifacts.length >= 100) throw new Error("Buildkite artifact details are unavailable or potentially truncated.");
-  return { ...normalized, jobCount: jobs.length, artifactCount: artifacts.length };
-}
-async function collectJobDetails(path, request) {
-  const items = [];
-  let next = path;
-  while (next) {
-    const response = await request(next);
-    const { page, nextPath } = normalizeJobPage(response);
-    items.push(...page);
-    if (items.length > 1000) throw new Error("Buildkite job detail limit exceeded.");
-    next = nextPath;
-  }
-  return items;
-}
-function normalizeJobPage(response) {
-  if (Array.isArray(response)) {
-    if (response.length >= 100) throw new Error("Buildkite job details may be truncated.");
-    return { page: response, nextPath: null };
-  }
-  if (!Array.isArray(response?.items)) throw new Error("Unexpected Buildkite job response.");
-  const nextPath = response.links?.next ?? null;
-  if (nextPath !== null && typeof nextPath !== "string") throw new Error("Unexpected Buildkite job pagination.");
-  return { page: response.items, nextPath };
+  return { ...normalizeBuild(detail), jobCount: jobs.length, artifactCount: artifacts.length };
 }
 export function validateBuildkiteBuildSnapshot(snapshot) {
   const errors = validateJsonSchema(snapshot, SCHEMA);

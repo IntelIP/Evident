@@ -43,6 +43,18 @@ test("receipt rejects credentialed and local provenance pointers", () => {
   assert.throws(() => validateDeploymentReceipt({ ...receipt, provenancePointer: "file:///home/user/receipt.json" }), /Invalid deployment receipt|unsafe portable provenance/);
 });
 
+test("receipt screens credential material from every exported string field", () => {
+  for (const [field, value] of [
+    ["id", "ghp_secret"],
+    ["repository", "github_pat_secret/Tabellio"],
+    ["environment", "token=secret"],
+    ["externalId", "ghs_secret"],
+    ["releaseTag", "gho_secret"],
+  ]) {
+    assert.throws(() => validateDeploymentReceipt({ ...receipt, [field]: value }), /Invalid deployment receipt|unsafe portable provenance/);
+  }
+});
+
 test("deployment receipt input normalizes supported collector shapes", () => {
   const available = { receipts: [receipt], blockedReason: null };
   assert.deepEqual(extractDeploymentReceipts([receipt]), available);

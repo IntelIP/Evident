@@ -4,9 +4,12 @@ import { collectBuildkiteBuildSnapshot } from "../scripts/lib/buildkite-build-co
 const at = "2026-07-25T12:00:00.000Z"; const commit = "a".repeat(40);
 test("Buildkite collector preserves exact build evidence", async () => {
   const calls = [];
-  const snapshot = await collectBuildkiteBuildSnapshot({ repository: "IntelIP/Tabellio", organization: "intelip", pipeline: "tabellio", capturedAt: at, request: async (path) => { calls.push(path); return path.endsWith("/pipelines/tabellio") ? { repository: "https://github.com/IntelIP/Tabellio.git" } : path.includes("/builds?") ? [{ number: 4, commit, state: "passed", created_at: "2026-07-25T11:00:00.000Z", finished_at: "2026-07-25T11:02:00.000Z" }] : path.includes("/jobs?") ? { items: [{ id: "job-1" }], links: { next: null } } : [{ id: "artifact-1" }, { id: "artifact-2" }]; } });
+  const build = { number: 4, commit, state: "passed", created_at: "2026-07-25T11:00:00.000Z", finished_at: "2026-07-25T11:02:00.000Z" };
+  const snapshot = await collectBuildkiteBuildSnapshot({ repository: "IntelIP/Tabellio", organization: "intelip", pipeline: "tabellio", capturedAt: at, request: async (path) => { calls.push(path); return path.endsWith("/pipelines/tabellio") ? { repository: "https://github.com/IntelIP/Tabellio.git" } : path.includes("/builds?") ? [build] : path.endsWith("/builds/4") ? { ...build, jobs: [{ id: "job-1" }] } : [{ id: "artifact-1" }, { id: "artifact-2" }]; } });
   assert.equal(snapshot.status, "available"); assert.deepEqual(snapshot.builds[0], { number: 4, commit, state: "passed", createdAt: "2026-07-25T11:00:00.000Z", finishedAt: "2026-07-25T11:02:00.000Z", jobCount: 1, artifactCount: 2 });
   assert.match(calls.find((path) => path.includes("/builds?")), /created_from=.*&created_to=/);
+  assert.ok(calls.includes("/v2/organizations/intelip/pipelines/tabellio/builds/4"));
+  assert.equal(calls.some((path) => path.includes("/builds/4/jobs")), false);
 });
 test("Buildkite collector blocks safely without error leakage", async () => {
   const snapshot = await collectBuildkiteBuildSnapshot({ repository: "IntelIP/Tabellio", organization: "intelip", pipeline: "tabellio", capturedAt: at, request: async () => { throw new Error("token=x"); } });
@@ -30,8 +33,9 @@ test("Buildkite snapshot rejects duplicate builds and post-capture timestamps", 
   assert.throws(() => validateBuildkiteBuildSnapshot({ ...base, builds: [{ ...base.builds[0], finishedAt: "2026-07-25T10:59:59.000Z" }] }), /createdAt <= finishedAt <= capturedAt/);
 });
 test("Buildkite collector blocks potentially truncated detail responses", async () => {
-  const hundred = Array.from({ length: 100 }, (_, id) => ({ id }));
-  const snapshot = await collectBuildkiteBuildSnapshot({ repository: "IntelIP/Tabellio", organization: "intelip", pipeline: "tabellio", capturedAt: at, request: async (path) => path.endsWith("/pipelines/tabellio") ? { repository: "https://github.com/IntelIP/Tabellio.git" } : path.includes("/builds?") ? [{ number: 4, commit, state: "passed", created_at: "2026-07-25T11:00:00.000Z", finished_at: "2026-07-25T11:02:00.000Z" }] : path.includes("/jobs?") ? { items: hundred, links: { next: null } } : hundred });
+  const build = { number: 4, commit, state: "passed", created_at: "2026-07-25T11:00:00.000Z", finished_at: "2026-07-25T11:02:00.000Z" };
+  const jobs = Array.from({ length: 1001 }, (_, id) => ({ id }));
+  const snapshot = await collectBuildkiteBuildSnapshot({ repository: "IntelIP/Tabellio", organization: "intelip", pipeline: "tabellio", capturedAt: at, request: async (path) => path.endsWith("/pipelines/tabellio") ? { repository: "https://github.com/IntelIP/Tabellio.git" } : path.includes("/builds?") ? [build] : path.endsWith("/builds/4") ? { ...build, jobs } : [] });
   assert.equal(snapshot.status, "blocked");
 });
 test("Buildkite collector bounds concurrent detail requests", async () => {
@@ -45,7 +49,9 @@ test("Buildkite collector bounds concurrent detail requests", async () => {
       active += 1; maximum = Math.max(maximum, active);
       await new Promise((resolve) => setTimeout(resolve, 2));
       active -= 1;
-      return path.includes("/jobs?") ? { items: [] } : [];
+      if (path.includes("/artifacts?")) return [];
+      const number = Number(path.match(/\/builds\/(\d+)$/)?.[1]);
+      return { number, commit, state: "passed", created_at: "2026-07-25T11:00:00.000Z", finished_at: "2026-07-25T11:02:00.000Z", jobs: [] };
     },
   });
   assert.equal(snapshot.status, "available");
