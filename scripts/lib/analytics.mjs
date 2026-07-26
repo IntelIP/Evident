@@ -56,7 +56,7 @@ const PROVIDER_SNAPSHOT_FIELDS = Object.freeze([
   "deliveryChanges",
 ]);
 
-const PROVIDER_SOURCE_FIELDS = Object.freeze(["status", "version", "reason"]);
+const PROVIDER_SOURCE_FIELDS = Object.freeze(["status", "version", "reason", "workspace"]);
 const PROVIDER_SOURCE_SYSTEMS = Object.freeze(["plane", "github", "github-actions"]);
 const PROVIDER_SOURCE_STATE_FIELDS = Object.freeze({
   available: Object.freeze(["status", "version"]),
@@ -1198,7 +1198,8 @@ function validateProviderSource(system, source, observedAt) {
   return compactErrors([
     ...unexpectedFieldErrors(source, PROVIDER_SOURCE_FIELDS, `${system} source`),
     errorUnless(isProviderSource(source), `${system} source is invalid.`),
-    errorUnless(providerSourceHasExactStateFields(source), `${system} source fields do not match status.`),
+    errorUnless(providerSourceHasExactStateFields(source, system), `${system} source fields do not match status.`),
+    errorUnless(providerSourceWorkspaceIsValid(source, system), `${system} source workspace is invalid.`),
     errorUnless(providerSourceVersionSafeBeforeExport(source), `${system} source version contains unsafe detail.`),
     errorUnless(providerSourceReasonSafeBeforeExport(source), `${system} source reason contains unsafe detail.`),
     errorUnless(versionNotAfter(source?.version, observedAt), `${system} source version is newer than observedAt.`),
@@ -1269,10 +1270,19 @@ function isProviderSource(source) {
   return Boolean(source) && ["available", "unavailable"].includes(source.status);
 }
 
-function providerSourceHasExactStateFields(source) {
+function providerSourceHasExactStateFields(source, system) {
   if (!isProviderSource(source)) return false;
+  if (system === "plane" && source.status === "available" && typeof source.workspace === "string") {
+    return canonicalJson(Object.keys(source).sort())
+      === canonicalJson(["status", "version", "workspace"]);
+  }
   return canonicalJson(Object.keys(source).sort())
     === canonicalJson(PROVIDER_SOURCE_STATE_FIELDS[source.status]);
+}
+
+function providerSourceWorkspaceIsValid(source, system) {
+  if (source?.workspace === undefined) return true;
+  return system === "plane" && /^[a-z0-9-]{1,100}$/.test(source.workspace);
 }
 
 function isSafeProviderReason(reason) {

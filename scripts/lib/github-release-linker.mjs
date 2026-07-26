@@ -1,7 +1,7 @@
 import { validateGitHubReleaseSnapshot } from "./github-release-collector.mjs";
 import { validateProviderSnapshot } from "./analytics.mjs";
 
-export function linkGitHubReleases({ providerSnapshot, releaseSnapshot }) {
+export async function linkGitHubReleases({ providerSnapshot, releaseSnapshot, containsCommit = sameCommit }) {
   validateGitHubReleaseSnapshot(releaseSnapshot);
   const providerErrors = validateProviderSnapshot(providerSnapshot, providerSnapshot?.repository, laterTimestamp(providerSnapshot?.capturedAt, releaseSnapshot?.capturedAt));
   if (providerErrors.length) throw new Error(`Invalid provider snapshot: ${providerErrors.join("; ")}`);
@@ -12,28 +12,35 @@ export function linkGitHubReleases({ providerSnapshot, releaseSnapshot }) {
   if (!Array.isArray(providerSnapshot?.deliveryChanges) || providerSnapshot?.sources?.github?.status !== "available") {
     throw new Error("Provider snapshot requires available GitHub evidence and delivery changes.");
   }
-  const releasesByCommit = new Map();
-  for (const release of releaseSnapshot.releases) {
-    if (release.commitStatus !== "resolved") continue;
-    const existing = releasesByCommit.get(release.commit);
-    if (!existing || Date.parse(release.publishedAt) < Date.parse(existing.publishedAt)) {
-      releasesByCommit.set(release.commit, release);
-    }
-  }
+  if (typeof containsCommit !== "function") throw new Error("Release linking requires a commit-containment resolver.");
+  const releases = releaseSnapshot.releases
+    .filter((release) => release.commitStatus === "resolved")
+    .sort((left, right) => Date.parse(left.publishedAt) - Date.parse(right.publishedAt));
   const linked = structuredClone(providerSnapshot);
   linked.capturedAt = laterTimestamp(providerSnapshot.capturedAt, releaseSnapshot.capturedAt);
   linked.sources.github.version = laterTimestamp(providerSnapshot.sources.github.version, releaseSnapshot.capturedAt);
-  linked.deliveryChanges = providerSnapshot.deliveryChanges.map((change) => linkChange(change, releasesByCommit));
+  linked.deliveryChanges = await Promise.all(providerSnapshot.deliveryChanges.map((change) => linkChange(change, releases, containsCommit)));
   return linked;
 }
 
-function linkChange(change, releasesByCommit) {
-  const release = releasesByCommit.get(change?.headCommit);
-  if (!release || (change.mergedAt && Date.parse(release.publishedAt) < Date.parse(change.mergedAt))) return structuredClone(change);
+async function linkChange(change, releases, containsCommit) {
+  const eligible = releases.filter((release) => !change.mergedAt || Date.parse(release.publishedAt) >= Date.parse(change.mergedAt));
+  let release = null;
+  for (const candidate of eligible) {
+    if (await containsCommit(change.headCommit, candidate.commit)) {
+      release = candidate;
+      break;
+    }
+  }
+  if (!release) return structuredClone(change);
   if (change.releasedAt && change.releasedAt !== release.publishedAt) {
     throw new Error(`Conflicting GitHub release timestamp for delivery change ${change.id}.`);
   }
   return { ...change, releasedAt: release.publishedAt };
+}
+
+function sameCommit(ancestor, descendant) {
+  return ancestor === descendant;
 }
 
 function sameRepository(left, right) {

@@ -79,6 +79,12 @@ try {
       inputErrors.push("Source JSON is invalid.");
     }
   }
+  if (dataset !== null) {
+    inputErrors.push(...captureError(() => validateAnalyticsDataset(dataset)));
+  }
+  if (source !== null) {
+    inputErrors.push(...validateProviderSnapshot(source, "IntelIP/Tabellio", dataset?.observedAt));
+  }
   const startedAt = performance.now();
   const result = inputErrors.length > 0
     ? inputFailureResult(options.profile, inputErrors)
@@ -93,7 +99,7 @@ try {
   const evidence = {
     schemaVersion: "tabellio-validator-evidence/v0.1",
     validatorId: options.validatorId,
-    status: readErrors.length > 0
+    status: inputErrors.length > 0
       ? "blocked"
       : (result.errors.length === 0 ? "passed" : "failed"),
     summary: evidenceSummary(result),

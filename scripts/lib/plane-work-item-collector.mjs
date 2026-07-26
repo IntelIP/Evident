@@ -5,6 +5,8 @@ import { isJsonDateTime, validateJsonSchema } from "./json-schema-validator.mjs"
 const UUID = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 const STATE_GROUPS = new Set(["backlog", "unstarted", "started", "completed", "cancelled"]);
 const SCHEMA_VERSION = "tabellio-plane-work-items/v0.1";
+const MAX_PAGES = 100;
+const MAX_ITEMS = 10_000;
 const SCHEMA = JSON.parse(readFileSync(
   new URL("../../schemas/plane-work-item-snapshot.v0.1.schema.json", import.meta.url),
   "utf8",
@@ -43,7 +45,26 @@ export function validatePlaneWorkItemSnapshot(snapshot) {
   if (snapshot.workItems.some((item) => Date.parse(item.createdAt) > Date.parse(item.updatedAt) || Date.parse(item.updatedAt) > Date.parse(snapshot.capturedAt))) throw new Error("Plane work-item timestamps must satisfy createdAt <= updatedAt <= capturedAt.");
   return snapshot;
 }
-async function collectAll(path, request) { const output=[]; let next=path; while(next){const page=await request(next); if(!Array.isArray(page?.results)) throw new Error("Unexpected Plane response."); output.push(...page.results); if(page.next_page_results === true && (typeof page.next_cursor !== "string" || page.next_cursor.length === 0)) throw new Error("Plane pagination declared another page without a cursor."); next=page.next_page_results === true ? `${path}${path.includes("?")?"&":"?"}cursor=${encodeURIComponent(page.next_cursor)}` : null;} return output; }
+async function collectAll(path, request) {
+  const output = [];
+  const cursors = new Set();
+  let next = path;
+  for (let pageNumber = 1; next && pageNumber <= MAX_PAGES; pageNumber += 1) {
+    const page = await request(next);
+    if (!Array.isArray(page?.results)) throw new Error("Unexpected Plane response.");
+    output.push(...page.results);
+    if (output.length > MAX_ITEMS) throw new Error("Plane collection item limit exceeded.");
+    if (page.next_page_results !== true) return output;
+    const cursor = page.next_cursor;
+    if (typeof cursor !== "string" || cursor.length === 0 || cursors.has(cursor)) {
+      throw new Error("Plane pagination cursor is missing or repeated.");
+    }
+    cursors.add(cursor);
+    next = `${path}${path.includes("?") ? "&" : "?"}cursor=${encodeURIComponent(cursor)}`;
+  }
+  if (next) throw new Error("Plane collection page limit exceeded.");
+  return output;
+}
 function normalizeProject(project) { return UUID.test(project?.id ?? "") && typeof project.identifier === "string" && project.identifier.length > 0 && project.identifier.length <= 32 ? { id: project.id, identifier: project.identifier } : null; }
 function normalizeState(state, projectId) { return UUID.test(state?.id ?? "") && typeof state.group === "string" && STATE_GROUPS.has(state.group) ? { id: state.id, projectId, group: state.group } : null; }
 function normalizeItem(item) { if (!UUID.test(item?.id ?? "") || !UUID.test(item?.project ?? "") || !UUID.test(item?.state ?? "") || !Number.isInteger(item?.sequence_id) || item.sequence_id < 1 || !isJsonDateTime(item?.created_at) || !isJsonDateTime(item?.updated_at)) return null; return { id:item.id, projectId:item.project, stateId:item.state, sequenceNumber:item.sequence_id, createdAt:item.created_at, updatedAt:item.updated_at, targetDate: typeof item.target_date === "string" ? item.target_date : null }; }

@@ -12,6 +12,12 @@ test("Buildkite collector blocks safely without error leakage", async () => {
   const snapshot = await collectBuildkiteBuildSnapshot({ repository: "IntelIP/Tabellio", organization: "intelip", pipeline: "tabellio", capturedAt: at, request: async () => { throw new Error("token=x"); } });
   assert.equal(snapshot.status, "blocked"); assert.equal(snapshot.reason, "Buildkite build collection unavailable.");
 });
+test("Buildkite collector accepts hyphenated organization and pipeline slugs", async () => {
+  const snapshot = await collectBuildkiteBuildSnapshot({ repository: "IntelIP/Tabellio", organization: "intelip-platform", pipeline: "product-validation", capturedAt: at, request: async (path) => path.endsWith("/pipelines/product-validation") ? { repository: "https://github.com/IntelIP/Tabellio.git" } : path.includes("/builds?") ? [] : [] });
+  assert.equal(snapshot.status, "available");
+  assert.equal(snapshot.organization, "intelip-platform");
+  assert.equal(snapshot.pipeline, "product-validation");
+});
 test("Buildkite collector blocks a pipeline bound to another repository", async () => {
   const snapshot = await collectBuildkiteBuildSnapshot({ repository: "IntelIP/Tabellio", organization: "intelip", pipeline: "tabellio", capturedAt: at, request: async () => ({ repository: "https://github.com/IntelIP/Other.git" }) });
   assert.equal(snapshot.status, "blocked");

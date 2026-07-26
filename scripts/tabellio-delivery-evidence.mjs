@@ -9,7 +9,7 @@ import { assertOutputBoundary } from "./lib/output-boundary.mjs";
 
 main().catch(reportCliError);
 async function main() {
-  const options = parseCommandOptions(process.argv.slice(2), { join: ["provider", "plane", "buildkite", "releases", "deployments", "out"] });
+  const options = parseCommandOptions(process.argv.slice(2), { join: ["provider", "plane", "buildkite", "releases", "deployments", "deploymentEnvironment", "out"] });
   requireOptions(options, ["provider", "plane", "buildkite", "releases", "out"], "join");
   await assertOutputBoundary({
     outputs: [options.out], protectedInputs: [options.provider, options.plane, options.buildkite, options.releases, options.deployments].filter(Boolean),
@@ -19,7 +19,8 @@ async function main() {
   });
   const [providerSnapshot, planeSnapshot, buildkiteSnapshot, releaseSnapshot, deploymentInput] = await Promise.all([options.provider, options.plane, options.buildkite, options.releases, options.deployments].filter(Boolean).map(readJson));
   const deployment = deploymentInput ? extractDeploymentReceipts(deploymentInput) : { receipts: [], blockedReason: null };
-  const snapshot = joinDeliveryEvidence({ providerSnapshot, planeSnapshot, buildkiteSnapshots: [buildkiteSnapshot], releaseSnapshot, deploymentReceipts: deployment.receipts, deploymentBlockedReason: deployment.blockedReason });
+  if (deploymentInput && !options.deploymentEnvironment) throw new Error("--deployment-environment is required with --deployments.");
+  const snapshot = joinDeliveryEvidence({ providerSnapshot, planeSnapshot, buildkiteSnapshots: [buildkiteSnapshot], releaseSnapshot, deploymentReceipts: deployment.receipts, deploymentBlockedReason: deployment.blockedReason, deploymentEnvironment: options.deploymentEnvironment ?? null });
   const out = resolve(options.out); await writeFile(out, `${JSON.stringify(snapshot, null, 2)}\n`);
   console.log(JSON.stringify({ ok: true, repository: snapshot.repository, deliveryRecordCount: snapshot.deliveryRecords.length, out }, null, 2));
 }

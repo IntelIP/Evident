@@ -4,6 +4,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { parseCommandOptions, reportCliError, requireOptions } from "./lib/cli-options.mjs";
+import { createGitCommitContainmentResolver } from "./lib/git-commit-containment.mjs";
 import { linkGitHubReleases } from "./lib/github-release-linker.mjs";
 import { assertOutputBoundary } from "./lib/output-boundary.mjs";
 
@@ -11,7 +12,7 @@ main().catch(reportCliError);
 
 async function main() {
   const options = parseCommandOptions(process.argv.slice(2), {
-    link: ["providerSnapshot", "githubReleaseSnapshot", "out"],
+    link: ["providerSnapshot", "githubReleaseSnapshot", "repo", "out"],
   });
   requireOptions(options, ["providerSnapshot", "githubReleaseSnapshot", "out"], "link");
   await assertOutputBoundary({
@@ -27,7 +28,8 @@ async function main() {
     readJson(providerPath),
     readJson(releasePath),
   ]);
-  const linked = linkGitHubReleases({ providerSnapshot, releaseSnapshot });
+  const containsCommit = await createGitCommitContainmentResolver({ repo: resolve(options.repo ?? "."), expectedRepository: providerSnapshot.repository });
+  const linked = await linkGitHubReleases({ providerSnapshot, releaseSnapshot, containsCommit });
   await writeFile(outputPath, `${JSON.stringify(linked, null, 2)}\n`);
   console.log(JSON.stringify({
     ok: true,

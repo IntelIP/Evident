@@ -2129,7 +2129,7 @@ test("analytics validator separates direct failure exits from runner evidence ev
   const expectedDigestEvidence = JSON.parse(
     await readFile(expectedDigestEvidencePath, "utf8"),
   );
-  assert.equal(expectedDigestEvidence.status, "failed");
+  assert.equal(expectedDigestEvidence.status, "blocked");
   assert.match(expectedDigestEvidence.summary, /approved baseline digest/);
 
   await assert.rejects(
@@ -2161,7 +2161,7 @@ test("analytics validator separates direct failure exits from runner evidence ev
   const malformedEvidence = JSON.parse(await readFile(malformedEvidencePath, "utf8"));
 
   assert.equal(malformedResult.stderr, "");
-  assert.equal(malformedEvidence.status, "failed");
+  assert.equal(malformedEvidence.status, "blocked");
   assert.equal(malformedEvidence.summary.includes("\n"), false);
   assert(malformedEvidence.summary.length <= 2_000);
   assert.equal(
@@ -2182,7 +2182,7 @@ test("analytics validator separates direct failure exits from runner evidence ev
   const invalidJsonEvidence = JSON.parse(await readFile(invalidJsonEvidencePath, "utf8"));
 
   assert.equal(invalidJsonResult.stderr, "");
-  assert.equal(invalidJsonEvidence.status, "failed");
+  assert.equal(invalidJsonEvidence.status, "blocked");
   assert.equal(invalidJsonEvidence.summary, "Dataset JSON is invalid.");
   assert.equal(invalidJsonEvidence.artifacts.length, 2);
   assert.equal(
@@ -2215,7 +2215,7 @@ test("analytics validator separates direct failure exits from runner evidence ev
     "--exit-mode", "evidence",
   ], { encoding: "utf8" });
   const binaryEvidence = JSON.parse(await readFile(binaryEvidencePath, "utf8"));
-  assert.equal(binaryEvidence.status, "failed");
+  assert.equal(binaryEvidence.status, "blocked");
   assert.equal(binaryEvidence.artifacts[0].bytes, binaryDataset.byteLength);
   assert.equal(
     binaryEvidence.artifacts[0].digest,
@@ -2236,7 +2236,7 @@ test("analytics validator separates direct failure exits from runner evidence ev
   );
 
   assert.equal(malformedOperationalResult.stderr, "");
-  assert.equal(malformedOperationalEvidence.status, "failed");
+  assert.equal(malformedOperationalEvidence.status, "blocked");
 
   const duplicateDataset = structuredClone(dataset);
   const repositoryAliases = [
@@ -2267,10 +2267,10 @@ test("analytics validator separates direct failure exits from runner evidence ev
   ], { encoding: "utf8" });
   const duplicateEvidence = JSON.parse(await readFile(duplicateEvidencePath, "utf8"));
 
-  assert.equal(duplicateEvidence.status, "failed");
+  assert.equal(duplicateEvidence.status, "blocked");
   assert.equal(
     duplicateEvidence.metrics.find((metric) => metric.name === "analytics_repository_count").value,
-    1,
+    0,
   );
 
   const sensitiveDataset = structuredClone(dataset);
@@ -2292,7 +2292,7 @@ test("analytics validator separates direct failure exits from runner evidence ev
   ], { encoding: "utf8" });
   const sensitiveEvidence = JSON.parse(await readFile(duplicateEvidencePath, "utf8"));
 
-  assert.equal(sensitiveEvidence.status, "failed");
+  assert.equal(sensitiveEvidence.status, "blocked");
   assert.equal(sensitiveEvidence.summary.includes("github_pat_"), false);
   assert.match(sensitiveEvidence.summary, /Delivery change identity is invalid/);
   assert.equal(sensitiveEvidence.artifacts.length, 2);
@@ -2313,7 +2313,7 @@ test("analytics validator separates direct failure exits from runner evidence ev
   const urlCredentialSummaryEvidence = JSON.parse(
     await readFile(duplicateEvidencePath, "utf8"),
   );
-  assert.equal(urlCredentialSummaryEvidence.status, "failed");
+  assert.equal(urlCredentialSummaryEvidence.status, "blocked");
   assert.match(urlCredentialSummaryEvidence.summary, /sensitive details were redacted/);
   assert.equal(urlCredentialSummaryEvidence.summary.includes("hunter2"), false);
 
@@ -2335,7 +2335,7 @@ test("analytics validator separates direct failure exits from runner evidence ev
   ], { encoding: "utf8" });
   const credentialEvidence = JSON.parse(await readFile(credentialEvidencePath, "utf8"));
 
-  assert.equal(credentialEvidence.status, "failed");
+  assert.equal(credentialEvidence.status, "blocked");
   assert.equal(
     credentialEvidence.metrics.find((metric) => metric.name === "analytics_privacy_pass").value,
     0,
@@ -2461,7 +2461,7 @@ test("analytics semantic and security profiles bind delivery meaning and decoded
   resignDataset(unlinked);
   assert.match(
     (await runProfile(unlinked, "unlinked-trace")).summary,
-    /No linked Plane-to-pull-request delivery trace/,
+    /metric contradicts delivery trace rows/,
   );
 
   const contradictory = structuredClone(baseline);
@@ -2488,7 +2488,7 @@ test("analytics semantic and security profiles bind delivery meaning and decoded
   resignDataset(fabricatedValidationStatus);
   assert.match(
     (await runProfile(fabricatedValidationStatus, "fabricated-validation-status")).summary,
-    /Delivery traces do not match the committed provider snapshot/,
+    /exact validation status requires available Tabellio validation evidence/,
   );
 
   const unboundRepository = structuredClone(baseline);
@@ -2499,7 +2499,7 @@ test("analytics semantic and security profiles bind delivery meaning and decoded
   resignDataset(unboundRepository);
   assert.match(
     (await runProfile(unboundRepository, "unbound-repository")).summary,
-    /provider evidence lacks a decoded source snapshot/,
+    /delivery changes require available GitHub evidence/,
   );
 
   const contradictoryCi = structuredClone(baseline);
@@ -2568,7 +2568,7 @@ test("analytics semantic and security profiles bind delivery meaning and decoded
     "--out", decodedPathEvidence,
     "--exit-mode", "evidence",
   ], { encoding: "utf8" });
-  assert.equal(JSON.parse(await readFile(decodedPathEvidence, "utf8")).status, "failed");
+  assert.equal(JSON.parse(await readFile(decodedPathEvidence, "utf8")).status, "blocked");
 
   const sensitiveSourcePath = join(root, "provider-sensitive-source.json");
   await writeFile(sensitiveSourcePath, JSON.stringify({ reason: "token=private-value" }));
@@ -2578,7 +2578,7 @@ test("analytics semantic and security profiles bind delivery meaning and decoded
     "security",
     ["--source", sensitiveSourcePath],
   );
-  assert.equal(sourceEvidence.status, "failed");
+  assert.equal(sourceEvidence.status, "blocked");
   assert.equal(sourceEvidence.artifacts.length, 3);
 
   const urlCredentialSourcePath = join(root, "provider-url-credential.json");
@@ -2592,7 +2592,7 @@ test("analytics semantic and security profiles bind delivery meaning and decoded
     "security",
     ["--source", urlCredentialSourcePath],
   );
-  assert.equal(urlCredentialEvidence.status, "failed");
+  assert.equal(urlCredentialEvidence.status, "blocked");
 
   const extraFieldSourcePath = join(root, "provider-extra-field.json");
   const extraFieldSource = JSON.parse(await readFile(sourcePath, "utf8"));
@@ -2605,7 +2605,7 @@ test("analytics semantic and security profiles bind delivery meaning and decoded
       profile,
       ["--source", extraFieldSourcePath],
     );
-    assert.equal(extraFieldEvidence.status, "failed");
+    assert.equal(extraFieldEvidence.status, "blocked");
     assert.match(extraFieldEvidence.summary, /unexpected field privateResponseBody/);
   }
 
@@ -2623,7 +2623,7 @@ test("analytics semantic and security profiles bind delivery meaning and decoded
       profile,
       ["--source", extraProviderSourcePath],
     );
-    assert.equal(extraProviderSourceEvidence.status, "failed");
+    assert.equal(extraProviderSourceEvidence.status, "blocked");
     assert.match(extraProviderSourceEvidence.summary, /unexpected field privateProviderResponse/);
   }
 });

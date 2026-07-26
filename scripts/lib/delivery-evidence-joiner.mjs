@@ -13,23 +13,13 @@ const SCHEMA = JSON.parse(readFileSync(new URL("../../schemas/delivery-evidence-
 const DELIVERY_RECORD_ID = /^[^\r\n|#`][^\r\n|#`]{0,127}$/;
 const SAFE_REASON = /^[^\r\n]{1,200}$/;
 
-export function joinDeliveryEvidence({ providerSnapshot, planeSnapshot, buildkiteSnapshots = [], releaseSnapshot, deploymentReceipts = [], deploymentBlockedReason = null }) {
+export function joinDeliveryEvidence({ providerSnapshot, planeSnapshot, buildkiteSnapshots = [], releaseSnapshot, deploymentReceipts = [], deploymentBlockedReason = null, deploymentEnvironment = null }) {
   const capturedAt = latestTimestamp([providerSnapshot?.capturedAt, planeSnapshot?.capturedAt, releaseSnapshot?.capturedAt, ...buildkiteSnapshots.map((snapshot) => snapshot?.capturedAt), ...deploymentReceipts.map((receipt) => receipt?.observedAt)]);
-  const errors = validateProviderSnapshot(providerSnapshot, providerSnapshot?.repository, capturedAt);
-  if (errors.length) throw new Error(`Invalid provider snapshot: ${errors.join("; ")}`);
-  if (providerSnapshot.sources.plane?.status !== "available" || providerSnapshot.sources.github?.status !== "available") throw new Error("Delivery evidence requires available Plane and GitHub provider sources.");
-  validatePlaneWorkItemSnapshot(planeSnapshot);
-  validateGitHubReleaseSnapshot(releaseSnapshot);
-  for (const snapshot of buildkiteSnapshots) validateBuildkiteBuildSnapshot(snapshot);
-  for (const receipt of deploymentReceipts) validateDeploymentReceipt(receipt);
-  if (buildkiteSnapshots.length > 1) throw new Error("Delivery evidence requires one designated Buildkite pipeline snapshot.");
-  if (releaseSnapshot.repository.toLowerCase() !== providerSnapshot.repository.toLowerCase()) throw new Error("Release snapshot repository mismatch.");
-  if (buildkiteSnapshots.some((snapshot) => !sameRepository(snapshot.repository, providerSnapshot.repository))) throw new Error("Buildkite snapshot repository mismatch.");
-  if (deploymentReceipts.some((receipt) => !sameRepository(receipt.repository, providerSnapshot.repository))) throw new Error("Deployment receipt repository mismatch.");
-  const projectById = new Map(planeSnapshot.projects.map((project) => [project.id, project.identifier]));
-  const stateById = new Map(planeSnapshot.states.map((state) => [state.id, state.group]));
-  const itemByKey = new Map(planeSnapshot.workItems.map((item) => [`${projectById.get(item.projectId)}-${item.sequenceNumber}`, item]));
-  const records = providerSnapshot.deliveryChanges.map((change) => recordFor(change, { itemByKey, stateById, planeSnapshot, buildkiteSnapshots, releaseSnapshot, deploymentReceipts, repository: providerSnapshot.repository }));
+  validateJoinSnapshots({ providerSnapshot, planeSnapshot, buildkiteSnapshots, releaseSnapshot, deploymentReceipts, capturedAt });
+  assertJoinBindings({ providerSnapshot, planeSnapshot, buildkiteSnapshots, releaseSnapshot, deploymentReceipts, deploymentBlockedReason, deploymentEnvironment });
+  const targetReceipts = deploymentReceipts.filter((receipt) => receipt.environment === deploymentEnvironment);
+  const context = recordContext({ providerSnapshot, planeSnapshot, buildkiteSnapshots, releaseSnapshot, targetReceipts, deploymentBlockedReason, deploymentEnvironment });
+  const records = providerSnapshot.deliveryChanges.map((change) => recordFor(change, context));
   return validateDeliveryEvidenceSnapshot({
     schemaVersion: SCHEMA_VERSION, repository: providerSnapshot.repository, capturedAt,
     sources: {
@@ -37,11 +27,47 @@ export function joinDeliveryEvidence({ providerSnapshot, planeSnapshot, buildkit
       plane: sourceState(planeSnapshot.status, planeSnapshot, `plane:${planeSnapshot.workspace}`),
       buildkite: aggregateBuildkite(buildkiteSnapshots),
       githubRelease: sourceState(releaseSnapshot.status, releaseSnapshot, `github-release:${releaseSnapshot.repository}`),
-      deployment: deploymentReceipts.length ? availableSource(deploymentReceipts.map((receipt) => observation(`deployment:${receipt.provider}:${receipt.externalId}`, receipt.observedAt, receipt))) : unavailableSource(deploymentBlockedReason ?? "No deployment receipts collected.", deploymentBlockedReason ? "blocked" : "unavailable"),
+      deployment: deploymentSource(targetReceipts, deploymentBlockedReason, deploymentEnvironment),
     },
     wipByProject: wipByProject(planeSnapshot, planeSnapshot.capturedAt),
     deliveryRecords: records,
   });
+}
+
+function validateJoinSnapshots({ providerSnapshot, planeSnapshot, buildkiteSnapshots, releaseSnapshot, deploymentReceipts, capturedAt }) {
+  const errors = validateProviderSnapshot(providerSnapshot, providerSnapshot?.repository, capturedAt);
+  if (errors.length) throw new Error(`Invalid provider snapshot: ${errors.join("; ")}`);
+  if (providerSnapshot.sources.plane?.status !== "available" || providerSnapshot.sources.github?.status !== "available") throw new Error("Delivery evidence requires available Plane and GitHub provider sources.");
+  validatePlaneWorkItemSnapshot(planeSnapshot);
+  validateGitHubReleaseSnapshot(releaseSnapshot);
+  for (const snapshot of buildkiteSnapshots) validateBuildkiteBuildSnapshot(snapshot);
+  for (const receipt of deploymentReceipts) validateDeploymentReceipt(receipt);
+}
+
+function assertJoinBindings({ providerSnapshot, planeSnapshot, buildkiteSnapshots, releaseSnapshot, deploymentReceipts, deploymentBlockedReason, deploymentEnvironment }) {
+  if (buildkiteSnapshots.length > 1) throw new Error("Delivery evidence requires one designated Buildkite pipeline snapshot.");
+  if (releaseSnapshot.repository.toLowerCase() !== providerSnapshot.repository.toLowerCase()) throw new Error("Release snapshot repository mismatch.");
+  if (buildkiteSnapshots.some((snapshot) => !sameRepository(snapshot.repository, providerSnapshot.repository))) throw new Error("Buildkite snapshot repository mismatch.");
+  if (deploymentReceipts.some((receipt) => !sameRepository(receipt.repository, providerSnapshot.repository))) throw new Error("Deployment receipt repository mismatch.");
+  if (providerSnapshot.sources.plane.workspace !== planeSnapshot.workspace) throw new Error("Provider and Plane snapshot workspace mismatch.");
+  if (deploymentEnvironment !== null && !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(deploymentEnvironment)) throw new Error("Deployment environment is invalid.");
+  if ((deploymentReceipts.length || deploymentBlockedReason) && deploymentEnvironment === null) throw new Error("Deployment evidence requires a designated target environment.");
+}
+
+function recordContext({ providerSnapshot, planeSnapshot, buildkiteSnapshots, releaseSnapshot, targetReceipts, deploymentBlockedReason, deploymentEnvironment }) {
+  const projectById = new Map(planeSnapshot.projects.map((project) => [project.id, project.identifier]));
+  const stateById = new Map(planeSnapshot.states.map((state) => [state.id, state.group]));
+  const itemByKey = new Map(planeSnapshot.workItems.map((item) => [`${projectById.get(item.projectId)}-${item.sequenceNumber}`, item]));
+  return { itemByKey, stateById, planeSnapshot, buildkiteSnapshots, releaseSnapshot, deploymentReceipts: targetReceipts, deploymentBlockedReason, deploymentEnvironment, repository: providerSnapshot.repository };
+}
+
+function deploymentSource(receipts, blockedReason, environment) {
+  if (receipts.length) return availableSource(receipts.map(deploymentObservation));
+  return unavailableSource(blockedReason ?? `No ${environment ?? "target"} deployment receipts collected.`, blockedReason ? "blocked" : "unavailable");
+}
+
+function deploymentObservation(receipt) {
+  return observation(`deployment:${receipt.provider}:${receipt.externalId}`, receipt.observedAt, receipt);
 }
 
 export function validateDeliveryEvidenceSnapshot(snapshot) {
@@ -60,7 +86,7 @@ export function validateDeliveryEvidenceSnapshot(snapshot) {
 function recordFor(change, context) {
   const item = context.itemByKey.get(change.planeStoryId);
   const build = latestBuildFor(change.headCommit, context.buildkiteSnapshots);
-  const release = releaseFor(change.headCommit, change.mergedAt, context.releaseSnapshot);
+  const release = releaseFor(change, context.releaseSnapshot);
   const receipt = latestReceiptFor(change.headCommit, context.deploymentReceipts, context.repository);
   if (release && change.releasedAt && release.publishedAt !== change.releasedAt) throw new Error(`Conflicting GitHub release timestamp for delivery change ${change.id}.`);
   return {
@@ -68,7 +94,9 @@ function recordFor(change, context) {
     plane: item ? { status: "linked", key: change.planeStoryId, stateGroup: context.stateById.get(item.stateId) ?? null, updatedAt: item.updatedAt } : { status: context.planeSnapshot.status === "available" ? "unlinked" : "blocked", key: change.planeStoryId, stateGroup: null, updatedAt: null },
     ci: build ? { status: ciStatus(build.state), pipeline: build.pipeline, buildNumber: build.number, finishedAt: build.finishedAt } : { status: context.buildkiteSnapshots.some((snapshot) => snapshot.status === "blocked") ? "blocked" : "unavailable", pipeline: null, buildNumber: null, finishedAt: null },
     release: release ? { status: "shipped", tagName: release.tagName, publishedAt: release.publishedAt } : { status: context.releaseSnapshot.status === "blocked" ? "blocked" : "unreleased", tagName: null, publishedAt: null },
-    deployment: receipt ? { status: receipt.status, provider: receipt.provider, deployedAt: receipt.deployedAt } : { status: "unavailable", provider: null, deployedAt: null },
+    deployment: receipt
+      ? { status: receipt.status, environment: receipt.environment, provider: receipt.provider, deployedAt: receipt.deployedAt }
+      : { status: context.deploymentBlockedReason ? "blocked" : "unavailable", environment: context.deploymentEnvironment, provider: null, deployedAt: null },
   };
 }
 
@@ -77,11 +105,17 @@ function latestBuildFor(commit, snapshots) {
   return latestBy(builds, (build) => build.finishedAt ?? build.createdAt);
 }
 
-function releaseFor(commit, mergedAt, snapshot) {
+function releaseFor(change, snapshot) {
   if (snapshot.status !== "available") return null;
   return snapshot.releases
-    .filter((candidate) => candidate.commitStatus === "resolved" && candidate.commit === commit && (!mergedAt || Date.parse(candidate.publishedAt) >= Date.parse(mergedAt)))
+    .filter((candidate) => releaseMatches(change, candidate))
     .sort((left, right) => Date.parse(left.publishedAt) - Date.parse(right.publishedAt))[0] ?? null;
+}
+
+function releaseMatches(change, candidate) {
+  if (candidate.commitStatus !== "resolved") return false;
+  if (candidate.commit !== change.headCommit && candidate.publishedAt !== change.releasedAt) return false;
+  return !change.mergedAt || Date.parse(candidate.publishedAt) >= Date.parse(change.mergedAt);
 }
 
 function latestReceiptFor(commit, receipts, repository) {
@@ -92,7 +126,12 @@ function latestBy(values, timestampFor) {
   return values.sort((left, right) => Date.parse(timestampFor(right)) - Date.parse(timestampFor(left)))[0] ?? null;
 }
 
-function ciStatus(state) { return state === "passed" ? "passed" : state === "failed" || state === "canceled" || state === "cancelled" ? "failed" : "in_progress"; }
+function ciStatus(state) {
+  if (state === "passed") return "passed";
+  if (["failed", "canceled", "cancelled"].includes(state)) return "failed";
+  if (["scheduled", "running", "canceling", "cancelling"].includes(state)) return "in_progress";
+  return "blocked";
+}
 function sourceState(status, snapshot, identity) { return status === "available" ? availableSource([observation(identity, snapshot.capturedAt, snapshot)]) : unavailableSource("Collector unavailable.", "blocked"); }
 function aggregateBuildkite(snapshots) {
   if (snapshots.length === 0) return unavailableSource("No Buildkite snapshots collected.");
@@ -145,6 +184,6 @@ function assertReleaseEvidence(release, source) {
 }
 function assertDeploymentEvidence(deployment, source) {
   if (deployment.status !== "passed") return;
-  if (!deployment.provider || !isJsonDateTime(deployment.deployedAt)) throw new Error("Passed deployment evidence requires provider and deployedAt.");
+  if (!deployment.environment || !deployment.provider || !isJsonDateTime(deployment.deployedAt)) throw new Error("Passed deployment evidence requires environment, provider, and deployedAt.");
   if (source.status !== "available") throw new Error("Passed deployment evidence requires an available deployment source observation.");
 }

@@ -3,7 +3,7 @@ import { parseGitHubRepositoryRemote } from "./github-repository.mjs";
 import { isJsonDateTime, validateJsonSchema } from "./json-schema-validator.mjs";
 const VERSION = "tabellio-buildkite-build-snapshot/v0.1";
 const SCHEMA = JSON.parse(readFileSync(new URL("../../schemas/buildkite-build-snapshot.v0.1.schema.json", import.meta.url), "utf8"));
-const SLUG = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
+const SLUG = /^[A-Za-z0-9][-A-Za-z0-9_]{0,127}$/;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9._-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 const OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const OBSERVATION_DAYS = 30;

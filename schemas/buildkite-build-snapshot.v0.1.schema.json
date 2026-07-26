@@ -7,8 +7,8 @@
   "properties": {
     "schemaVersion": { "const": "tabellio-buildkite-build-snapshot/v0.1" },
     "repository": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,38}/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$" },
-    "organization": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$" },
-    "pipeline": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$" },
+    "organization": { "type": "string", "pattern": "^[A-Za-z0-9][-A-Za-z0-9_]{0,63}$" },
+    "pipeline": { "type": "string", "pattern": "^[A-Za-z0-9][-A-Za-z0-9_]{0,127}$" },
     "capturedAt": { "type": "string", "format": "date-time" },
     "status": { "enum": ["available", "blocked"] },
     "reason": { "type": ["string", "null"], "maxLength": 200 },
