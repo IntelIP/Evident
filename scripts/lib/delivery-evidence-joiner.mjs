@@ -121,11 +121,26 @@ function assertSourceState(name, source) {
   }
 }
 function assertRecordEvidence(record, sources) {
-  if (record.ci.status === "passed" && (!record.ci.pipeline || !Number.isInteger(record.ci.buildNumber) || !isJsonDateTime(record.ci.finishedAt))) throw new Error("Passed CI evidence requires pipeline, build number, and finishedAt.");
-  if (record.release.status === "shipped" && (!record.release.tagName || !isJsonDateTime(record.release.publishedAt))) throw new Error("Shipped release evidence requires tagName and publishedAt.");
-  if (record.deployment.status === "passed" && (!record.deployment.provider || !isJsonDateTime(record.deployment.deployedAt))) throw new Error("Passed deployment evidence requires provider and deployedAt.");
-  if (record.plane.status === "linked" && sources.plane.status !== "available") throw new Error("Linked Plane evidence requires an available Plane source observation.");
-  if (record.ci.status === "passed" && sources.buildkite.status !== "available") throw new Error("Passed CI evidence requires an available Buildkite source observation.");
-  if (record.release.status === "shipped" && sources.githubRelease.status !== "available") throw new Error("Shipped release evidence requires an available GitHub Release source observation.");
-  if (record.deployment.status === "passed" && sources.deployment.status !== "available") throw new Error("Passed deployment evidence requires an available deployment source observation.");
+  assertPlaneEvidence(record.plane, sources.plane);
+  assertCiEvidence(record.ci, sources.buildkite);
+  assertReleaseEvidence(record.release, sources.githubRelease);
+  assertDeploymentEvidence(record.deployment, sources.deployment);
+}
+function assertPlaneEvidence(plane, source) {
+  if (plane.status === "linked" && source.status !== "available") throw new Error("Linked Plane evidence requires an available Plane source observation.");
+}
+function assertCiEvidence(ci, source) {
+  if (ci.status !== "passed") return;
+  if (!ci.pipeline || !Number.isInteger(ci.buildNumber) || !isJsonDateTime(ci.finishedAt)) throw new Error("Passed CI evidence requires pipeline, build number, and finishedAt.");
+  if (source.status !== "available") throw new Error("Passed CI evidence requires an available Buildkite source observation.");
+}
+function assertReleaseEvidence(release, source) {
+  if (release.status !== "shipped") return;
+  if (!release.tagName || !isJsonDateTime(release.publishedAt)) throw new Error("Shipped release evidence requires tagName and publishedAt.");
+  if (source.status !== "available") throw new Error("Shipped release evidence requires an available GitHub Release source observation.");
+}
+function assertDeploymentEvidence(deployment, source) {
+  if (deployment.status !== "passed") return;
+  if (!deployment.provider || !isJsonDateTime(deployment.deployedAt)) throw new Error("Passed deployment evidence requires provider and deployedAt.");
+  if (source.status !== "available") throw new Error("Passed deployment evidence requires an available deployment source observation.");
 }
