@@ -19,7 +19,7 @@
         "required": ["id", "tagName", "publishedAt", "commit", "commitStatus"],
         "properties": {
           "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,128}$" },
-          "tagName": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+          "tagName": { "type": "string", "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*$" },
           "publishedAt": { "type": "string", "format": "date-time" },
           "commit": { "type": ["string", "null"], "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
           "commitStatus": { "enum": ["resolved", "blocked"] }

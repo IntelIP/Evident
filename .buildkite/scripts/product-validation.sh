@@ -14,19 +14,30 @@ test "$(git rev-parse HEAD^{commit})" = "$(git rev-parse "${candidate}^{commit}"
 if [[ "${BUILDKITE_PULL_REQUEST:-false}" == "false" && "$base_branch" == "main" ]]; then
   base_ref="HEAD^"
   checkpoint_output="$(mktemp)"
-  if curl --fail --silent --show-error \
+  if ! curl --fail --silent --show-error \
     -H "Accept: application/vnd.github+json" \
     "https://api.github.com/repos/IntelIP/Tabellio/commits/${candidate}/pulls" \
     | node scripts/resolve-merged-checkpoint.mjs --commit "$candidate" --github-output "$checkpoint_output"; then
-    pull_request="$(awk -F= '$1 == "number" { print $2 }' "$checkpoint_output")"
-    checkpoint_head="$(awk -F= '$1 == "head" { print $2 }' "$checkpoint_output")"
-    if [[ -n "$pull_request" && -n "$checkpoint_head" ]]; then
+    rm -f "$checkpoint_output"
+    echo "Merged checkpoint resolution failed." >&2
+    exit 1
+  fi
+  pull_request="$(awk -F= '$1 == "number" { print $2 }' "$checkpoint_output")"
+  resolved_checkpoint_head="$(awk -F= '$1 == "head" { print $2 }' "$checkpoint_output")"
+  if [[ -n "$pull_request" && -n "$resolved_checkpoint_head" ]]; then
     checkpoint_ref="refs/tabellio/checkpoints/${pull_request}"
-    if git fetch --no-tags origin "+refs/pull/${pull_request}/head:${checkpoint_ref}"; then
-      checkpoint_head="$(git rev-parse "${checkpoint_ref}^{commit}")"
-      checkpoint_args=(--checkpoint-base "$base_ref" --checkpoint-head "$checkpoint_head")
+    if ! git fetch --no-tags origin "+refs/pull/${pull_request}/head:${checkpoint_ref}"; then
+      rm -f "$checkpoint_output"
+      echo "Merged checkpoint fetch failed." >&2
+      exit 1
     fi
+    fetched_checkpoint_head="$(git rev-parse "${checkpoint_ref}^{commit}")"
+    if [[ "$fetched_checkpoint_head" != "$resolved_checkpoint_head" ]]; then
+      rm -f "$checkpoint_output"
+      echo "Merged checkpoint identity changed during resolution." >&2
+      exit 1
     fi
+    checkpoint_args=(--checkpoint-base "$base_ref" --checkpoint-head "$resolved_checkpoint_head")
   fi
   rm -f "$checkpoint_output"
 fi

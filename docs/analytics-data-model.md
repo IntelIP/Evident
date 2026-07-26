@@ -182,7 +182,8 @@ published GitHub Release into a guessed event.
 
 Cloud Run collection is read-only. It accepts a receipt only where one revision
 receives 100% of traffic and that revision carries a full 40- or 64-character
-`commit-sha` label. Short labels, split traffic, and missing immutable commit
+`commit-sha` label plus an exact `tabellio.dev/source-repository` annotation.
+Short labels, repository mismatches, split traffic, and missing immutable source
 metadata remain `blocked`; they never become a deployment claim.
 
 Vercel collection is read-only. It accepts only a `READY`, `production`

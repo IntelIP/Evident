@@ -1,31 +1,61 @@
 import { readFileSync } from "node:fs";
 import { parseGitHubRepositoryRemote } from "./github-repository.mjs";
 import { isJsonDateTime, validateJsonSchema } from "./json-schema-validator.mjs";
-import { collectPagedApi } from "./paged-api-collector.mjs";
 const VERSION = "tabellio-buildkite-build-snapshot/v0.1";
 const SCHEMA = JSON.parse(readFileSync(new URL("../../schemas/buildkite-build-snapshot.v0.1.schema.json", import.meta.url), "utf8"));
 const SLUG = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9._-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 const OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+const OBSERVATION_DAYS = 30;
+const PAGE_SIZE = 100;
+const MAX_BUILDS = 500;
+const DETAIL_CONCURRENCY = 4;
 export async function collectBuildkiteBuildSnapshot({ repository, organization, pipeline, capturedAt, request }) {
   if (!REPOSITORY.test(repository ?? "") || !SLUG.test(organization ?? "") || !SLUG.test(pipeline ?? "") || !isJsonDateTime(capturedAt) || typeof request !== "function") throw new Error("Buildkite collector requires repository, organization, pipeline, capturedAt, and request.");
   try {
     const pipelineRecord = await request(`/v2/organizations/${organization}/pipelines/${pipeline}`);
     assertPipelineRepository(pipelineRecord, repository);
-    const raw = await collectPagedApi({ path: `/v2/organizations/${organization}/pipelines/${pipeline}/builds?exclude_jobs=true&exclude_pipeline=true&per_page=100`, request, valuesFor: (page) => Array.isArray(page) ? page : page?.items, invalidPageMessage: "Unexpected Buildkite build response." });
-    const detailRequests = [];
-    for (const build of raw) detailRequests.push(collectBuildDetails({ build, organization, pipeline, request }));
-    const builds = await Promise.all(detailRequests);
+    const horizonStart = new Date(Date.parse(capturedAt) - OBSERVATION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const path = `/v2/organizations/${organization}/pipelines/${pipeline}/builds?exclude_jobs=true&exclude_pipeline=true&per_page=${PAGE_SIZE}&created_from=${encodeURIComponent(horizonStart)}&created_to=${encodeURIComponent(capturedAt)}`;
+    const raw = await collectBuildPages({ path, request });
+    const observed = raw.filter((build) => Date.parse(normalizeBuild(build).createdAt) >= Date.parse(horizonStart));
+    const builds = await boundedMap(observed, DETAIL_CONCURRENCY, (build) => collectBuildDetails({ build, organization, pipeline, request }));
     builds.sort((a, b) => b.number - a.number);
     return validateBuildkiteBuildSnapshot({ schemaVersion: VERSION, repository, organization, pipeline, capturedAt, status: "available", reason: null, builds });
   } catch {
     return validateBuildkiteBuildSnapshot({ schemaVersion: VERSION, repository, organization, pipeline, capturedAt, status: "blocked", reason: "Buildkite build collection unavailable.", builds: [] });
   }
 }
+async function collectBuildPages({ path, request }) {
+  const builds = [];
+  for (let pageNumber = 1; pageNumber <= MAX_BUILDS / PAGE_SIZE; pageNumber += 1) {
+    const response = await request(pageNumber === 1 ? path : `${path}&page=${pageNumber}`);
+    const page = Array.isArray(response) ? response : response?.items;
+    if (!Array.isArray(page)) throw new Error("Unexpected Buildkite build response.");
+    builds.push(...page);
+    if (page.length < PAGE_SIZE) return builds;
+  }
+  throw new Error("Buildkite observation horizon exceeds the bounded collection limit.");
+}
+async function boundedMap(values, concurrency, mapper) {
+  const results = new Array(values.length);
+  let nextIndex = 0;
+  async function worker() {
+    for (;;) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= values.length) return;
+      results[index] = await mapper(values[index]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, values.length) }, worker));
+  return results;
+}
 async function collectBuildDetails({ build, organization, pipeline, request }) {
   const normalized = normalizeBuild(build);
   const prefix = `/v2/organizations/${organization}/pipelines/${pipeline}/builds/${normalized.number}`;
-  const [jobs, artifacts] = await Promise.all([request(`${prefix}/jobs?per_page=100`), request(`${prefix}/artifacts?per_page=100`)]);
+  const jobs = await request(`${prefix}/jobs?per_page=100`);
+  const artifacts = await request(`${prefix}/artifacts?per_page=100`);
   const jobItems = Array.isArray(jobs) ? jobs : jobs?.items;
   if (!Array.isArray(jobItems) || !Array.isArray(artifacts)) throw new Error("Unexpected Buildkite detail response.");
   return { ...normalized, jobCount: jobItems.length, artifactCount: artifacts.length };

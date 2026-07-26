@@ -37,7 +37,7 @@ export function joinDeliveryEvidence({ providerSnapshot, planeSnapshot, buildkit
       githubRelease: sourceState(releaseSnapshot.status, releaseSnapshot, `github-release:${releaseSnapshot.repository}`),
       deployment: deploymentReceipts.length ? availableSource(deploymentReceipts.map((receipt) => observation(`deployment:${receipt.provider}:${receipt.externalId}`, receipt.observedAt, receipt))) : unavailableSource("No deployment receipts collected."),
     },
-    wipByProject: wipByProject(planeSnapshot, capturedAt),
+    wipByProject: wipByProject(planeSnapshot, planeSnapshot.capturedAt),
     deliveryRecords: records,
   });
 }
@@ -49,8 +49,9 @@ export function validateDeliveryEvidenceSnapshot(snapshot) {
   if (snapshot.deliveryRecords.some((record) => !DELIVERY_RECORD_ID.test(record.id ?? ""))) throw new Error("Delivery evidence record IDs must be portable single-line identifiers.");
   if (new Set(snapshot.deliveryRecords.map((record) => record.id)).size !== snapshot.deliveryRecords.length) throw new Error("Delivery evidence record IDs must be unique.");
   if (Object.values(snapshot.sources).some((source) => source.reason !== null && !SAFE_REASON.test(source.reason))) throw new Error("Delivery evidence source reasons must be portable single-line text.");
+  for (const [name, source] of Object.entries(snapshot.sources)) assertSourceState(name, source);
   for (const row of snapshot.wipByProject) if (row.overLimit !== (row.activeItemCount > 3) || row.aging3dCount > row.activeItemCount) throw new Error("Delivery evidence WIP counts conflict.");
-  for (const record of snapshot.deliveryRecords) assertRecordEvidence(record);
+  for (const record of snapshot.deliveryRecords) assertRecordEvidence(record, snapshot.sources);
   return snapshot;
 }
 
@@ -76,7 +77,9 @@ function latestBuildFor(commit, snapshots) {
 
 function releaseFor(commit, snapshot) {
   if (snapshot.status !== "available") return null;
-  return snapshot.releases.find((candidate) => candidate.commitStatus === "resolved" && candidate.commit === commit) ?? null;
+  return snapshot.releases
+    .filter((candidate) => candidate.commitStatus === "resolved" && candidate.commit === commit)
+    .sort((left, right) => Date.parse(left.publishedAt) - Date.parse(right.publishedAt))[0] ?? null;
 }
 
 function latestReceiptFor(commit, receipts, repository) {
@@ -109,8 +112,20 @@ function wipByProject(snapshot, capturedAt) {
   }).sort((left, right) => left.project.localeCompare(right.project));
 }
 function sameRepository(left, right) { return typeof left === "string" && left.toLowerCase() === String(right ?? "").toLowerCase(); }
-function assertRecordEvidence(record) {
+function assertSourceState(name, source) {
+  if (source.status === "available" && (source.reason !== null || source.observations.length === 0)) {
+    throw new Error(`Available ${name} source requires observations and no reason.`);
+  }
+  if (source.status !== "available" && (!source.reason || source.observations.length !== 0)) {
+    throw new Error(`Unavailable ${name} source requires a reason and no observations.`);
+  }
+}
+function assertRecordEvidence(record, sources) {
   if (record.ci.status === "passed" && (!record.ci.pipeline || !Number.isInteger(record.ci.buildNumber) || !isJsonDateTime(record.ci.finishedAt))) throw new Error("Passed CI evidence requires pipeline, build number, and finishedAt.");
   if (record.release.status === "shipped" && (!record.release.tagName || !isJsonDateTime(record.release.publishedAt))) throw new Error("Shipped release evidence requires tagName and publishedAt.");
   if (record.deployment.status === "passed" && (!record.deployment.provider || !isJsonDateTime(record.deployment.deployedAt))) throw new Error("Passed deployment evidence requires provider and deployedAt.");
+  if (record.plane.status === "linked" && sources.plane.status !== "available") throw new Error("Linked Plane evidence requires an available Plane source observation.");
+  if (record.ci.status === "passed" && sources.buildkite.status !== "available") throw new Error("Passed CI evidence requires an available Buildkite source observation.");
+  if (record.release.status === "shipped" && sources.githubRelease.status !== "available") throw new Error("Shipped release evidence requires an available GitHub Release source observation.");
+  if (record.deployment.status === "passed" && sources.deployment.status !== "available") throw new Error("Passed deployment evidence requires an available deployment source observation.");
 }

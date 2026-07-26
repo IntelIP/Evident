@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
 import test from "node:test";
 import { joinDeliveryEvidence } from "../scripts/lib/delivery-evidence-joiner.mjs";
 import { renderDeliveryReport } from "../scripts/lib/delivery-report.mjs";
 import { buildkite, plane, provider, releases } from "./helpers/delivery-evidence-fixture.mjs";
 test("delivery report preserves GitHub Release shipping boundary",()=>{const snapshot=joinDeliveryEvidence({providerSnapshot:provider(),planeSnapshot:plane(),buildkiteSnapshots:[buildkite()],releaseSnapshot:releases()});const report=renderDeliveryReport(snapshot);assert.match(report,/Shipped \(published GitHub Release\): 1\/1/);assert.match(report,/Deployment runtime proof is missing/);});
 test("delivery report rejects a record ID that could inject Markdown",()=>{const snapshot=joinDeliveryEvidence({providerSnapshot:provider(),planeSnapshot:plane(),buildkiteSnapshots:[buildkite()],releaseSnapshot:releases()});snapshot.deliveryRecords[0].id="change-1\n\n## Decision";assert.throws(()=>renderDeliveryReport(snapshot),/portable single-line identifiers/);});
+test("delivery report escapes portable Markdown and HTML in record IDs",()=>{const snapshot=joinDeliveryEvidence({providerSnapshot:provider(),planeSnapshot:plane(),buildkiteSnapshots:[buildkite()],releaseSnapshot:releases()});snapshot.deliveryRecords[0].id="<img_src=x>";const report=renderDeliveryReport(snapshot);assert.match(report,/&lt;img\\_src=x&gt;/);assert.doesNotMatch(report,/<img_src=x>/);});
+test("delivery report treats unlinked records as an evidence gap",()=>{const providerSnapshot=provider();providerSnapshot.deliveryChanges[0].linkBasis="unlinked";const snapshot=joinDeliveryEvidence({providerSnapshot,planeSnapshot:plane(),buildkiteSnapshots:[buildkite()],releaseSnapshot:releases()});const report=renderDeliveryReport(snapshot);assert.match(report,/lack an explicit Plane-to-PR relationship/);assert.match(report,/Do not claim complete shipping health; link every delivery record/);});
+test("delivery report CLI refuses to overwrite its input snapshot", async()=>{const root=await mkdtemp(join(tmpdir(),"tabellio-delivery-report-"));try{const snapshotPath=join(root,"snapshot.json");const snapshot=joinDeliveryEvidence({providerSnapshot:provider(),planeSnapshot:plane(),buildkiteSnapshots:[buildkite()],releaseSnapshot:releases()});const original=`${JSON.stringify(snapshot,null,2)}\n`;await writeFile(snapshotPath,original);await assert.rejects(promisify(execFile)(process.execPath,["scripts/tabellio-delivery-report.mjs","render","--snapshot",snapshotPath,"--cadence","daily","--out",snapshotPath],{cwd:process.cwd()}),/must not alias the input snapshot/);assert.equal(await readFile(snapshotPath,"utf8"),original);}finally{await rm(root,{recursive:true,force:true});}});

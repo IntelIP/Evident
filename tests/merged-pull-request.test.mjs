@@ -47,9 +47,11 @@ test("Buildkite product validation preserves merged execution and exact checkpoi
   assert.match(script, /BUILDKITE_PULL_REQUEST:-false/);
   assert.match(script, /commits\/\$\{candidate\}\/pulls/);
   assert.match(script, /resolve-merged-checkpoint\.mjs --commit "\$candidate"/);
+  assert.match(script, /Merged checkpoint resolution failed/);
   assert.match(script, /refs\/pull\/\$\{pull_request\}\/head/);
-  assert.match(script, /checkpoint_head=.*git rev-parse/);
-  assert.match(script, /--checkpoint-base "\$base_ref" --checkpoint-head "\$checkpoint_head"/);
+  assert.match(script, /fetched_checkpoint_head=.*git rev-parse/);
+  assert.match(script, /\$fetched_checkpoint_head" != "\$resolved_checkpoint_head/);
+  assert.match(script, /--checkpoint-base "\$base_ref" --checkpoint-head "\$resolved_checkpoint_head"/);
 });
 
 function pullRequest({ mergeCommit: mergedCommit, headCommit: head, number }) {

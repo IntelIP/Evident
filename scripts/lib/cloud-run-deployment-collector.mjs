@@ -15,8 +15,9 @@ export async function collectCloudRunDeploymentReceipt({ repository, environment
     const payload = await request();
     const revision = servingRevision(payload);
     const commit = revision?.metadata?.labels?.["commit-sha"];
+    const sourceRepository = revision?.metadata?.annotations?.["tabellio.dev/source-repository"];
     const deployedAt = revision?.metadata?.creationTimestamp;
-    if (!revision || !OID.test(commit ?? "") || !isJsonDateTime(deployedAt)) throw new Error("Cloud Run serving revision lacks exact source evidence.");
+    if (!revision || !OID.test(commit ?? "") || !sameRepository(sourceRepository, repository) || !isJsonDateTime(deployedAt)) throw new Error("Cloud Run serving revision lacks exact source evidence.");
     return {
       status: "available",
       reason: null,
@@ -53,4 +54,8 @@ function servingTrafficEntry(traffic, revisionName) {
     if (candidate?.percent === 100 && candidate?.revisionName === revisionName) return candidate;
   }
   return null;
+}
+
+function sameRepository(left, right) {
+  return typeof left === "string" && left.toLowerCase() === right.toLowerCase();
 }

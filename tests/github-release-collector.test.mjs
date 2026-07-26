@@ -21,6 +21,17 @@ test("GitHub release collector resolves a published tag to an exact commit", asy
   assert.deepEqual(snapshot.releases, [{ id: "12", tagName: "v0.6.0", publishedAt: "2026-07-25T11:00:00.000Z", commit: COMMIT, commitStatus: "resolved" }]);
   assert.equal(calls.length, 2);
 });
+test("GitHub release collector accepts a namespaced tag", async () => {
+  const snapshot = await collectGitHubReleaseSnapshot({
+    repository: "IntelIP/Tabellio",
+    capturedAt: CAPTURED_AT,
+    request: async (path) => path.endsWith("/releases?per_page=100")
+      ? [{ id: 12, tag_name: "releases/v0.6.0", published_at: "2026-07-25T11:00:00.000Z", draft: false }]
+      : { object: { type: "commit", sha: COMMIT } },
+  });
+  assert.equal(snapshot.status, "available");
+  assert.equal(snapshot.releases[0].tagName, "releases/v0.6.0");
+});
 
 test("GitHub release collector preserves a release when tag resolution fails", async () => {
   const snapshot = await collectGitHubReleaseSnapshot({
