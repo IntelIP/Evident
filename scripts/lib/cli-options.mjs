@@ -1,10 +1,22 @@
 export function parseOptionPairs(args, context) {
+  return parseOptions(args, context, new Set());
+}
+
+export function parseOptionPairsWithRepeatable(args, context, repeatableKeys) {
+  return parseOptions(args, context, new Set(repeatableKeys));
+}
+
+function parseOptions(args, context, repeatableKeys) {
   if (args.length % 2 !== 0) throw new Error(`Expected a value after ${args.at(-1) ?? context}.`);
   const values = {};
   for (let index = 0; index < args.length; index += 2) {
     const flag = args[index];
     const key = optionKey(flag);
-    addOption(values, key, flag, args[index + 1]);
+    if (repeatableKeys.has(key)) {
+      values[key] = [...(values[key] ?? []), args[index + 1]];
+    } else {
+      addOption(values, key, flag, args[index + 1]);
+    }
   }
   return values;
 }

@@ -85,6 +85,25 @@ test("GitHub release collector blocks malformed published timestamps", async () 
   const snapshot = await collectGitHubReleaseSnapshot({ repository: "IntelIP/Tabellio", capturedAt: CAPTURED_AT, request: async () => [{ id: 12, tag_name: "v0.6.0", published_at: "not-a-date", draft: false }] });
   assert.equal(snapshot.status, "blocked");
 });
+test("GitHub release collector bounds repeated full pages", async () => {
+  const page = Array.from({ length: 100 }, (_, index) => ({
+    id: index + 1,
+    tag_name: `v1.0.${index}`,
+    published_at: "2026-07-25T11:00:00.000Z",
+    draft: false,
+  }));
+  let calls = 0;
+  const snapshot = await collectGitHubReleaseSnapshot({
+    repository: "IntelIP/Tabellio",
+    capturedAt: CAPTURED_AT,
+    request: async () => {
+      calls += 1;
+      return page;
+    },
+  });
+  assert.equal(snapshot.status, "blocked");
+  assert.equal(calls, 2);
+});
 test("GitHub release snapshot rejects duplicate IDs and tags", () => {
   const release = { id: "12", tagName: "v0.6.0", publishedAt: "2026-07-25T11:00:00.000Z", commit: COMMIT, commitStatus: "resolved" };
   const base = { schemaVersion: "tabellio-github-release-snapshot/v0.1", repository: "IntelIP/Tabellio", capturedAt: CAPTURED_AT, status: "available", reason: null };

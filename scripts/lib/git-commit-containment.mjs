@@ -17,11 +17,24 @@ export async function createGitCommitContainmentResolver({ repo, expectedReposit
 
 async function verifyCommitContainment({ repo, execute }, ancestor, descendant) {
   if (ancestor === descendant) return true;
+  if (!await commitExists({ repo, execute }, ancestor) || !await commitExists({ repo, execute }, descendant)) {
+    return false;
+  }
   try {
     await execute("git", ["-C", repo, "merge-base", "--is-ancestor", ancestor, descendant]);
     return true;
   } catch (error) {
     if (error?.code === 1) return false;
+    throw new Error("Release commit containment could not be verified.");
+  }
+}
+
+async function commitExists({ repo, execute }, commit) {
+  try {
+    await execute("git", ["-C", repo, "cat-file", "-e", `${commit}^{commit}`]);
+    return true;
+  } catch (error) {
+    if (error?.code === 1 || error?.code === 128) return false;
     throw new Error("Release commit containment could not be verified.");
   }
 }

@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { validateDeploymentReceipt } from "./deployment-receipt.mjs";
 import { isJsonDateTime } from "./json-schema-validator.mjs";
 
@@ -44,7 +46,7 @@ function availableResult({ repository, environment, service, project, region, ca
     reason: null,
     receipt: validateDeploymentReceipt({
       schemaVersion: "tabellio-deployment-receipt/v0.1",
-      id: `cloud-run:${resource}`,
+      id: `cloud-run:${createHash("sha256").update(resource).digest("hex").slice(0, 32)}`,
       repository,
       environment,
       commit,

@@ -25,9 +25,10 @@ export async function linkGitHubReleases({ providerSnapshot, releaseSnapshot, co
 
 async function linkChange(change, releases, containsCommit) {
   const eligible = releases.filter((release) => !change.mergedAt || Date.parse(release.publishedAt) >= Date.parse(change.mergedAt));
+  const landedCommit = change.mergeCommit ?? change.headCommit;
   let release = null;
   for (const candidate of eligible) {
-    if (await containsCommit(change.headCommit, candidate.commit)) {
+    if (await containsCommit(landedCommit, candidate.commit)) {
       release = candidate;
       break;
     }
@@ -36,7 +37,7 @@ async function linkChange(change, releases, containsCommit) {
   if (change.releasedAt && change.releasedAt !== release.publishedAt) {
     throw new Error(`Conflicting GitHub release timestamp for delivery change ${change.id}.`);
   }
-  return { ...change, releasedAt: release.publishedAt };
+  return { ...change, releasedAt: release.publishedAt, releaseCommit: release.commit };
 }
 
 function sameCommit(ancestor, descendant) {

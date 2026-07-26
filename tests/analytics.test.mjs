@@ -2482,6 +2482,14 @@ test("analytics semantic and security profiles bind delivery meaning and decoded
     /Delivery traces do not match the committed provider snapshot/,
   );
 
+  const duplicateSources = await runProfile(
+    baseline,
+    "duplicate-sources",
+    "semantic",
+    ["--source", sourcePath, "--source", sourcePath],
+  );
+  assert.match(duplicateSources.summary, /Duplicate provider snapshot repository/);
+
   const fabricatedValidationStatus = structuredClone(baseline);
   fabricatedValidationStatus.repositories.find((repository) => repository.id === "tabellio")
     .deliveryChanges[0].validationStatus = "failed";

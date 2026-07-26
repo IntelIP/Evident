@@ -73,7 +73,9 @@ const DELIVERY_CHANGE_FIELDS = Object.freeze([
   "firstActivityAt",
   "mergedAt",
   "releasedAt",
+  "releaseCommit",
   "headCommit",
+  "mergeCommit",
   "validationStatus",
   "hostedStatus",
 ]);
@@ -1222,6 +1224,10 @@ function validateDeliveryChange(change, capturedAt) {
   return compactErrors([
     ...unexpectedFieldErrors(change, DELIVERY_CHANGE_FIELDS, changeId),
     errorUnless(isSafeProviderText(change.id) && isCommitOid(change.headCommit), "Delivery change identity is invalid."),
+    errorUnless(change.mergeCommit === undefined || change.mergeCommit === null || isCommitOid(change.mergeCommit), `${changeId}: mergeCommit is invalid.`),
+    errorUnless(change.mergeCommit === undefined || change.mergeCommit === null || change.mergedAt !== null, `${changeId}: mergeCommit requires mergedAt.`),
+    errorUnless(change.releaseCommit === undefined || change.releaseCommit === null || isCommitOid(change.releaseCommit), `${changeId}: releaseCommit is invalid.`),
+    errorUnless(change.releaseCommit === undefined || change.releaseCommit === null || change.releasedAt !== null, `${changeId}: releaseCommit requires releasedAt.`),
     errorUnless(isLinkBasis(change.linkBasis), `${changeId}: linkBasis is invalid.`),
     errorUnless(isNullableString(change.linkEvidence), `${changeId}: linkEvidence is invalid.`),
     errorUnless(isLinkEvidence(change), `${changeId}: linkEvidence is required for reconciled links.`),
@@ -1419,7 +1425,9 @@ function providerProjection(change, system) {
     firstActivityAt: change.firstActivityAt,
     mergedAt: change.mergedAt,
     releasedAt: change.releasedAt,
+    releaseCommit: change.releaseCommit,
     headCommit: change.headCommit,
+    mergeCommit: change.mergeCommit,
   };
 }
 

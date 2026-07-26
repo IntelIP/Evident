@@ -7,6 +7,7 @@ const STATE_GROUPS = new Set(["backlog", "unstarted", "started", "completed", "c
 const SCHEMA_VERSION = "tabellio-plane-work-items/v0.1";
 const MAX_PAGES = 100;
 const MAX_ITEMS = 10_000;
+const STATE_REQUEST_CONCURRENCY = 8;
 const SCHEMA = JSON.parse(readFileSync(
   new URL("../../schemas/plane-work-item-snapshot.v0.1.schema.json", import.meta.url),
   "utf8",
@@ -18,16 +19,29 @@ export async function collectPlaneWorkItemSnapshot({ workspace, capturedAt, requ
     const items = await collectAll(`/api/v1/workspaces/${workspace}/work-items/?per_page=100&fields=id,project,state,sequence_id,created_at,updated_at,target_date`, request);
     const normalizedProjects = projects.map(normalizeProject);
     if (normalizedProjects.some((project) => project === null)) throw new Error("Plane project response has unsupported fields.");
-    const states = (await Promise.all(normalizedProjects.map(async (project) =>
+    const states = (await mapWithConcurrency(normalizedProjects, STATE_REQUEST_CONCURRENCY, async (project) =>
       (await collectAll(`/api/v1/workspaces/${workspace}/projects/${project.id}/states/?per_page=100`, request))
         .map((state) => normalizeState(state, project.id))
-    ))).flat();
+    )).flat();
     if (states.some((state) => state === null)) throw new Error("Plane state response has unsupported fields.");
     const workItems = items.map(normalizeItem);
     if (workItems.some((item) => item === null)) throw new Error("Plane work-item response has unsupported fields.");
     return validatePlaneWorkItemSnapshot({ schemaVersion: SCHEMA_VERSION, workspace, capturedAt, status: "available", reason: null,
       projects: normalizedProjects, states, workItems });
   } catch { return validatePlaneWorkItemSnapshot({ schemaVersion: SCHEMA_VERSION, workspace, capturedAt, status: "blocked", reason: "Plane work-item collection unavailable.", projects: [], states: [], workItems: [] }); }
+}
+async function mapWithConcurrency(values, concurrency, operation) {
+  const output = new Array(values.length);
+  let nextIndex = 0;
+  async function worker() {
+    while (nextIndex < values.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      output[index] = await operation(values[index]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, values.length) }, worker));
+  return output;
 }
 export function validatePlaneWorkItemSnapshot(snapshot) {
   const errors = validateJsonSchema(snapshot, SCHEMA);

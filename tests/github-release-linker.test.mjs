@@ -47,22 +47,44 @@ test("GitHub release linker accepts the earliest release commit containing the c
     containsCommit: async (ancestor, descendant) => ancestor === COMMIT && descendant === releaseCommit,
   });
   assert.equal(linked.deliveryChanges[0].releasedAt, releaseSnapshot.releases[0].publishedAt);
+  assert.equal(linked.deliveryChanges[0].releaseCommit, releaseCommit);
+});
+test("GitHub release linker resolves squash releases through the landed merge commit", async () => {
+  const mergeCommit = "c".repeat(40);
+  const linked = await linkGitHubReleases({
+    providerSnapshot: {
+      ...providerSnapshot,
+      deliveryChanges: [{ ...providerSnapshot.deliveryChanges[0], mergeCommit }],
+    },
+    releaseSnapshot: {
+      ...releaseSnapshot,
+      releases: [{ ...releaseSnapshot.releases[0], commit: mergeCommit }],
+    },
+    containsCommit: async (ancestor, descendant) => ancestor === mergeCommit && descendant === mergeCommit,
+  });
+  assert.equal(linked.deliveryChanges[0].releasedAt, releaseSnapshot.releases[0].publishedAt);
 });
 
 test("Git containment resolver binds repository identity and fail-closes provider errors", async () => {
   const calls = [];
+  const failures = new Map([
+    ["cat-file:missing-commit^{commit}", Object.assign(new Error("unknown revision"), { code: 128 })],
+    ["merge-base:not-contained", Object.assign(new Error("not ancestor"), { code: 1 })],
+    ["merge-base:provider-error", Object.assign(new Error("provider failure"), { code: 128 })],
+  ]);
   const execute = async (_command, args) => {
     calls.push(args);
-    if (args.includes("get-url")) return { stdout: "https://github.com/IntelIP/Tabellio.git\n" };
-    if (args.at(-1) === "not-contained") throw Object.assign(new Error("not ancestor"), { code: 1 });
-    if (args.at(-1) === "provider-error") throw Object.assign(new Error("provider failure"), { code: 128 });
-    return { stdout: "" };
+    const failure = failures.get(`${args[2]}:${args.at(-1)}`);
+    if (failure) throw failure;
+    return { stdout: "https://github.com/IntelIP/Tabellio.git\n" };
   };
   const containsCommit = await createGitCommitContainmentResolver({ repo: "/safe/repo", expectedRepository: "IntelIP/Tabellio", execute });
   assert.equal(await containsCommit(COMMIT, COMMIT), true);
   assert.equal(await containsCommit(COMMIT, "contained"), true);
   assert.equal(await containsCommit(COMMIT, "not-contained"), false);
+  assert.equal(await containsCommit(COMMIT, "missing-commit"), false);
   await assert.rejects(() => containsCommit(COMMIT, "provider-error"), /could not be verified/);
+  assert(calls.some((args) => args.includes("cat-file")));
   assert(calls.some((args) => args.includes("--is-ancestor")));
   await assert.rejects(() => createGitCommitContainmentResolver({ repo: "/safe/repo", expectedRepository: "IntelIP/Other", execute }), /identity mismatch/);
 });

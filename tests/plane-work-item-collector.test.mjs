@@ -6,3 +6,29 @@ test("Plane snapshot rejects duplicate work items",()=>{const item={id:i,project
 test("Plane snapshot rejects duplicate project identifiers and impossible item timestamps",()=>{const base={schemaVersion:"tabellio-plane-work-items/v0.1",workspace:"intelligent-intellectual-property",capturedAt:at,status:"available",reason:null,projects:[{id:p,identifier:"INTB"}],states:[{id:s,projectId:p,group:"started"}],workItems:[]};assert.throws(()=>validatePlaneWorkItemSnapshot({...base,projects:[...base.projects,{id:"44444444-4444-4444-4444-444444444444",identifier:"INTB"}]}),/project identifiers must be unique/);const item={id:i,projectId:p,stateId:s,sequenceNumber:260,createdAt:"2026-07-25T11:00:00.000Z",updatedAt:"2026-07-25T10:00:00.000Z",targetDate:null};assert.throws(()=>validatePlaneWorkItemSnapshot({...base,workItems:[item]}),/createdAt <= updatedAt <= capturedAt/);});
 test("Plane collector blocks incomplete pagination metadata",async()=>{const x=await collectPlaneWorkItemSnapshot({workspace:"intelligent-intellectual-property",capturedAt:at,request:async()=>({results:[],next_page_results:true,next_cursor:null})});assert.equal(x.status,"blocked");});
 test("Plane collector blocks repeated pagination cursors",async()=>{const x=await collectPlaneWorkItemSnapshot({workspace:"intelligent-intellectual-property",capturedAt:at,request:async()=>({results:[],next_page_results:true,next_cursor:"repeat"})});assert.equal(x.status,"blocked");});
+test("Plane collector bounds concurrent project-state requests", async () => {
+  const projects = Array.from({ length: 20 }, (_, index) => ({
+    id: `${String(index + 10).padStart(8, "0")}-1111-1111-1111-111111111111`,
+    identifier: `P${index}`,
+  }));
+  let active = 0;
+  let maximum = 0;
+  const snapshot = await collectPlaneWorkItemSnapshot({
+    workspace: "intelligent-intellectual-property",
+    capturedAt: at,
+    request: async (path) => {
+      if (path.includes("/states/")) {
+        active += 1;
+        maximum = Math.max(maximum, active);
+        await new Promise((resolve) => setTimeout(resolve, 2));
+        active -= 1;
+        return { results: [], next_cursor: null };
+      }
+      if (path.includes("/projects/")) return { results: projects, next_cursor: null };
+      return { results: [], next_cursor: null };
+    },
+  });
+  assert.equal(snapshot.status, "available");
+  assert(maximum > 1);
+  assert(maximum <= 8);
+});

@@ -5,7 +5,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 
-import { assertAllowedOptions, parseOptionPairs, reportCliError, requireOptions } from "./lib/cli-options.mjs";
+import { assertAllowedOptions, parseOptionPairsWithRepeatable, reportCliError, requireOptions } from "./lib/cli-options.mjs";
 import {
   renderAnalyticsReport,
   validateAnalyticsDataset,
@@ -30,7 +30,7 @@ const PROFILE_VALIDATORS = Object.freeze({
 });
 
 try {
-  const options = parseOptionPairs(process.argv.slice(2), "analytics validator");
+  const options = parseOptionPairsWithRepeatable(process.argv.slice(2), "analytics validator", ["source"]);
   assertAllowedOptions(options, ["profile", "validatorId", "dataset", "report", "source", "expectedDigest", "out", "exitMode"]);
   requireOptions(options, ["profile", "validatorId", "dataset", "report", "out"], "analytics validator");
   if (!PROFILES.includes(options.profile)) throw new Error(`Unsupported analytics validator profile: ${options.profile}.`);
@@ -40,10 +40,10 @@ try {
 
   const datasetPath = resolve(options.dataset);
   const reportPath = resolve(options.report);
-  const sourcePath = options.source ? resolve(options.source) : null;
+  const sourcePaths = (options.source ?? []).map((path) => resolve(path));
   await assertOutputBoundary({
     outputs: [options.out],
-    protectedInputs: [datasetPath, reportPath, sourcePath].filter(Boolean),
+    protectedInputs: [datasetPath, reportPath, ...sourcePaths],
     duplicatePathMessage: "Validator output path is invalid.",
     symbolicLinkMessage: "Validator output must not be a symbolic link.",
     outputAliasMessage: "Validator output path is invalid.",
@@ -51,13 +51,11 @@ try {
   });
   const datasetInput = await readInput(datasetPath, "Dataset");
   const reportInput = await readInput(reportPath, "Report");
-  const sourceInput = sourcePath
-    ? await readInput(sourcePath, "Source")
-    : { bytes: null, raw: null, error: null };
-  const readErrors = compact([datasetInput.error, reportInput.error, sourceInput.error]);
+  const sourceInputs = await Promise.all(sourcePaths.map((path) => readInput(path, "Source")));
+  const readErrors = compact([datasetInput.error, reportInput.error, ...sourceInputs.map((input) => input.error)]);
   const inputErrors = [...readErrors];
   let dataset = null;
-  let source = null;
+  const sources = [];
   if (datasetInput.raw !== null) {
     try {
       dataset = JSON.parse(datasetInput.raw);
@@ -72,9 +70,10 @@ try {
       inputErrors.push("Dataset integrity digest does not match the approved baseline digest.");
     }
   }
-  if (sourceInput.raw !== null) {
+  for (const sourceInput of sourceInputs) {
+    if (sourceInput.raw === null) continue;
     try {
-      source = JSON.parse(sourceInput.raw);
+      sources.push(JSON.parse(sourceInput.raw));
     } catch {
       inputErrors.push("Source JSON is invalid.");
     }
@@ -82,8 +81,12 @@ try {
   if (dataset !== null) {
     inputErrors.push(...captureError(() => validateAnalyticsDataset(dataset)));
   }
-  if (source !== null) {
-    inputErrors.push(...validateProviderSnapshot(source, "IntelIP/Tabellio", dataset?.observedAt));
+  const sourceRepositories = new Set();
+  for (const source of sources) {
+    const repository = typeof source?.repository === "string" ? source.repository.toLowerCase() : "";
+    if (sourceRepositories.has(repository)) inputErrors.push(`Duplicate provider snapshot repository: ${source?.repository ?? "unknown"}.`);
+    sourceRepositories.add(repository);
+    inputErrors.push(...validateProviderSnapshot(source, source?.repository, dataset?.observedAt));
   }
   const startedAt = performance.now();
   const result = inputErrors.length > 0
@@ -92,8 +95,8 @@ try {
       dataset,
       datasetRaw: datasetInput.raw,
       reportRaw: reportInput.raw,
-      source,
-      sourceRaw: sourceInput.raw,
+      sources,
+      sourceRaws: sourceInputs.map((input) => input.raw).filter((raw) => raw !== null),
     });
   const durationMs = performance.now() - startedAt;
   const evidence = {
@@ -108,7 +111,7 @@ try {
     artifacts: [
       artifactFromInput("analytics-dataset", datasetInput.bytes, "application/json"),
       artifactFromInput("analytics-report", reportInput.bytes, "text/markdown"),
-      artifactFromInput("analytics-source", sourceInput.bytes, "application/json"),
+      ...sourceInputs.map((input, index) => artifactFromInput(index === 0 ? "analytics-source" : `analytics-source-${index + 1}`, input.bytes, "application/json")),
     ].filter(Boolean),
   };
   const out = resolve(options.out);
@@ -173,7 +176,7 @@ function validateSchemaProfile({ dataset }) {
   ]);
 }
 
-function validateSemanticProfile({ dataset, reportRaw, source }) {
+function validateSemanticProfile({ dataset, reportRaw, sources }) {
   const datasetErrors = captureError(() => validateAnalyticsDataset(dataset));
   const repositories = Array.isArray(dataset?.repositories) ? dataset.repositories : [];
   const traces = repositories.flatMap((repository) =>
@@ -193,7 +196,7 @@ function validateSemanticProfile({ dataset, reportRaw, source }) {
     .sort();
   const linkedTraces = traces.filter(hasLinkedTrace);
   const deliveryMetricErrors = repositories.flatMap(validateDeliveryMetricConsistency);
-  const providerEvidenceErrors = validateProviderEvidence(dataset, source);
+  const providerEvidenceErrors = validateProviderEvidence(dataset, sources);
   const errors = compact([
     ...datasetErrors,
     ...deliveryMetricErrors,
@@ -242,13 +245,13 @@ function validateOperationalProfile({ dataset }) {
   ]);
 }
 
-function validateSecurityProfile({ dataset, datasetRaw, reportRaw, source, sourceRaw }) {
+function validateSecurityProfile({ dataset, datasetRaw, reportRaw, sources, sourceRaws }) {
   const payload = [
     datasetRaw,
     reportRaw,
-    sourceRaw,
+    ...sourceRaws,
     JSON.stringify(dataset),
-    JSON.stringify(source),
+    JSON.stringify(sources),
   ].filter(Boolean).join("\n");
   const forbidden = [
     ["/Users/", "Local home path leaked."],
@@ -263,7 +266,7 @@ function validateSecurityProfile({ dataset, datasetRaw, reportRaw, source, sourc
   const errors = forbidden.flatMap(([needle, message]) =>
     typeof needle === "string" ? (payload.includes(needle) ? [message] : []) : (needle.test(payload) ? [message] : [])
   );
-  errors.push(...validateOptionalProviderSnapshot(dataset, source));
+  errors.push(...validateOptionalProviderSnapshots(dataset, sources));
   if (containsLocalFilesystemPath(payload)) errors.push("Local filesystem path leaked.");
   return result("Portable analytics artifacts contain no local paths, transcript bodies, or credential-shaped values.", errors, [
     metric("analytics_privacy_pass", errors.length === 0 ? 1 : 0, "boolean"),
@@ -304,50 +307,37 @@ function hasLinkedTrace(change) {
     && Number.isInteger(change.pullRequestNumber);
 }
 
-function validateProviderEvidence(dataset, snapshot) {
-  const repository = findTabellioRepository(dataset);
-  if (!repository) {
-    return ["Committed Tabellio provider snapshot is required for semantic validation."];
-  }
-  if (!isRecord(snapshot)) {
-    return ["Committed Tabellio provider snapshot is required for semantic validation."];
-  }
-  const expectedChanges = providerBoundChanges(snapshot.deliveryChanges);
-  const actualChanges = providerBoundChanges(repository.deliveryChanges);
-  return compact([
-    ...validateProviderSnapshot(snapshot, "IntelIP/Tabellio", dataset.observedAt),
-    ...validateUnboundProviderEvidence(dataset),
-    errorUnless(
-      isTabellioProviderSnapshot(snapshot),
-      "Provider snapshot repository does not match IntelIP/Tabellio.",
-    ),
-    errorUnless(
-      JSON.stringify(actualChanges) === JSON.stringify(expectedChanges),
-      "Delivery traces do not match the committed provider snapshot.",
-    ),
-    ...["plane", "github", "github-actions"].flatMap((system) =>
-      validateProviderSourceBinding(repository, snapshot, system)
-    ),
-  ]);
+function validateProviderEvidence(dataset, snapshots) {
+  if (!Array.isArray(dataset?.repositories)) return ["Analytics repositories are unavailable for provider binding."];
+  const byRepository = new Map(snapshots.map((snapshot) => [snapshot.repository.toLowerCase(), snapshot]));
+  const datasetRepositories = new Set(dataset.repositories.map((repository) => repository.canonicalRepositoryId.toLowerCase()));
+  const unknownSnapshots = snapshots
+    .filter((snapshot) => !datasetRepositories.has(snapshot.repository.toLowerCase()))
+    .map((snapshot) => `${snapshot.repository}: provider snapshot has no matching baseline repository.`);
+  const bindingErrors = dataset.repositories.flatMap((repository) => {
+    const snapshot = byRepository.get(repository.canonicalRepositoryId.toLowerCase());
+    if (!snapshot) {
+      return hasUnboundProviderEvidence(repository)
+        ? [`${repository.canonicalRepositoryId}: provider evidence lacks a decoded source snapshot.`]
+        : [];
+    }
+    const expectedChanges = providerBoundChanges(snapshot.deliveryChanges);
+    const actualChanges = providerBoundChanges(repository.deliveryChanges);
+    return compact([
+      ...validateProviderSnapshot(snapshot, repository.canonicalRepositoryId, dataset.observedAt),
+      errorUnless(JSON.stringify(actualChanges) === JSON.stringify(expectedChanges), `Delivery traces do not match the committed provider snapshot for ${repository.canonicalRepositoryId}.`),
+      ...["plane", "github", "github-actions"].flatMap((system) =>
+        validateProviderSourceBinding(repository, snapshot, system)
+      ),
+    ]);
+  });
+  return [...unknownSnapshots, ...bindingErrors];
 }
 
-function validateOptionalProviderSnapshot(dataset, snapshot) {
-  if (snapshot === null) return [];
-  return validateProviderSnapshot(snapshot, "IntelIP/Tabellio", dataset?.observedAt);
-}
-
-function validateUnboundProviderEvidence(dataset) {
-  if (!Array.isArray(dataset?.repositories)) return [];
-  return dataset.repositories
-    .filter((repository) => !isTabellioRepository(repository))
-    .flatMap(unboundProviderEvidenceErrors);
-}
-
-function unboundProviderEvidenceErrors(repository) {
-  if (!isRecord(repository)) return [];
-  return hasUnboundProviderEvidence(repository)
-    ? [`${repository.canonicalRepositoryId}: provider evidence lacks a decoded source snapshot.`]
-    : [];
+function validateOptionalProviderSnapshots(dataset, snapshots) {
+  return snapshots.flatMap((snapshot) =>
+    validateProviderSnapshot(snapshot, snapshot?.repository, dataset?.observedAt)
+  );
 }
 
 function hasUnboundProviderEvidence(repository) {
@@ -370,22 +360,6 @@ function hasDeliveryRows(deliveryChanges) {
   return Array.isArray(deliveryChanges) && deliveryChanges.length > 0;
 }
 
-function findTabellioRepository(dataset) {
-  if (!Array.isArray(dataset?.repositories)) return null;
-  return dataset.repositories.find(isTabellioRepository) ?? null;
-}
-
-function isTabellioRepository(repository) {
-  if (!isRecord(repository)) return false;
-  if (typeof repository.canonicalRepositoryId !== "string") return false;
-  return repository.canonicalRepositoryId.toLowerCase() === "intelip/tabellio";
-}
-
-function isTabellioProviderSnapshot(snapshot) {
-  return typeof snapshot.repository === "string"
-    && snapshot.repository.toLowerCase() === "intelip/tabellio";
-}
-
 function providerBoundChanges(changes) {
   if (!Array.isArray(changes)) return [];
   return changes.map(providerBoundChange).sort(compareChangeIds);
@@ -403,7 +377,9 @@ function providerBoundChange(change) {
     firstActivityAt: entry.firstActivityAt,
     mergedAt: entry.mergedAt,
     releasedAt: entry.releasedAt,
+    releaseCommit: entry.releaseCommit,
     headCommit: entry.headCommit,
+    mergeCommit: entry.mergeCommit,
     validationStatus: entry.validationStatus,
     hostedStatus: entry.hostedStatus,
   };
@@ -479,7 +455,9 @@ function providerProjection(change, system) {
     firstActivityAt: change.firstActivityAt,
     mergedAt: change.mergedAt,
     releasedAt: change.releasedAt,
+    releaseCommit: change.releaseCommit,
     headCommit: change.headCommit,
+    mergeCommit: change.mergeCommit,
   };
 }
 

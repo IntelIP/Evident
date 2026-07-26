@@ -20,6 +20,23 @@ test("Cloud Run collector rejects a revision from another repository", async () 
   const result = await cloudRunReceipt(cloudRunPayload({ repository: "IntelIP/Other" }));
   assert.equal(result.status, "blocked"); assert.equal(result.receipt, null);
 });
+test("Cloud Run collector keeps long resource names inside the receipt ID contract", async () => {
+  const service = `a${"b".repeat(61)}c`;
+  const project = `p${"1".repeat(62)}`;
+  const revisionName = `${"r".repeat(63)}`;
+  const result = await collectCloudRunDeploymentReceipt({
+    repository: "IntelIP/Condere",
+    environment: "production",
+    service,
+    project,
+    region: "us-east1",
+    capturedAt: at,
+    request: async () => cloudRunPayload({ revisionName }),
+  });
+  assert.equal(result.status, "available");
+  assert(result.receipt.id.length <= 128);
+  assert(result.receipt.externalId.length > result.receipt.id.length);
+});
 test("Vercel collector proves a ready production deployment with exact commit", async () => {
   const result = await collectVercelDeploymentReceipt({ repository: "IntelIP/vaticor", environment: "production", projectId: "prj_abc", capturedAt: at, request: async () => ({ deployments: [{ uid: "dpl_123", target: "production", readyState: "READY", readyAt: Date.parse("2026-07-25T11:00:00.000Z"), meta: { githubCommitSha: commit, githubCommitOrg: "IntelIP", githubCommitRepo: "vaticor" } }] }) });
   assert.equal(result.status, "available"); assert.equal(result.receipt.provider, "vercel"); assert.equal(result.receipt.deployedAt, "2026-07-25T11:00:00.000Z");
@@ -32,10 +49,10 @@ test("Vercel collector rejects a deployment from another repository", async () =
   const result = await collectVercelDeploymentReceipt({ repository: "IntelIP/vaticor", environment: "production", projectId: "prj_abc", capturedAt: at, request: async () => ({ deployments: [{ uid: "dpl_123", target: "production", readyState: "READY", readyAt: Date.parse("2026-07-25T11:00:00.000Z"), meta: { githubCommitSha: commit, githubCommitOrg: "Other", githubCommitRepo: "vaticor" } }] }) });
   assert.equal(result.status, "blocked"); assert.equal(result.receipt, null);
 });
-function cloudRunPayload({ commitSha = commit, repository = "IntelIP/Condere", percent = 100 } = {}) {
+function cloudRunPayload({ commitSha = commit, repository = "IntelIP/Condere", percent = 100, revisionName = "agentos-00012" } = {}) {
   return {
-    service: { status: { traffic: [{ percent, revisionName: "agentos-00012" }] } },
-    revision: { metadata: { name: "agentos-00012", creationTimestamp: "2026-07-25T11:00:00.000Z", labels: { "commit-sha": commitSha }, annotations: { "tabellio.dev/source-repository": repository } } },
+    service: { status: { traffic: [{ percent, revisionName }] } },
+    revision: { metadata: { name: revisionName, creationTimestamp: "2026-07-25T11:00:00.000Z", labels: { "commit-sha": commitSha }, annotations: { "tabellio.dev/source-repository": repository } } },
   };
 }
 function cloudRunReceipt(payload) {

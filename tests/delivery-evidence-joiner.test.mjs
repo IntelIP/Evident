@@ -21,3 +21,63 @@ test("delivery join preserves terminal Buildkite states",()=>{for(const state of
 test("delivery join requires commit-bound release evidence",()=>{const providerSnapshot=provider();providerSnapshot.deliveryChanges[0].releasedAt=fixture.at;const releaseSnapshot=releases();releaseSnapshot.releases[0].commit="b".repeat(40);const x=joinDeliveryEvidence({providerSnapshot,planeSnapshot:plane(),buildkiteSnapshots:[buildkite()],releaseSnapshot});assert.equal(x.deliveryRecords[0].release.status,"unreleased");});
 test("delivery snapshot rejects future source observations",()=>{const x=joinDeliveryEvidence({providerSnapshot:provider(),planeSnapshot:plane(),buildkiteSnapshots:[buildkite()],releaseSnapshot:releases()});x.sources.plane.observations[0].version="2026-07-25T12:00:00.001Z";assert.throws(()=>validateDeliveryEvidenceSnapshot(x),/cannot be newer/);});
 test("delivery join requires matching immutable Plane creation time",()=>{const planeSnapshot=plane();planeSnapshot.workItems[0].createdAt="2026-07-25T11:59:59.000Z";const x=joinDeliveryEvidence({providerSnapshot:provider(),planeSnapshot,buildkiteSnapshots:[buildkite()],releaseSnapshot:releases()});assert.equal(x.deliveryRecords[0].plane.status,"unlinked");});
+test("delivery join follows landed squash commits for release and deployment evidence", () => {
+  const mergeCommit = "b".repeat(40);
+  const providerSnapshot = provider();
+  providerSnapshot.deliveryChanges[0].mergeCommit = mergeCommit;
+  const releaseSnapshot = releases();
+  releaseSnapshot.releases[0].commit = mergeCommit;
+  const receipt = {
+    schemaVersion: "tabellio-deployment-receipt/v0.1",
+    id: "deploy-squash",
+    repository: "IntelIP/Tabellio",
+    environment: "production",
+    commit: mergeCommit,
+    status: "passed",
+    deployedAt: fixture.at,
+    observedAt: fixture.at,
+    provider: "cloud-run",
+    externalId: "revision-squash",
+  };
+  const snapshot = joinDeliveryEvidence({
+    providerSnapshot,
+    planeSnapshot: plane(),
+    buildkiteSnapshots: [buildkite()],
+    releaseSnapshot,
+    deploymentReceipts: [receipt],
+    deploymentEnvironment: "production",
+  });
+  assert.equal(snapshot.deliveryRecords[0].release.status, "shipped");
+  assert.equal(snapshot.deliveryRecords[0].deployment.status, "passed");
+});
+test("delivery join preserves a release association proven on a descendant commit", () => {
+  const providerSnapshot = provider();
+  providerSnapshot.deliveryChanges[0].mergeCommit = "b".repeat(40);
+  providerSnapshot.deliveryChanges[0].releaseCommit = "c".repeat(40);
+  providerSnapshot.deliveryChanges[0].releasedAt = fixture.at;
+  const releaseSnapshot = releases();
+  releaseSnapshot.releases[0].commit = "c".repeat(40);
+  const snapshot = joinDeliveryEvidence({ providerSnapshot, planeSnapshot: plane(), buildkiteSnapshots: [buildkite()], releaseSnapshot });
+  assert.equal(snapshot.deliveryRecords[0].release.status, "shipped");
+});
+test("delivery snapshot binds shipped claims to the exact release observation", () => {
+  const snapshot = joinDeliveryEvidence({ providerSnapshot: provider(), planeSnapshot: plane(), buildkiteSnapshots: [buildkite()], releaseSnapshot: releases() });
+  snapshot.deliveryRecords[0].release.tagName = "v9.9.9";
+  assert.throws(() => validateDeliveryEvidenceSnapshot(snapshot), /not bound to the GitHub Release observation/);
+});
+test("delivery snapshot rejects future event evidence", () => {
+  for (const mutate of [
+    (snapshot) => { snapshot.deliveryRecords[0].plane.updatedAt = "2026-07-25T12:00:00.001Z"; },
+    (snapshot) => { snapshot.deliveryRecords[0].ci.finishedAt = "2026-07-25T12:00:00.001Z"; },
+    (snapshot) => { snapshot.deliveryRecords[0].release.publishedAt = "2026-07-25T12:00:00.001Z"; },
+  ]) {
+    const snapshot = joinDeliveryEvidence({ providerSnapshot: provider(), planeSnapshot: plane(), buildkiteSnapshots: [buildkite()], releaseSnapshot: releases() });
+    mutate(snapshot);
+    assert.throws(() => validateDeliveryEvidenceSnapshot(snapshot), /cannot be newer|not bound/);
+  }
+});
+test("delivery snapshot rejects duplicate WIP project rows", () => {
+  const snapshot = joinDeliveryEvidence({ providerSnapshot: provider(), planeSnapshot: plane(), buildkiteSnapshots: [buildkite()], releaseSnapshot: releases() });
+  snapshot.wipByProject.push(structuredClone(snapshot.wipByProject[0]));
+  assert.throws(() => validateDeliveryEvidenceSnapshot(snapshot), /WIP projects must be unique/);
+});
