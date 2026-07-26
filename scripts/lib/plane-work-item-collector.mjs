@@ -33,12 +33,14 @@ export function validatePlaneWorkItemSnapshot(snapshot) {
   if ((snapshot.status === "available") !== (snapshot.reason === null)) throw new Error("Plane snapshot status and reason conflict.");
   if (snapshot.status === "blocked" && (snapshot.projects.length || snapshot.states.length || snapshot.workItems.length)) throw new Error("Blocked Plane snapshot cannot contain evidence.");
   const projects = new Set(snapshot.projects.map((project) => project.id));
+  const projectIdentifiers = new Set(snapshot.projects.map((project) => project.identifier));
   const states = new Set(snapshot.states.map((state) => state.id));
   const items = new Set(snapshot.workItems.map((item) => item.id));
   const itemKeys = new Set(snapshot.workItems.map((item) => `${item.projectId}:${item.sequenceNumber}`));
-  if (projects.size !== snapshot.projects.length || states.size !== snapshot.states.length || items.size !== snapshot.workItems.length || itemKeys.size !== snapshot.workItems.length) throw new Error("Plane snapshot IDs must be unique, including delivery keys.");
+  if (projects.size !== snapshot.projects.length || projectIdentifiers.size !== snapshot.projects.length || states.size !== snapshot.states.length || items.size !== snapshot.workItems.length || itemKeys.size !== snapshot.workItems.length) throw new Error("Plane snapshot IDs and project identifiers must be unique, including delivery keys.");
   const stateById = new Map(snapshot.states.map((state) => [state.id, state]));
   if (snapshot.states.some((state) => !projects.has(state.projectId)) || snapshot.workItems.some((item) => !projects.has(item.projectId) || !states.has(item.stateId) || stateById.get(item.stateId).projectId !== item.projectId)) throw new Error("Plane snapshot contains dangling or cross-project state references.");
+  if (snapshot.workItems.some((item) => Date.parse(item.createdAt) > Date.parse(item.updatedAt) || Date.parse(item.updatedAt) > Date.parse(snapshot.capturedAt))) throw new Error("Plane work-item timestamps must satisfy createdAt <= updatedAt <= capturedAt.");
   return snapshot;
 }
 async function collectAll(path, request) { const output=[]; let next=path; while(next){const page=await request(next); if(!Array.isArray(page?.results)) throw new Error("Unexpected Plane response."); output.push(...page.results); if(page.next_page_results === true && (typeof page.next_cursor !== "string" || page.next_cursor.length === 0)) throw new Error("Plane pagination declared another page without a cursor."); next=page.next_page_results === true ? `${path}${path.includes("?")?"&":"?"}cursor=${encodeURIComponent(page.next_cursor)}` : null;} return output; }

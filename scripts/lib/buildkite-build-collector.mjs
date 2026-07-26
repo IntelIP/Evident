@@ -54,11 +54,32 @@ async function boundedMap(values, concurrency, mapper) {
 async function collectBuildDetails({ build, organization, pipeline, request }) {
   const normalized = normalizeBuild(build);
   const prefix = `/v2/organizations/${organization}/pipelines/${pipeline}/builds/${normalized.number}`;
-  const jobs = await request(`${prefix}/jobs?per_page=100`);
+  const jobs = await collectJobDetails(`${prefix}/jobs?per_page=100`, request);
   const artifacts = await request(`${prefix}/artifacts?per_page=100`);
-  const jobItems = Array.isArray(jobs) ? jobs : jobs?.items;
-  if (!Array.isArray(jobItems) || !Array.isArray(artifacts)) throw new Error("Unexpected Buildkite detail response.");
-  return { ...normalized, jobCount: jobItems.length, artifactCount: artifacts.length };
+  if (!Array.isArray(artifacts) || artifacts.length >= 100) throw new Error("Buildkite artifact details are unavailable or potentially truncated.");
+  return { ...normalized, jobCount: jobs.length, artifactCount: artifacts.length };
+}
+async function collectJobDetails(path, request) {
+  const items = [];
+  let next = path;
+  while (next) {
+    const response = await request(next);
+    const { page, nextPath } = normalizeJobPage(response);
+    items.push(...page);
+    if (items.length > 1000) throw new Error("Buildkite job detail limit exceeded.");
+    next = nextPath;
+  }
+  return items;
+}
+function normalizeJobPage(response) {
+  if (Array.isArray(response)) {
+    if (response.length >= 100) throw new Error("Buildkite job details may be truncated.");
+    return { page: response, nextPath: null };
+  }
+  if (!Array.isArray(response?.items)) throw new Error("Unexpected Buildkite job response.");
+  const nextPath = response.links?.next ?? null;
+  if (nextPath !== null && typeof nextPath !== "string") throw new Error("Unexpected Buildkite job pagination.");
+  return { page: response.items, nextPath };
 }
 export function validateBuildkiteBuildSnapshot(snapshot) {
   const errors = validateJsonSchema(snapshot, SCHEMA);
@@ -68,8 +89,8 @@ export function validateBuildkiteBuildSnapshot(snapshot) {
   const buildNumbers = new Set(snapshot.builds.map((build) => build.number));
   if (buildNumbers.size !== snapshot.builds.length) throw new Error("Buildkite snapshot build numbers must be unique.");
   for (const build of snapshot.builds) {
-    if (Date.parse(build.createdAt) > Date.parse(snapshot.capturedAt) || (build.finishedAt && Date.parse(build.finishedAt) > Date.parse(snapshot.capturedAt))) {
-      throw new Error("Buildkite build timestamps cannot be newer than capturedAt.");
+    if (Date.parse(build.createdAt) > Date.parse(snapshot.capturedAt) || (build.finishedAt && (Date.parse(build.finishedAt) < Date.parse(build.createdAt) || Date.parse(build.finishedAt) > Date.parse(snapshot.capturedAt)))) {
+      throw new Error("Buildkite build timestamps must satisfy createdAt <= finishedAt <= capturedAt.");
     }
   }
   return snapshot;

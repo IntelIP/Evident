@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile } from "node:fs/promises";
+import { link, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -27,6 +27,20 @@ test("delivery evidence CLI refuses to overwrite an input snapshot", async () =>
   const provider = join(root, "provider.json");
   const script = fileURLToPath(new URL("../scripts/tabellio-delivery-evidence.mjs", import.meta.url));
   const result = spawnSync(process.execPath, [script, "join", "--provider", provider, "--plane", join(root, "plane.json"), "--buildkite", join(root, "buildkite.json"), "--releases", join(root, "releases.json"), "--out", provider], { encoding: "utf8" });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /must not alias an input snapshot/);
+});
+
+test("GitHub release linker CLI refuses filesystem aliases of input snapshots", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tabellio-release-linker-"));
+  const provider = join(root, "provider.json");
+  const releases = join(root, "releases.json");
+  const out = join(root, "report.json");
+  await writeFile(provider, "{}");
+  await writeFile(releases, "{}");
+  await link(provider, out);
+  const script = fileURLToPath(new URL("../scripts/tabellio-analytics-releases.mjs", import.meta.url));
+  const result = spawnSync(process.execPath, [script, "link", "--provider-snapshot", provider, "--github-release-snapshot", releases, "--out", out], { encoding: "utf8" });
   assert.equal(result.status, 1);
   assert.match(result.stderr, /must not alias an input snapshot/);
 });

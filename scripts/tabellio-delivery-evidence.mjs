@@ -18,8 +18,8 @@ async function main() {
     protectedRootMessage: "--out must not be inside a protected input root.",
   });
   const [providerSnapshot, planeSnapshot, buildkiteSnapshot, releaseSnapshot, deploymentInput] = await Promise.all([options.provider, options.plane, options.buildkite, options.releases, options.deployments].filter(Boolean).map(readJson));
-  const deploymentReceipts = deploymentInput ? extractDeploymentReceipts(deploymentInput) : [];
-  const snapshot = joinDeliveryEvidence({ providerSnapshot, planeSnapshot, buildkiteSnapshots: [buildkiteSnapshot], releaseSnapshot, deploymentReceipts });
+  const deployment = deploymentInput ? extractDeploymentReceipts(deploymentInput) : { receipts: [], blockedReason: null };
+  const snapshot = joinDeliveryEvidence({ providerSnapshot, planeSnapshot, buildkiteSnapshots: [buildkiteSnapshot], releaseSnapshot, deploymentReceipts: deployment.receipts, deploymentBlockedReason: deployment.blockedReason });
   const out = resolve(options.out); await writeFile(out, `${JSON.stringify(snapshot, null, 2)}\n`);
   console.log(JSON.stringify({ ok: true, repository: snapshot.repository, deliveryRecordCount: snapshot.deliveryRecords.length, out }, null, 2));
 }

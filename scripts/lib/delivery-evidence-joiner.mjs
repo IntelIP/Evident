@@ -13,7 +13,7 @@ const SCHEMA = JSON.parse(readFileSync(new URL("../../schemas/delivery-evidence-
 const DELIVERY_RECORD_ID = /^[^\r\n|#`][^\r\n|#`]{0,127}$/;
 const SAFE_REASON = /^[^\r\n]{1,200}$/;
 
-export function joinDeliveryEvidence({ providerSnapshot, planeSnapshot, buildkiteSnapshots = [], releaseSnapshot, deploymentReceipts = [] }) {
+export function joinDeliveryEvidence({ providerSnapshot, planeSnapshot, buildkiteSnapshots = [], releaseSnapshot, deploymentReceipts = [], deploymentBlockedReason = null }) {
   const capturedAt = latestTimestamp([providerSnapshot?.capturedAt, planeSnapshot?.capturedAt, releaseSnapshot?.capturedAt, ...buildkiteSnapshots.map((snapshot) => snapshot?.capturedAt), ...deploymentReceipts.map((receipt) => receipt?.observedAt)]);
   const errors = validateProviderSnapshot(providerSnapshot, providerSnapshot?.repository, capturedAt);
   if (errors.length) throw new Error(`Invalid provider snapshot: ${errors.join("; ")}`);
@@ -25,6 +25,7 @@ export function joinDeliveryEvidence({ providerSnapshot, planeSnapshot, buildkit
   if (buildkiteSnapshots.length > 1) throw new Error("Delivery evidence requires one designated Buildkite pipeline snapshot.");
   if (releaseSnapshot.repository.toLowerCase() !== providerSnapshot.repository.toLowerCase()) throw new Error("Release snapshot repository mismatch.");
   if (buildkiteSnapshots.some((snapshot) => !sameRepository(snapshot.repository, providerSnapshot.repository))) throw new Error("Buildkite snapshot repository mismatch.");
+  if (deploymentReceipts.some((receipt) => !sameRepository(receipt.repository, providerSnapshot.repository))) throw new Error("Deployment receipt repository mismatch.");
   const projectById = new Map(planeSnapshot.projects.map((project) => [project.id, project.identifier]));
   const stateById = new Map(planeSnapshot.states.map((state) => [state.id, state.group]));
   const itemByKey = new Map(planeSnapshot.workItems.map((item) => [`${projectById.get(item.projectId)}-${item.sequenceNumber}`, item]));
@@ -32,10 +33,11 @@ export function joinDeliveryEvidence({ providerSnapshot, planeSnapshot, buildkit
   return validateDeliveryEvidenceSnapshot({
     schemaVersion: SCHEMA_VERSION, repository: providerSnapshot.repository, capturedAt,
     sources: {
+      provider: availableSource([observation(`provider:${providerSnapshot.repository}`, providerSnapshot.capturedAt, providerSnapshot)]),
       plane: sourceState(planeSnapshot.status, planeSnapshot, `plane:${planeSnapshot.workspace}`),
       buildkite: aggregateBuildkite(buildkiteSnapshots),
       githubRelease: sourceState(releaseSnapshot.status, releaseSnapshot, `github-release:${releaseSnapshot.repository}`),
-      deployment: deploymentReceipts.length ? availableSource(deploymentReceipts.map((receipt) => observation(`deployment:${receipt.provider}:${receipt.externalId}`, receipt.observedAt, receipt))) : unavailableSource("No deployment receipts collected."),
+      deployment: deploymentReceipts.length ? availableSource(deploymentReceipts.map((receipt) => observation(`deployment:${receipt.provider}:${receipt.externalId}`, receipt.observedAt, receipt))) : unavailableSource(deploymentBlockedReason ?? "No deployment receipts collected.", deploymentBlockedReason ? "blocked" : "unavailable"),
     },
     wipByProject: wipByProject(planeSnapshot, planeSnapshot.capturedAt),
     deliveryRecords: records,
@@ -58,7 +60,7 @@ export function validateDeliveryEvidenceSnapshot(snapshot) {
 function recordFor(change, context) {
   const item = context.itemByKey.get(change.planeStoryId);
   const build = latestBuildFor(change.headCommit, context.buildkiteSnapshots);
-  const release = releaseFor(change.headCommit, context.releaseSnapshot);
+  const release = releaseFor(change.headCommit, change.mergedAt, context.releaseSnapshot);
   const receipt = latestReceiptFor(change.headCommit, context.deploymentReceipts, context.repository);
   if (release && change.releasedAt && release.publishedAt !== change.releasedAt) throw new Error(`Conflicting GitHub release timestamp for delivery change ${change.id}.`);
   return {
@@ -75,10 +77,10 @@ function latestBuildFor(commit, snapshots) {
   return latestBy(builds, (build) => build.finishedAt ?? build.createdAt);
 }
 
-function releaseFor(commit, snapshot) {
+function releaseFor(commit, mergedAt, snapshot) {
   if (snapshot.status !== "available") return null;
   return snapshot.releases
-    .filter((candidate) => candidate.commitStatus === "resolved" && candidate.commit === commit)
+    .filter((candidate) => candidate.commitStatus === "resolved" && candidate.commit === commit && (!mergedAt || Date.parse(candidate.publishedAt) >= Date.parse(mergedAt)))
     .sort((left, right) => Date.parse(left.publishedAt) - Date.parse(right.publishedAt))[0] ?? null;
 }
 
@@ -127,12 +129,14 @@ function assertRecordEvidence(record, sources) {
   assertDeploymentEvidence(record.deployment, sources.deployment);
 }
 function assertPlaneEvidence(plane, source) {
-  if (plane.status === "linked" && source.status !== "available") throw new Error("Linked Plane evidence requires an available Plane source observation.");
+  if (plane.status !== "linked") return;
+  if (!plane.key || !plane.stateGroup || !isJsonDateTime(plane.updatedAt)) throw new Error("Linked Plane evidence requires key, stateGroup, and updatedAt.");
+  if (source.status !== "available") throw new Error("Linked Plane evidence requires an available Plane source observation.");
 }
 function assertCiEvidence(ci, source) {
-  if (ci.status !== "passed") return;
-  if (!ci.pipeline || !Number.isInteger(ci.buildNumber) || !isJsonDateTime(ci.finishedAt)) throw new Error("Passed CI evidence requires pipeline, build number, and finishedAt.");
-  if (source.status !== "available") throw new Error("Passed CI evidence requires an available Buildkite source observation.");
+  if (ci.status !== "passed" && ci.status !== "failed") return;
+  if (!ci.pipeline || !Number.isInteger(ci.buildNumber) || !isJsonDateTime(ci.finishedAt)) throw new Error("Decisive CI evidence requires pipeline, build number, and finishedAt.");
+  if (source.status !== "available") throw new Error("Decisive CI evidence requires an available Buildkite source observation.");
 }
 function assertReleaseEvidence(release, source) {
   if (release.status !== "shipped") return;

@@ -22,7 +22,7 @@ export function linkGitHubReleases({ providerSnapshot, releaseSnapshot }) {
   }
   const linked = structuredClone(providerSnapshot);
   linked.capturedAt = laterTimestamp(providerSnapshot.capturedAt, releaseSnapshot.capturedAt);
-  linked.sources.github.version = releaseSnapshot.capturedAt;
+  linked.sources.github.version = laterTimestamp(providerSnapshot.sources.github.version, releaseSnapshot.capturedAt);
   linked.deliveryChanges = providerSnapshot.deliveryChanges.map((change) => linkChange(change, releasesByCommit));
   return linked;
 }

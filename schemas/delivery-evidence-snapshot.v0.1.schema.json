@@ -7,7 +7,7 @@
     "schemaVersion": { "const": "tabellio-delivery-evidence-snapshot/v0.1" },
     "repository": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,38}/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$" },
     "capturedAt": { "type": "string", "format": "date-time" },
-    "sources": { "type": "object", "additionalProperties": false, "required": ["plane", "buildkite", "githubRelease", "deployment"], "properties": { "plane": { "$ref": "#/$defs/source" }, "buildkite": { "$ref": "#/$defs/source" }, "githubRelease": { "$ref": "#/$defs/source" }, "deployment": { "$ref": "#/$defs/source" } } },
+    "sources": { "type": "object", "additionalProperties": false, "required": ["provider", "plane", "buildkite", "githubRelease", "deployment"], "properties": { "provider": { "$ref": "#/$defs/source" }, "plane": { "$ref": "#/$defs/source" }, "buildkite": { "$ref": "#/$defs/source" }, "githubRelease": { "$ref": "#/$defs/source" }, "deployment": { "$ref": "#/$defs/source" } } },
     "wipByProject": { "type": "array", "items": { "$ref": "#/$defs/wip" } },
     "deliveryRecords": { "type": "array", "items": { "$ref": "#/$defs/record" } }
   },

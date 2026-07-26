@@ -44,8 +44,10 @@ test("receipt rejects credentialed and local provenance pointers", () => {
 });
 
 test("deployment receipt input normalizes supported collector shapes", () => {
-  assert.deepEqual(extractDeploymentReceipts([receipt]), [receipt]);
-  assert.deepEqual(extractDeploymentReceipts({ status: "available", receipt }), [receipt]);
-  assert.deepEqual(extractDeploymentReceipts(receipt), [receipt]);
+  const available = { receipts: [receipt], blockedReason: null };
+  assert.deepEqual(extractDeploymentReceipts([receipt]), available);
+  assert.deepEqual(extractDeploymentReceipts({ status: "available", receipt }), available);
+  assert.deepEqual(extractDeploymentReceipts(receipt), available);
+  assert.deepEqual(extractDeploymentReceipts({ status: "blocked", reason: "Provider unavailable.", receipt: null }), { receipts: [], blockedReason: "Provider unavailable." });
   assert.throws(() => extractDeploymentReceipts({ status: "blocked" }), /must contain deployment receipts/);
 });

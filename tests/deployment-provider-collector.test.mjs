@@ -5,19 +5,19 @@ import { collectVercelDeploymentReceipt } from "../scripts/lib/vercel-deployment
 
 const commit = "a".repeat(40); const at = "2026-07-25T12:00:00.000Z";
 test("Cloud Run collector proves only a fully-serving exact revision", async () => {
-  const result = await collectCloudRunDeploymentReceipt({ repository: "IntelIP/Condere", environment: "production", service: "intelip-agentos-prod", capturedAt: at, request: async () => cloudRunPayload() });
-  assert.equal(result.status, "available"); assert.equal(result.receipt.provider, "cloud-run"); assert.equal(result.receipt.commit, commit);
+  const result = await cloudRunReceipt(cloudRunPayload());
+  assert.equal(result.status, "available"); assert.equal(result.receipt.provider, "cloud-run"); assert.equal(result.receipt.commit, commit); assert.match(result.receipt.provenancePointer,/projects\/intelip-prod\/locations\/us-east1/);
 });
 test("Cloud Run collector blocks short commit labels", async () => {
-  const result = await collectCloudRunDeploymentReceipt({ repository: "IntelIP/Condere", environment: "production", service: "intelip-agentos-prod", capturedAt: at, request: async () => cloudRunPayload({ commitSha: "a0bc228" }) });
+  const result = await cloudRunReceipt(cloudRunPayload({ commitSha: "a0bc228" }));
   assert.deepEqual(result, { status: "blocked", reason: "Cloud Run runtime receipt unavailable or lacks an exact commit.", receipt: null });
 });
 test("Cloud Run collector blocks a revision without all serving traffic", async () => {
-  const result = await collectCloudRunDeploymentReceipt({ repository: "IntelIP/Condere", environment: "production", service: "intelip-agentos-prod", capturedAt: at, request: async () => cloudRunPayload({ percent: 50 }) });
+  const result = await cloudRunReceipt(cloudRunPayload({ percent: 50 }));
   assert.equal(result.status, "blocked");
 });
 test("Cloud Run collector rejects a revision from another repository", async () => {
-  const result = await collectCloudRunDeploymentReceipt({ repository: "IntelIP/Condere", environment: "production", service: "intelip-agentos-prod", capturedAt: at, request: async () => cloudRunPayload({ repository: "IntelIP/Other" }) });
+  const result = await cloudRunReceipt(cloudRunPayload({ repository: "IntelIP/Other" }));
   assert.equal(result.status, "blocked"); assert.equal(result.receipt, null);
 });
 test("Vercel collector proves a ready production deployment with exact commit", async () => {
@@ -37,4 +37,7 @@ function cloudRunPayload({ commitSha = commit, repository = "IntelIP/Condere", p
     service: { status: { traffic: [{ percent, revisionName: "agentos-00012" }] } },
     revision: { metadata: { name: "agentos-00012", creationTimestamp: "2026-07-25T11:00:00.000Z", labels: { "commit-sha": commitSha }, annotations: { "tabellio.dev/source-repository": repository } } },
   };
+}
+function cloudRunReceipt(payload) {
+  return collectCloudRunDeploymentReceipt({ repository: "IntelIP/Condere", environment: "production", service: "intelip-agentos-prod", project: "intelip-prod", region: "us-east1", capturedAt: at, request: async () => payload });
 }

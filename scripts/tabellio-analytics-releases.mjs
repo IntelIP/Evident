@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 
 import { parseCommandOptions, reportCliError, requireOptions } from "./lib/cli-options.mjs";
 import { linkGitHubReleases } from "./lib/github-release-linker.mjs";
+import { assertOutputBoundary } from "./lib/output-boundary.mjs";
 
 main().catch(reportCliError);
 
@@ -13,10 +14,15 @@ async function main() {
     link: ["providerSnapshot", "githubReleaseSnapshot", "out"],
   });
   requireOptions(options, ["providerSnapshot", "githubReleaseSnapshot", "out"], "link");
+  await assertOutputBoundary({
+    outputs: [options.out], protectedInputs: [options.providerSnapshot, options.githubReleaseSnapshot],
+    duplicatePathMessage: "--out must identify one output path.", symbolicLinkMessage: "--out must not be a symbolic link.",
+    outputAliasMessage: "--out must identify one output file.", inputAliasMessage: "--out must not alias an input snapshot.",
+    protectedRootMessage: "--out must not be inside a protected input root.",
+  });
   const providerPath = resolve(options.providerSnapshot);
   const releasePath = resolve(options.githubReleaseSnapshot);
   const outputPath = resolve(options.out);
-  if (outputPath === providerPath || outputPath === releasePath) throw new Error("--out must be distinct from both input snapshots.");
   const [providerSnapshot, releaseSnapshot] = await Promise.all([
     readJson(providerPath),
     readJson(releasePath),

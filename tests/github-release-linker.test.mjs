@@ -18,10 +18,11 @@ const releaseSnapshot = {
 test("GitHub release linker attaches an exact release timestamp to matching delivery work", () => {
   const linked = linkGitHubReleases({ providerSnapshot, releaseSnapshot });
   assert.equal(linked.deliveryChanges[0].releasedAt, "2026-07-25T10:30:00.000Z");
-  assert.equal(linked.sources.github.version, "2026-07-25T11:00:00.000Z");
+  assert.equal(linked.sources.github.version, providerSnapshot.sources.github.version);
   assert.equal(linked.capturedAt, providerSnapshot.capturedAt);
   assert.equal(providerSnapshot.deliveryChanges[0].releasedAt, null);
 });
+test("GitHub release linker never rolls GitHub source version backward",()=>{const linked=linkGitHubReleases({providerSnapshot,releaseSnapshot});assert.equal(linked.sources.github.version,"2026-07-25T12:00:00.000Z");});
 
 test("GitHub release linker rejects conflicting release evidence", () => {
   assert.throws(() => linkGitHubReleases({

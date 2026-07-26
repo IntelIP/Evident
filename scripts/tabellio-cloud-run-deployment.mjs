@@ -9,7 +9,7 @@ main().catch(reportCliError);
 async function main() {
   const options = parseCommandOptions(process.argv.slice(2), { collect: ["repository", "environment", "service", "project", "region", "out"] });
   requireOptions(options, ["repository", "environment", "service", "project", "region", "out"], "collect");
-  await writeDeploymentCollection({ collector: collectCloudRunDeploymentReceipt, provider: "cloud_run", out: options.out, input: { repository: options.repository, environment: options.environment, service: options.service, capturedAt: new Date().toISOString(), request: async () => {
+  await writeDeploymentCollection({ collector: collectCloudRunDeploymentReceipt, provider: "cloud_run", out: options.out, input: { repository: options.repository, environment: options.environment, service: options.service, project: options.project, region: options.region, capturedAt: new Date().toISOString(), request: async () => {
     const base = ["--platform", "managed", "--project", options.project, "--region", options.region, "--format=json"];
     const serviceResult = await execFileAsync("gcloud", ["run", "services", "describe", options.service, ...base], { maxBuffer: 5 * 1024 * 1024 });
     const service = JSON.parse(serviceResult.stdout);

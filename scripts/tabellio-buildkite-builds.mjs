@@ -19,7 +19,7 @@ async function main() {
     pipeline: options.pipeline,
     capturedAt: new Date().toISOString(),
     request: async (path) => {
-      const response = await fetch(`https://api.buildkite.com${path}`, {
+      const response = await fetch(new URL(path, "https://api.buildkite.com").href, {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       });
       if (!response.ok) throw new Error("Buildkite API request failed.");
