@@ -17,10 +17,14 @@ test("Cloud Run collector blocks a revision without all serving traffic", async 
   assert.equal(result.status, "blocked");
 });
 test("Vercel collector proves a ready production deployment with exact commit", async () => {
-  const result = await collectVercelDeploymentReceipt({ repository: "IntelIP/vaticor", environment: "production", projectId: "prj_abc", capturedAt: at, request: async () => ({ deployments: [{ uid: "dpl_123", target: "production", readyState: "READY", readyAt: Date.parse("2026-07-25T11:00:00.000Z"), meta: { githubCommitSha: commit } }] }) });
+  const result = await collectVercelDeploymentReceipt({ repository: "IntelIP/vaticor", environment: "production", projectId: "prj_abc", capturedAt: at, request: async () => ({ deployments: [{ uid: "dpl_123", target: "production", readyState: "READY", readyAt: Date.parse("2026-07-25T11:00:00.000Z"), meta: { githubCommitSha: commit, githubCommitOrg: "IntelIP", githubCommitRepo: "vaticor" } }] }) });
   assert.equal(result.status, "available"); assert.equal(result.receipt.provider, "vercel"); assert.equal(result.receipt.deployedAt, "2026-07-25T11:00:00.000Z");
 });
 test("Vercel collector ignores preview and unpinned deployments", async () => {
-  const result = await collectVercelDeploymentReceipt({ repository: "IntelIP/vaticor", environment: "production", projectId: "prj_abc", capturedAt: at, request: async () => ({ deployments: [{ uid: "dpl_123", target: "preview", readyState: "READY", readyAt: Date.parse("2026-07-25T11:00:00.000Z"), meta: { githubCommitSha: commit } }] }) });
+  const result = await collectVercelDeploymentReceipt({ repository: "IntelIP/vaticor", environment: "production", projectId: "prj_abc", capturedAt: at, request: async () => ({ deployments: [{ uid: "dpl_123", target: "preview", readyState: "READY", readyAt: Date.parse("2026-07-25T11:00:00.000Z"), meta: { githubCommitSha: commit, githubCommitOrg: "IntelIP", githubCommitRepo: "vaticor" } }] }) });
+  assert.equal(result.status, "blocked"); assert.equal(result.receipt, null);
+});
+test("Vercel collector rejects a deployment from another repository", async () => {
+  const result = await collectVercelDeploymentReceipt({ repository: "IntelIP/vaticor", environment: "production", projectId: "prj_abc", capturedAt: at, request: async () => ({ deployments: [{ uid: "dpl_123", target: "production", readyState: "READY", readyAt: Date.parse("2026-07-25T11:00:00.000Z"), meta: { githubCommitSha: commit, githubCommitOrg: "Other", githubCommitRepo: "vaticor" } }] }) });
   assert.equal(result.status, "blocked"); assert.equal(result.receipt, null);
 });

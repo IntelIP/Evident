@@ -22,6 +22,7 @@ export function joinDeliveryEvidence({ providerSnapshot, planeSnapshot, buildkit
   validateGitHubReleaseSnapshot(releaseSnapshot);
   for (const snapshot of buildkiteSnapshots) validateBuildkiteBuildSnapshot(snapshot);
   for (const receipt of deploymentReceipts) validateDeploymentReceipt(receipt);
+  if (buildkiteSnapshots.length > 1) throw new Error("Delivery evidence requires one designated Buildkite pipeline snapshot.");
   if (releaseSnapshot.repository.toLowerCase() !== providerSnapshot.repository.toLowerCase()) throw new Error("Release snapshot repository mismatch.");
   if (buildkiteSnapshots.some((snapshot) => !sameRepository(snapshot.repository, providerSnapshot.repository))) throw new Error("Buildkite snapshot repository mismatch.");
   const projectById = new Map(planeSnapshot.projects.map((project) => [project.id, project.identifier]));
@@ -46,6 +47,7 @@ export function validateDeliveryEvidenceSnapshot(snapshot) {
   if (errors.length) throw new Error(`Invalid delivery evidence snapshot: ${errors.join("; ")}`);
   if (!isJsonDateTime(snapshot.capturedAt)) throw new Error("Delivery evidence snapshot capturedAt is invalid.");
   if (snapshot.deliveryRecords.some((record) => !DELIVERY_RECORD_ID.test(record.id ?? ""))) throw new Error("Delivery evidence record IDs must be portable single-line identifiers.");
+  if (new Set(snapshot.deliveryRecords.map((record) => record.id)).size !== snapshot.deliveryRecords.length) throw new Error("Delivery evidence record IDs must be unique.");
   if (Object.values(snapshot.sources).some((source) => source.reason !== null && !SAFE_REASON.test(source.reason))) throw new Error("Delivery evidence source reasons must be portable single-line text.");
   for (const row of snapshot.wipByProject) if (row.overLimit !== (row.activeItemCount > 3) || row.aging3dCount > row.activeItemCount) throw new Error("Delivery evidence WIP counts conflict.");
   for (const record of snapshot.deliveryRecords) assertRecordEvidence(record);

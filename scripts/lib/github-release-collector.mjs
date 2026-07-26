@@ -19,7 +19,7 @@ export async function collectGitHubReleaseSnapshot({ repository, capturedAt, req
   try {
     const payload = await collectPagedApi({ path: `/repos/${repository}/releases?per_page=100`, request, valuesFor: (page) => page, invalidPageMessage: "Unexpected releases response." });
     const releases = await Promise.all(payload
-      .filter((release) => release?.draft !== true && isPublishedRelease(release) && Date.parse(release.published_at) <= Date.parse(capturedAt))
+      .filter((release) => release?.draft !== true && observedPublishedRelease(release, capturedAt))
       .map(async (release) => normalizeRelease({ repository, release, request })));
     const snapshot = { schemaVersion: SCHEMA_VERSION, repository, capturedAt, status: "available", reason: null, releases };
     return validateGitHubReleaseSnapshot(snapshot);
@@ -41,6 +41,11 @@ export function validateGitHubReleaseSnapshot(snapshot) {
   if (snapshot.status === "available" && snapshot.reason !== null) throw new Error("Available GitHub release snapshot cannot have a reason.");
   if (snapshot.status === "blocked" && (!snapshot.reason || snapshot.releases.length !== 0)) {
     throw new Error("Blocked GitHub release snapshot requires a reason and no releases.");
+  }
+  const releaseIds = new Set(snapshot.releases.map((release) => release.id));
+  const tagNames = new Set(snapshot.releases.map((release) => release.tagName));
+  if (releaseIds.size !== snapshot.releases.length || tagNames.size !== snapshot.releases.length) {
+    throw new Error("GitHub release IDs and tag names must be unique.");
   }
   for (const release of snapshot.releases) assertReleaseEvidence(release, snapshot.capturedAt);
   return snapshot;
@@ -67,8 +72,10 @@ async function normalizeRelease({ repository, release, request }) {
   return { id, tagName, publishedAt, commit, commitStatus: commit ? "resolved" : "blocked" };
 }
 
-function isPublishedRelease(release) {
-  return typeof release?.published_at === "string";
+function observedPublishedRelease(release, capturedAt) {
+  if (release?.published_at === null || release?.published_at === undefined) return false;
+  if (!isJsonDateTime(release.published_at)) throw new Error("Published release has an invalid timestamp.");
+  return Date.parse(release.published_at) <= Date.parse(capturedAt);
 }
 
 async function resolveTagCommit({ repository, tagName, request }) {

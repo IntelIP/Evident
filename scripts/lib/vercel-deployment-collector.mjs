@@ -16,7 +16,7 @@ export async function collectVercelDeploymentReceipt({ repository, environment, 
     const deployment = Array.isArray(payload?.deployments) ? payload.deployments.find(isReadyProductionDeployment) : null;
     const commit = deployment?.meta?.githubCommitSha;
     const deployedAt = epochMillisToIso(deployment?.readyAt);
-    if (!deployment || !OID.test(commit ?? "") || !deployedAt) throw new Error("Vercel deployment lacks exact source evidence.");
+    if (!deployment || !OID.test(commit ?? "") || !deployedAt || !matchesGitHubRepository(deployment.meta, repository)) throw new Error("Vercel deployment lacks exact source evidence.");
     return {
       status: "available",
       reason: null,
@@ -45,4 +45,8 @@ function isReadyProductionDeployment(candidate) {
 }
 function epochMillisToIso(value) {
   return Number.isInteger(value) && value > 0 ? new Date(value).toISOString() : null;
+}
+function matchesGitHubRepository(meta, repository) {
+  const observed = `${meta?.githubCommitOrg ?? ""}/${meta?.githubCommitRepo ?? ""}`;
+  return observed.toLowerCase() === repository.toLowerCase();
 }

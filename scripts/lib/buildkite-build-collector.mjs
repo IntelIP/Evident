@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { parseGitHubRepositoryRemote } from "./github-repository.mjs";
 import { isJsonDateTime, validateJsonSchema } from "./json-schema-validator.mjs";
 import { collectPagedApi } from "./paged-api-collector.mjs";
 const VERSION = "tabellio-buildkite-build-snapshot/v0.1";
@@ -9,6 +10,8 @@ const OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 export async function collectBuildkiteBuildSnapshot({ repository, organization, pipeline, capturedAt, request }) {
   if (!REPOSITORY.test(repository ?? "") || !SLUG.test(organization ?? "") || !SLUG.test(pipeline ?? "") || !isJsonDateTime(capturedAt) || typeof request !== "function") throw new Error("Buildkite collector requires repository, organization, pipeline, capturedAt, and request.");
   try {
+    const pipelineRecord = await request(`/v2/organizations/${organization}/pipelines/${pipeline}`);
+    assertPipelineRepository(pipelineRecord, repository);
     const raw = await collectPagedApi({ path: `/v2/organizations/${organization}/pipelines/${pipeline}/builds?exclude_jobs=true&exclude_pipeline=true&per_page=100`, request, valuesFor: (page) => Array.isArray(page) ? page : page?.items, invalidPageMessage: "Unexpected Buildkite build response." });
     const detailRequests = [];
     for (const build of raw) detailRequests.push(collectBuildDetails({ build, organization, pipeline, request }));
@@ -32,7 +35,20 @@ export function validateBuildkiteBuildSnapshot(snapshot) {
   if (errors.length) throw new Error(`Invalid Buildkite build snapshot: ${errors.join("; ")}`);
   if ((snapshot.status === "available") !== (snapshot.reason === null)) throw new Error("Buildkite snapshot status and reason conflict.");
   if (snapshot.status === "blocked" && snapshot.builds.length) throw new Error("Blocked Buildkite snapshot cannot contain builds.");
+  const buildNumbers = new Set(snapshot.builds.map((build) => build.number));
+  if (buildNumbers.size !== snapshot.builds.length) throw new Error("Buildkite snapshot build numbers must be unique.");
+  for (const build of snapshot.builds) {
+    if (Date.parse(build.createdAt) > Date.parse(snapshot.capturedAt) || (build.finishedAt && Date.parse(build.finishedAt) > Date.parse(snapshot.capturedAt))) {
+      throw new Error("Buildkite build timestamps cannot be newer than capturedAt.");
+    }
+  }
   return snapshot;
+}
+function assertPipelineRepository(pipelineRecord, expectedRepository) {
+  const actual = parseGitHubRepositoryRemote(pipelineRecord?.repository);
+  if (!actual || actual.fullName.toLowerCase() !== expectedRepository.toLowerCase()) {
+    throw new Error("Buildkite pipeline repository mismatch.");
+  }
 }
 function normalizeBuild(build) {
   const result = { number: build?.number, commit: build?.commit, state: build?.state, createdAt: build?.created_at, finishedAt: build?.finished_at ?? null };
