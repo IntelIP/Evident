@@ -1,0 +1,15 @@
+env:
+  CI: "1"
+  NO_COLOR: "1"
+
+agents:
+  queue: "linux-small"
+
+steps:
+  - label: ":test_tube: Repository check"
+    key: "repository-check"
+    command: "npm run check"
+    timeout_in_minutes: 10
+    plugins:
+      - mise#v1.1.4:
+          version: "2026.2.11"
