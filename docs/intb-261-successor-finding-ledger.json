@@ -1,0 +1,5 @@
+{
+  "schemaVersion": "intb-261-successor-finding-ledger/v0.1",
+  "purpose": "Post-snapshot review findings only; never alters the frozen PR #28 ledger.",
+  "entries": []
+}

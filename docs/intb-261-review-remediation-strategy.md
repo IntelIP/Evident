@@ -19,6 +19,9 @@ Snapshot: GitHub PR #28 review threads read 2026-07-27 from frozen head
 - `docs/intb-261-pr28-thread-ledger.json` records every frozen unresolved
   thread ID, path, line, invariant, and successor destination. It is the
   durable reconciliation input; no successor may silently omit a source thread.
+- `docs/intb-261-successor-finding-ledger.json` is separate and starts empty.
+  It records findings discovered after this frozen PR #28 snapshot without
+  changing the frozen provenance or 160-thread count.
 - Findings repeat across a small set of contract failures. A successor fixes
   one invariant and its adversarial fixture, not one comment body.
 - Each successor PR links every addressed thread, and its PR description
@@ -49,19 +52,19 @@ Snapshot: GitHub PR #28 review threads read 2026-07-27 from frozen head
 | P1a | `agent/intb-261-portable-evidence-contract` | **Merged as PR #33.** Reject unsafe, incomplete, and contradictory portable evidence. | `scripts/lib/portable-evidence.mjs`, focused tests | B0 |
 | P1b | `agent/intb-261-analytics-core` | Build analytics core on the merged portable contract. | analytics core, schemas, focused tests | P1a |
 | P2 | `agent/intb-261-analytics-validator` | Validator emits truthful passed or failed evidence and preserves valid unavailable states. | `scripts/tabellio-analytics-validator.mjs`, `tabellio.validation.json`, focused tests | P1b |
-| P3 | `agent/intb-261-buildkite-collector` | Buildkite inventory is complete and exact evidence is repository-bound. | `scripts/lib/buildkite-build-collector.mjs`, focused tests | P1b |
+| P3 | `agent/intb-261-buildkite-collector` | Buildkite inventory is complete and exact evidence is repository-bound. | `scripts/lib/buildkite-build-collector.mjs`, `.buildkite/scripts/product-validation.sh`, focused tests | P1b |
 | P4 | `agent/intb-261-release-evidence` | Release collection/linking supports valid tags, complete pages, and temporal provenance. | release collector/linker, release schemas, focused tests | P1b |
 | P5 | `agent/intb-261-plane-collector` | Plane snapshots reject malformed, duplicate, and cross-project state data. | `scripts/lib/plane-work-item-collector.mjs`, focused tests | P1b |
 | P6 | `agent/intb-261-deployment-receipts` | Deployment receipts and collectors are portable, repository-bound, and parse their documented options. | deployment receipt schema, deployment collectors, focused tests | P1b |
 | P7 | `agent/intb-261-delivery-claims` | Joined delivery records cannot claim CI, release, or deployment success without matching source evidence. | `scripts/lib/delivery-evidence-joiner.mjs`, focused tests | P2, P3, P4, P5, P6 |
 | P8 | `agent/intb-261-delivery-cli-report` | Delivery CLI protects inputs; report recomputes WIP and escapes external text. | delivery CLI, report renderer, focused tests | P7 |
-| P9 | `agent/intb-261-baseline-integration` | Rebuilt baseline, package inclusion, and merged-head Buildkite checkpoint behavior. | analytics reports, package manifest, Buildkite validation script, focused tests | P8 |
+| P9 | `agent/intb-261-baseline-integration` | Rebuilt baseline, package inclusion, and merged-head Buildkite checkpoint behavior. | analytics reports, package manifest, merged-head integration checks, focused tests | P8 |
 
 ## Finding Assignment Rules
 
 | Finding class | Destination |
 | --- | --- |
-| Credential/path leakage, raw provider fields, malformed IDs, source/head mismatch, canonical metric shape | PR 1 |
+| Credential/path leakage, raw provider fields, malformed IDs, source/head mismatch, canonical metric shape | P1b |
 | Evidence-mode crash, unavailable-state semantics, validator summary/output shape, required metric coverage | PR 2 |
 | Buildkite pagination, pipeline/repository provenance, per-build evidence identity | PR 3 |
 | Release pagination, valid Git tag grammar, release capture timing, release/source identity | PR 4 |
@@ -74,7 +77,9 @@ Snapshot: GitHub PR #28 review threads read 2026-07-27 from frozen head
 ## Review and Evidence Protocol
 
 1. B0 and P1a are merged. Start P1b from current `origin/main`; do not stack
-   code branches.
+   code branches. P3 owns both its collector and the Buildkite product-
+   validation script assigned to its frozen ledger records; P9 owns only the
+   final integration checkpoint behavior.
 2. One successor merges before its dependent successor is created. Rebase is not
    a substitute for rerunning exact-head evidence.
 3. Before review, add a negative fixture for every addressed invariant, run
@@ -83,10 +88,11 @@ Snapshot: GitHub PR #28 review threads read 2026-07-27 from frozen head
    same SHA. A local pass alone is blocked from review readiness.
 5. Request review only for the declared surfaces. Thread replies/resolution
    require separate authority after the fix and exact-head evidence exist.
-6. If review finds a new invariant, stop the current repair loop, add it to
-   the PR-0 ledger, then route it by the finding-assignment and dependency
-   rules. Do not force it into the numerically next successor; keep the
-   current PR bounded.
+6. If review finds a new invariant, stop the current repair loop and add it to
+   the separate successor-finding ledger with its source PR/head, review-thread
+   identity, invariant, and ownership decision. Route it by the finding-
+   assignment and dependency rules. Do not force it into the numerically next
+   successor; keep the current PR bounded.
 
 ## Resolved Hosted-Evidence Blocker
 
