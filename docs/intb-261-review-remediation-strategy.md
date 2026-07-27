@@ -41,7 +41,8 @@ Snapshot: GitHub PR #28 review threads read 2026-07-27.
 | PR | Branch | Bounded outcome | Owned surfaces | Depends on |
 | --- | --- | --- | --- | --- |
 | 0 | `agent/intb-261-review-ledger` | Durable grouping and review-loop rules. No product behavior. | This document | None |
-| 1 | `agent/intb-261-portable-evidence-contract` | Reject unsafe, incomplete, and contradictory analytics evidence. | `scripts/lib/analytics.mjs`, analytics schemas, focused tests | 0 |
+| B0 | `agent/tabellio-buildkite-bootstrap` | Put the minimal reviewed Buildkite bootstrap on `main` so successor PRs can produce hosted evidence. | `.buildkite` pipeline/bootstrap only, focused checks | 0 |
+| 1 | `agent/intb-261-portable-evidence-contract` | Reject unsafe, incomplete, and contradictory analytics evidence. | `scripts/lib/analytics.mjs`, analytics schemas, focused tests | B0 |
 | 2 | `agent/intb-261-analytics-validator` | Validator emits truthful passed or failed evidence and preserves valid unavailable states. | `scripts/tabellio-analytics-validator.mjs`, `tabellio.validation.json`, focused tests | 1 |
 | 3 | `agent/intb-261-buildkite-collector` | Buildkite inventory is complete and exact evidence is repository-bound. | `scripts/lib/buildkite-build-collector.mjs`, focused tests | 1 |
 | 4 | `agent/intb-261-release-evidence` | Release collection/linking supports valid tags, complete pages, and temporal provenance. | release collector/linker, release schemas, focused tests | 1 |
@@ -67,7 +68,8 @@ Snapshot: GitHub PR #28 review threads read 2026-07-27.
 
 ## Review and Evidence Protocol
 
-1. Start each successor from current `origin/main`; do not stack code branches.
+1. Merge B0 before opening PR 1. Then start each successor from current
+   `origin/main`; do not stack code branches.
 2. One successor merges before its dependent successor is created. Rebase is not
    a substitute for rerunning exact-head evidence.
 3. Before review, add a negative fixture for every addressed invariant, run
@@ -78,6 +80,21 @@ Snapshot: GitHub PR #28 review threads read 2026-07-27.
    require separate authority after the fix and exact-head evidence exist.
 6. If review finds a new invariant, stop the current repair loop, add it to
    this ledger's next unstarted destination, and keep the current PR bounded.
+
+## Current Hosted-Evidence Blocker
+
+Buildkite builds [#31](https://buildkite.com/intelip/tabellio/builds/31) and
+[#32](https://buildkite.com/intelip/tabellio/builds/32) checked out this PR's
+exact head `491880a3a1c9b2d5598a23568827dafb08c0f199`, then failed in the
+initial pipeline-upload job before tests ran. The agent reported no default
+pipeline configuration file. `origin/main` does not contain the Buildkite
+configuration that PR #28 carried, so any clean successor based on `main`
+would fail in the same way.
+
+This is CI bootstrap absence, not a strategy-document failure. Keep PR #28
+frozen; do not stack successors onto it. B0 is the bounded prerequisite:
+extract and review only the minimum safe Buildkite bootstrap needed for the
+repository's existing validation flow, merge it separately, then begin PR 1.
 
 ## WIP and Stop Conditions
 
