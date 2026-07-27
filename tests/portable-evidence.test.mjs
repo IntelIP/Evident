@@ -35,6 +35,9 @@ test("source contracts require exact state shapes and safe evidence", () => {
   assert.match(validateEvidenceSource({ status: "available", version: null })[0], /requires a safe version/);
   assert.match(validateEvidenceSource({ status: "available", version: "ghp_0123456789abcdef" })[0], /unsafe/);
   assert.match(validateEvidenceSource({ status: "blocked", reason: "/tmp/private" })[0], /safe reason/);
+  assert.match(validateEvidenceSource({ status: "blocked", reason: "provider error: path=/Users/alice/private" })[0], /safe reason/);
+  assert.match(validateEvidenceSource({ status: "blocked", reason: "provider error: C:/Users/alice/private" })[0], /safe reason/);
+  assert.match(validateEvidenceSource({ status: "blocked", reason: "https://token@github.com/IntelIP/Tabellio" })[0], /safe reason/);
   assert.match(validateEvidenceSource({ status: "unavailable", reason: "offline", workspace: "private" })[0], /not allowed/);
   assert.match(validateEvidenceSource({ status: "available", version: "2099-01-01T00:00:00.000Z" }, { observedAt: OBSERVED_AT }).join(" "), /later than observation/);
 });
@@ -67,6 +70,7 @@ test("provider snapshot rejects unsafe and contradictory claims", () => {
     ["unknown field", (value) => { value.privatePayload = "secret"; }, /not allowed/],
     ["credentialed repository", (value) => { value.repository = "https://x:secret@github.com/IntelIP/Tabellio.git"; }, /repository/],
     ["future capture", (value) => { value.capturedAt = "2099-01-01T00:00:00.000Z"; }, /later than observation/],
+    ["normalized capture", (value) => { value.capturedAt = "2026-02-30T00:00:00.000Z"; }, /capturedAt is invalid/],
     ["missing source", (value) => { delete value.sources.github; }, /github is missing/],
     ["unknown source", (value) => { value.sources.raw = { status: "available", version: "v1" }; }, /not allowed/],
     ["bad head", (value) => { value.deliveryChanges[0].headCommit = "bad"; }, /headCommit/],
@@ -74,6 +78,8 @@ test("provider snapshot rejects unsafe and contradictory claims", () => {
     ["reversed lifecycle", (value) => { value.deliveryChanges[0].firstActivityAt = "2026-07-24T00:00:00.000Z"; }, /later than mergedAt/],
     ["unlinked relation", (value) => { value.deliveryChanges[0].linkBasis = "unlinked"; }, /requires null relationship/],
     ["source contradiction", (value) => { value.sources.plane = { status: "blocked", reason: "offline" }; }, /requires available Plane/],
+    ["credentialed link evidence", (value) => { value.deliveryChanges[0].linkEvidence = "https://token@github.com/IntelIP/Tabellio"; }, /linkEvidence is unsafe/],
+    ["skipped lifecycle order", (value) => { value.deliveryChanges[0].firstActivityAt = null; value.deliveryChanges[0].storyCreatedAt = "2026-07-23T00:00:00.000Z"; }, /storyCreatedAt is later than mergedAt/],
     ["extra change payload", (value) => { value.deliveryChanges[0].raw = "private"; }, /not allowed/],
   ];
   for (const [name, mutate, expected] of cases) {

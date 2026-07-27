@@ -19,7 +19,7 @@ const CREDENTIAL_PATTERNS = [
   /(?:^|[^a-z0-9])github_pat_[a-z0-9_]{8,}/i,
   /(?:^|[^a-z0-9])sk-(?:live|proj)_[a-z0-9_-]{8,}/i,
   /\bAKIA[0-9A-Z]{16}\b/,
-  /:\/\/[^/\s:@]+:[^/\s@]+@/,
+  /:\/\/[^/\s@]+@/,
 ];
 const COMMIT_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const REPOSITORY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
@@ -159,10 +159,18 @@ function validateDeliveryChange(change, { sources, headCommit, capturedAt }) {
       errors.push(`${field} is later than capture`);
     }
   }
-  if (isDateTime(change.storyCreatedAt) && isDateTime(change.firstActivityAt)
-    && Date.parse(change.storyCreatedAt) > Date.parse(change.firstActivityAt)) errors.push("storyCreatedAt is later than firstActivityAt");
-  if (isDateTime(change.firstActivityAt) && isDateTime(change.mergedAt)
-    && Date.parse(change.firstActivityAt) > Date.parse(change.mergedAt)) errors.push("firstActivityAt is later than mergedAt");
+  const lifecycleTimes = [
+    ["storyCreatedAt", change.storyCreatedAt],
+    ["firstActivityAt", change.firstActivityAt],
+    ["mergedAt", change.mergedAt],
+  ].filter(([, value]) => isDateTime(value));
+  for (let index = 1; index < lifecycleTimes.length; index += 1) {
+    const [previousName, previousValue] = lifecycleTimes[index - 1];
+    const [currentName, currentValue] = lifecycleTimes[index];
+    if (Date.parse(previousValue) > Date.parse(currentValue)) {
+      errors.push(`${previousName} is later than ${currentName}`);
+    }
+  }
   return errors;
 }
 
@@ -171,7 +179,9 @@ function isAvailable(sources, system) {
 }
 
 function isDateTime(value) {
-  return typeof value === "string" && !Number.isNaN(Date.parse(value));
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) return false;
+  const timestamp = Date.parse(value);
+  return !Number.isNaN(timestamp) && new Date(timestamp).toISOString() === value;
 }
 
 function isCommit(value) {
@@ -180,8 +190,9 @@ function isCommit(value) {
 
 function hasControlOrPath(value) {
   return /[\u0000-\u001f\u007f\\|]/.test(value)
-    || /^(?:\/|~|[A-Za-z]:[\\/])/.test(value)
-    || /(?:^|\s)\/(?:\S*)/.test(value);
+    || /(?:^|[\s=:(])\/(?!\/)\S*/.test(value)
+    || /(?:^|[\s=:(])~(?:\/|$)/.test(value)
+    || /(?:^|[^A-Za-z0-9._-])[A-Za-z]:\/(?:\S*)/.test(value);
 }
 
 function isPlainObject(value) {
