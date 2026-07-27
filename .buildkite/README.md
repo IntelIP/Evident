@@ -1,19 +1,34 @@
-# Tabellio Buildkite Bootstrap
+# Tabellio Buildkite CI
 
-The Buildkite pipeline configuration lives at `.buildkite/pipeline.yml`.
-Buildkite's configured bootstrap command is `buildkite-agent pipeline upload`,
-which loads that file for every branch and pull-request build.
+Buildkite runs repository checks on pull requests and the default branch.
+Pull-request builds also run changed-code Fallow, package inspection, and
+exact-head product validation.
+The product-validation step exports the Git validation ref as a portable bundle
+instead of treating an internal `.git` ref as a workspace artifact.
 
-This bootstrap pins its Node runtime through `.mise.toml`, compiles Git 2.50.1
-from a checksum-verified source archive, and runs the repository's existing
-`npm run check` only. The Git toolchain is required by the existing test suite;
-it is not product behavior. No step receives deployment, provider, release, or
-production-data credentials. Future delivery-validation steps must remain
-bounded, exact-head, and separately reviewed.
+GitHub remains the source, pull-request, review, and merge authority. Existing
+GitHub Actions remain active for merged-head product validation and quality
+checks until Buildkite proves equivalent commit-to-pull-request association.
 
-## Local validation
+## Local checks
 
 ```bash
-bk pipeline validate .buildkite/pipeline.yml
+bk pipeline validate
 npm run check
 ```
+
+When the GitHub integration does not emit a synchronized pull-request build,
+start an explicit exact-head preflight:
+
+```bash
+bk build create -y \
+  -p intelip/tabellio \
+  -b codex/example \
+  -c <exact-sha> \
+  -e TABELLIO_BUILD_CONTEXT=preflight \
+  -e TABELLIO_BASE_BRANCH=main
+```
+
+No Buildkite step deploys, publishes, or receives production provider
+credentials. Pull requests from third-party forks remain disabled during the
+migration.
