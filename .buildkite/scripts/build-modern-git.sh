@@ -7,6 +7,15 @@ expected_sha256="7e3e6c36decbd8f1eedd14d42db6674be03671c2204864befa2a41756c5c8fc
 workspace="$(mktemp -d)"
 install_root="/tmp/intelip-tabellio-git-${version}"
 artifact_dir=".artifacts/toolchain"
+apt_lists="${workspace}/apt-lists"
+apt_source_list="${workspace}/sources.list"
+apt_source_parts="${workspace}/apt-sources.list.d"
+apt_options=(
+  -o Dir::Etc::sourcelist="$apt_source_list"
+  -o Dir::Etc::sourceparts="$apt_source_parts"
+  -o Dir::State::lists="$apt_lists"
+  -o APT::Get::List-Cleanup="1"
+)
 packages=(
   build-essential
   ca-certificates
@@ -29,12 +38,26 @@ for package in "${packages[@]}"; do
 done
 
 if ((${#missing_packages[@]} > 0)); then
-  sudo apt-get \
-    -o Dir::Etc::sourcelist="sources.list" \
-    -o Dir::Etc::sourceparts="-" \
-    -o APT::Get::List-Cleanup="0" \
-    update
-  sudo apt-get install -y --no-install-recommends "${missing_packages[@]}"
+  mkdir -p "${apt_lists}/partial" "$apt_source_parts"
+  chmod 755 "$workspace" "$apt_lists" "${apt_lists}/partial" "$apt_source_parts"
+  if [[ -f /etc/apt/sources.list ]]; then
+    awk '
+      /^[[:space:]]*deb(-src)?[[:space:]]/ &&
+      /(ubuntu\.com\/(ubuntu|ubuntu-ports)|debian\.org\/debian(-security|-ports)?)/ { print }
+    ' /etc/apt/sources.list > "$apt_source_list"
+  else
+    : > "$apt_source_list"
+  fi
+  for source_file in \
+    /etc/apt/sources.list.d/ubuntu.sources \
+    /etc/apt/sources.list.d/debian.sources \
+    /etc/apt/sources.list.d/ubuntu.list \
+    /etc/apt/sources.list.d/debian.list; do
+    [[ -f "$source_file" ]] || continue
+    cp -- "$source_file" "$apt_source_parts/"
+  done
+  sudo apt-get "${apt_options[@]}" update
+  sudo apt-get "${apt_options[@]}" install -y --no-install-recommends "${missing_packages[@]}"
 fi
 
 curl --fail --location --silent --show-error \

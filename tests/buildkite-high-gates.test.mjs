@@ -46,7 +46,15 @@ test("Buildkite adds bounded pull-request quality gates without CI cutover", asy
   assert.match(packageCheck, /npm pack --dry-run --json/);
   assert.match(packageCheck, /forgejo\|change-request-provider/);
   assert.match(gitToolchain, /dpkg-query/);
-  assert.match(gitToolchain, /Dir::Etc::sourceparts="-"/);
+  assert.match(gitToolchain, /Dir::Etc::sourcelist="\$apt_source_list"/);
+  assert.match(gitToolchain, /Dir::Etc::sourceparts="\$apt_source_parts"/);
+  assert.match(gitToolchain, /Dir::State::lists="\$apt_lists"/);
+  assert.match(gitToolchain, /ubuntu\\\.com/);
+  assert.match(gitToolchain, /debian\\\.org/);
+  assert.match(gitToolchain, /sources\.list\.d\/ubuntu\.sources/);
+  assert.match(gitToolchain, /sources\.list\.d\/debian\.sources/);
+  assert.doesNotMatch(gitToolchain, /sources\.list\.d\/\*/);
+  assert.equal(gitToolchain.match(/sudo apt-get "\$\{apt_options\[@\]\}"/g)?.length, 2);
   assert.doesNotMatch(gitToolchain, /^\s*sudo apt-get update\s*$/m);
 });
 
