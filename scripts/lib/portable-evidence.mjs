@@ -1,4 +1,4 @@
-const SOURCE_SYSTEMS = new Set(["plane", "github", "github-actions"]);
+const SOURCE_SYSTEMS = new Set(["plane", "github", "github-actions", "buildkite"]);
 const SOURCE_STATES = new Set(["available", "unavailable", "blocked"]);
 const CHANGE_FIELDS = new Set([
   "id",
@@ -17,7 +17,7 @@ const SOURCE_FIELDS = new Set(["status", "version", "reason"]);
 const CREDENTIAL_PATTERNS = [
   /(?:^|[^a-z0-9])gh[pousr]_[a-z0-9_]{8,}/i,
   /(?:^|[^a-z0-9])github_pat_[a-z0-9_]{8,}/i,
-  /(?:^|[^a-z0-9])sk-(?:live|proj)_[a-z0-9_-]{8,}/i,
+  /(?:^|[^a-z0-9])sk-(?:live|proj)[_-][a-z0-9_-]{8,}/i,
   /\bAKIA[0-9A-Z]{16}\b/,
   /:\/\/[^/\s@]+@/,
 ];
@@ -97,9 +97,10 @@ export function validateEvidenceBinding({ repository, headCommit, sourceReposito
 export function validateProviderSnapshot(snapshot, { repository, headCommit, observedAt } = {}) {
   const errors = [];
   if (!isPlainObject(snapshot)) return ["provider snapshot must be an object"];
-  rejectUnknownFields(snapshot, new Set(["schemaVersion", "repository", "capturedAt", "sources", "deliveryChanges"]), "provider snapshot", errors);
+  rejectUnknownFields(snapshot, new Set(["schemaVersion", "repository", "headCommit", "capturedAt", "sources", "deliveryChanges"]), "provider snapshot", errors);
   if (snapshot.schemaVersion !== "tabellio-analytics-provider-snapshot/v0.1") errors.push("provider snapshot schemaVersion is invalid");
   if (!sameRepository(repository, snapshot.repository)) errors.push("provider snapshot repository is invalid");
+  if (!isCommit(snapshot.headCommit) || snapshot.headCommit !== headCommit) errors.push("provider snapshot headCommit does not bind the repository head");
   if (!isDateTime(snapshot.capturedAt)) errors.push("provider snapshot capturedAt is invalid");
   if (isDateTime(snapshot.capturedAt) && isDateTime(observedAt) && Date.parse(snapshot.capturedAt) > Date.parse(observedAt)) {
     errors.push("provider snapshot capture is later than observation");
@@ -119,12 +120,24 @@ export function validateProviderSnapshot(snapshot, { repository, headCommit, obs
   if (!Array.isArray(snapshot.deliveryChanges)) {
     errors.push("provider snapshot deliveryChanges are invalid");
   } else {
+    const changeIds = new Set();
+    const linkedRelationships = new Set();
     snapshot.deliveryChanges.forEach((change, index) => {
       errors.push(...prefix(`deliveryChanges[${index}]`, validateDeliveryChange(change, {
         sources,
         headCommit,
         capturedAt: snapshot.capturedAt,
       })));
+      if (!isPlainObject(change)) return;
+      if (isPortableIdentifier(change.id)) {
+        if (changeIds.has(change.id)) errors.push(`deliveryChanges[${index}] duplicates delivery change id`);
+        changeIds.add(change.id);
+      }
+      if (change.linkBasis !== "unlinked" && isPortableIdentifier(change.planeStoryId) && Number.isSafeInteger(change.pullRequestNumber)) {
+        const relationship = `${change.planeStoryId}:${change.pullRequestNumber}`;
+        if (linkedRelationships.has(relationship)) errors.push(`deliveryChanges[${index}] duplicates Plane and pull-request relationship`);
+        linkedRelationships.add(relationship);
+      }
     });
   }
   return unique(errors);
@@ -141,7 +154,7 @@ function validateDeliveryChange(change, { sources, headCommit, capturedAt }) {
   if (!["passed", "failed", "blocked", "unavailable"].includes(change.validationStatus)) errors.push("validationStatus is invalid");
   if (!["passed", "failed", "blocked", "unavailable"].includes(change.hostedStatus)) errors.push("hostedStatus is invalid");
   const linked = change.linkBasis !== "unlinked";
-  if (linked && (!isPortableIdentifier(change.planeStoryId) || !Number.isInteger(change.pullRequestNumber) || change.pullRequestNumber < 1)) {
+  if (linked && (!isPortableIdentifier(change.planeStoryId) || !Number.isSafeInteger(change.pullRequestNumber) || change.pullRequestNumber < 1)) {
     errors.push("linked change requires Plane and pull-request identifiers");
   }
   if (!linked && (change.planeStoryId !== null || change.pullRequestNumber !== null || change.linkEvidence !== null)) {
@@ -149,8 +162,12 @@ function validateDeliveryChange(change, { sources, headCommit, capturedAt }) {
   }
   if (linked && !isAvailable(sources, "plane")) errors.push("linked change requires available Plane evidence");
   if (linked && !isAvailable(sources, "github")) errors.push("linked change requires available GitHub evidence");
-  if (change.hostedStatus !== "unavailable" && !isAvailable(sources, "github-actions")) {
+  if (change.hostedStatus !== "unavailable" && !hasAvailableHostedSource(sources)) {
     errors.push("hosted status requires available hosted evidence");
+  }
+  if (change.storyCreatedAt !== null && !isAvailable(sources, "plane")) errors.push("storyCreatedAt requires available Plane evidence");
+  if ((change.firstActivityAt !== null || change.mergedAt !== null) && !isAvailable(sources, "github")) {
+    errors.push("GitHub lifecycle timestamps require available GitHub evidence");
   }
   const times = ["storyCreatedAt", "firstActivityAt", "mergedAt"];
   for (const field of times) {
@@ -178,6 +195,10 @@ function isAvailable(sources, system) {
   return isPlainObject(sources) && sources[system]?.status === "available";
 }
 
+function hasAvailableHostedSource(sources) {
+  return isAvailable(sources, "github-actions") || isAvailable(sources, "buildkite");
+}
+
 function isDateTime(value) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) return false;
   const timestamp = Date.parse(value);
@@ -189,7 +210,7 @@ function isCommit(value) {
 }
 
 function hasControlOrPath(value) {
-  return /[\u0000-\u001f\u007f\\|]/.test(value)
+  return /[\u0000-\u001f\u007f-\u009f\u2028\u2029\\|]/.test(value)
     || /(?:^|[\s=:(])\/(?!\/)\S*/.test(value)
     || /(?:^|[\s=:(])~(?:\/|$)/.test(value)
     || /(?:^|[^A-Za-z0-9._-])[A-Za-z]:\/(?:\S*)/.test(value);

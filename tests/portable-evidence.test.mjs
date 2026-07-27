@@ -20,6 +20,7 @@ test("portable identifiers reject paths, control text, and credential shapes", (
   }
   assert.equal(isPortableIdentifier("INTB-261"), true);
   assert.equal(hasCredentialShape("github_pat_0123456789abcdef"), true);
+  assert.equal(hasCredentialShape("sk-proj-0123456789abcdef"), true);
   assert.equal(hasCredentialShape("https://alice:secret@example.com/repo"), true);
 });
 
@@ -36,6 +37,7 @@ test("source contracts require exact state shapes and safe evidence", () => {
   assert.match(validateEvidenceSource({ status: "available", version: "ghp_0123456789abcdef" })[0], /unsafe/);
   assert.match(validateEvidenceSource({ status: "blocked", reason: "/tmp/private" })[0], /safe reason/);
   assert.match(validateEvidenceSource({ status: "blocked", reason: "provider error: path=/Users/alice/private" })[0], /safe reason/);
+  assert.match(validateEvidenceSource({ status: "blocked", reason: "ENOENT (/home/alice/private)" })[0], /safe reason/);
   assert.match(validateEvidenceSource({ status: "blocked", reason: "provider error: C:/Users/alice/private" })[0], /safe reason/);
   assert.match(validateEvidenceSource({ status: "blocked", reason: "https://token@github.com/IntelIP/Tabellio" })[0], /safe reason/);
   assert.match(validateEvidenceSource({ status: "unavailable", reason: "offline", workspace: "private" })[0], /not allowed/);
@@ -65,10 +67,22 @@ test("provider snapshot accepts a minimal portable exact-head record", () => {
   }), []);
 });
 
+test("provider snapshot accepts Buildkite as hosted evidence", () => {
+  const value = snapshot();
+  value.sources["github-actions"] = { status: "unavailable", reason: "not configured" };
+  assert.deepEqual(validateProviderSnapshot(value, {
+    repository: "IntelIP/Tabellio",
+    headCommit: HEAD,
+    observedAt: OBSERVED_AT,
+  }), []);
+});
+
 test("provider snapshot rejects unsafe and contradictory claims", () => {
   const cases = [
     ["unknown field", (value) => { value.privatePayload = "secret"; }, /not allowed/],
     ["credentialed repository", (value) => { value.repository = "https://x:secret@github.com/IntelIP/Tabellio.git"; }, /repository/],
+    ["wrong snapshot head", (value) => { value.headCommit = "b".repeat(40); }, /headCommit/],
+    ["empty snapshot wrong head", (value) => { value.deliveryChanges = []; value.headCommit = "b".repeat(40); }, /headCommit/],
     ["future capture", (value) => { value.capturedAt = "2099-01-01T00:00:00.000Z"; }, /later than observation/],
     ["normalized capture", (value) => { value.capturedAt = "2026-02-30T00:00:00.000Z"; }, /capturedAt is invalid/],
     ["missing source", (value) => { delete value.sources.github; }, /github is missing/],
@@ -78,8 +92,13 @@ test("provider snapshot rejects unsafe and contradictory claims", () => {
     ["reversed lifecycle", (value) => { value.deliveryChanges[0].firstActivityAt = "2026-07-24T00:00:00.000Z"; }, /later than mergedAt/],
     ["unlinked relation", (value) => { value.deliveryChanges[0].linkBasis = "unlinked"; }, /requires null relationship/],
     ["source contradiction", (value) => { value.sources.plane = { status: "blocked", reason: "offline" }; }, /requires available Plane/],
+    ["unavailable lifecycle source", (value) => { value.deliveryChanges[0].linkBasis = "unlinked"; value.deliveryChanges[0].linkEvidence = null; value.deliveryChanges[0].planeStoryId = null; value.deliveryChanges[0].pullRequestNumber = null; value.sources.plane = { status: "unavailable", reason: "offline" }; }, /storyCreatedAt requires available Plane/],
     ["credentialed link evidence", (value) => { value.deliveryChanges[0].linkEvidence = "https://token@github.com/IntelIP/Tabellio"; }, /linkEvidence is unsafe/],
     ["skipped lifecycle order", (value) => { value.deliveryChanges[0].firstActivityAt = null; value.deliveryChanges[0].storyCreatedAt = "2026-07-23T00:00:00.000Z"; }, /storyCreatedAt is later than mergedAt/],
+    ["unsafe pull request number", (value) => { value.deliveryChanges[0].pullRequestNumber = Number.MAX_SAFE_INTEGER + 1; }, /linked change requires Plane/],
+    ["duplicate delivery change", (value) => { value.deliveryChanges.push(structuredClone(value.deliveryChanges[0])); }, /duplicates delivery change id/],
+    ["duplicate relationship", (value) => { const duplicate = structuredClone(value.deliveryChanges[0]); duplicate.id = "change-2"; value.deliveryChanges.push(duplicate); }, /duplicates Plane and pull-request relationship/],
+    ["unicode control", (value) => { value.deliveryChanges[0].linkEvidence = "safe\u2028text"; }, /linkEvidence is unsafe/],
     ["extra change payload", (value) => { value.deliveryChanges[0].raw = "private"; }, /not allowed/],
   ];
   for (const [name, mutate, expected] of cases) {
@@ -97,11 +116,13 @@ function snapshot() {
   return {
     schemaVersion: "tabellio-analytics-provider-snapshot/v0.1",
     repository: "IntelIP/Tabellio",
+    headCommit: HEAD,
     capturedAt: "2026-07-26T00:00:00.000Z",
     sources: {
       plane: { status: "available", version: "2026-07-25T00:00:00.000Z" },
       github: { status: "available", version: "2026-07-25T00:00:00.000Z" },
       "github-actions": { status: "available", version: "2026-07-25T00:00:00.000Z" },
+      buildkite: { status: "available", version: "2026-07-25T00:00:00.000Z" },
     },
     deliveryChanges: [{
       id: "change-1",
