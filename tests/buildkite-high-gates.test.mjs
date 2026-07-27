@@ -7,11 +7,12 @@ async function repositoryFile(path) {
 }
 
 test("Buildkite adds bounded pull-request quality gates without CI cutover", async () => {
-  const [pipeline, productValidation, fallow, packageCheck] = await Promise.all([
+  const [pipeline, productValidation, fallow, packageCheck, gitToolchain] = await Promise.all([
     repositoryFile(".buildkite/pipeline.yml"),
     repositoryFile(".buildkite/scripts/product-validation.sh"),
     repositoryFile(".buildkite/scripts/fallow.sh"),
     repositoryFile(".buildkite/scripts/package.sh"),
+    repositoryFile(".buildkite/scripts/build-modern-git.sh"),
   ]);
 
   assert.match(pipeline, /key: "repository-check"/);
@@ -44,6 +45,9 @@ test("Buildkite adds bounded pull-request quality gates without CI cutover", asy
   assert.match(fallow, /--gate new-only/);
   assert.match(packageCheck, /npm pack --dry-run --json/);
   assert.match(packageCheck, /forgejo\|change-request-provider/);
+  assert.match(gitToolchain, /dpkg-query/);
+  assert.match(gitToolchain, /Dir::Etc::sourceparts="-"/);
+  assert.doesNotMatch(gitToolchain, /^\s*sudo apt-get update\s*$/m);
 });
 
 test("GitHub merged-head validation remains during Buildkite migration", async () => {
