@@ -1,0 +1,1129 @@
+{
+  "schemaVersion": "intb-261-pr28-thread-ledger/v0.2",
+  "sourcePullRequest": 28,
+  "sourceHead": "33217d6d91470ce77bdbd96f749ed7127be50ab4",
+  "snapshotDate": "2026-07-27",
+  "unresolvedThreadCount": 160,
+  "threads": [
+    {
+      "threadId": "PRRT_kwDOTL_Re86T04o-",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 81,
+      "invariant": "Reject duplicate WIP project rows",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T04o1",
+      "path": "scripts/lib/git-commit-containment.mjs",
+      "line": 21,
+      "invariant": "Resolve releases through the landed squash commit",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T04o2",
+      "path": "scripts/lib/paged-api-collector.mjs",
+      "line": 3,
+      "invariant": "Bound GitHub release pagination",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T04o4",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 343,
+      "invariant": "Bind provider snapshots for every baseline repository",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T04o7",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 82,
+      "invariant": "Reject delivery events after the snapshot capture",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T04pA",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 24,
+      "invariant": "Bound Plane state-request concurrency",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T09RR",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 124,
+      "invariant": "Preserve containment-based release links",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T09RS",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 129,
+      "invariant": "Match deployment receipts to landed squash commits",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T09RT",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 193,
+      "invariant": "Bind shipped claims to the release observation",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T09RU",
+      "path": "scripts/lib/cloud-run-deployment-collector.mjs",
+      "line": 47,
+      "invariant": "Keep Cloud Run receipt IDs within the receipt contract",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0eHa",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 46,
+      "invariant": "Bound Plane cursor pagination",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0eHb",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 88,
+      "invariant": "Restrict deployment evidence to the target environment",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0eHc",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 31,
+      "invariant": "Bind Plane evidence to its workspace",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0eHQ",
+      "path": "scripts/lib/github-release-linker.mjs",
+      "line": 32,
+      "invariant": "Link releases by commit containment",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0eHS",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 98,
+      "invariant": "Classify invalid validator inputs as blocked",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0eHT",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 71,
+      "invariant": "Preserve blocked deployment status on delivery records",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0eHV",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 6,
+      "invariant": "Accept hyphens in Buildkite slugs",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0eHY",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 95,
+      "invariant": "Preserve terminal Buildkite states",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0ri7",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 57,
+      "invariant": "Read jobs from the documented build response",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0rjA",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 117,
+      "invariant": "Require commit-bound evidence before marking a release shipped",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0rjC",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 80,
+      "invariant": "Reject source observations newer than the snapshot",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0rjD",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 87,
+      "invariant": "Verify Plane creation time before linking the item",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0rjE",
+      "path": "scripts/lib/deployment-receipt.mjs",
+      "line": 22,
+      "invariant": "Screen every receipt identifier for credential material",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXa",
+      "path": "scripts/tabellio-analytics-releases.mjs",
+      "line": 19,
+      "invariant": "Reject filesystem aliases of release-linker inputs",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXb",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 42,
+      "invariant": "Validate Plane item timestamps against the capture",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXd",
+      "path": "scripts/lib/delivery-report.mjs",
+      "line": 32,
+      "invariant": "Report failed or missing CI as an evidence gap",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXf",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 135,
+      "invariant": "Require evidence fields for failed CI claims",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXj",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 131,
+      "invariant": "Require an exact key for linked Plane records",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXk",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 82,
+      "invariant": "Exclude pre-merge releases from joined delivery claims",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXl",
+      "path": "scripts/lib/cloud-run-deployment-collector.mjs",
+      "line": 36,
+      "invariant": "Include Cloud Run project and region in provenance",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXm",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 39,
+      "invariant": "Reject duplicate Plane project identifiers",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXn",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 38,
+      "invariant": "Bind the provider snapshot in source observations",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXo",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 38,
+      "invariant": "Reject cross-repository deployment receipts",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXq",
+      "path": "scripts/lib/deployment-receipt-input.mjs",
+      "line": 5,
+      "invariant": "Preserve blocked deployment collector results",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXs",
+      "path": "scripts/lib/delivery-report.mjs",
+      "line": 32,
+      "invariant": "Escape source reasons in Markdown reports",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXu",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 73,
+      "invariant": "Enforce Buildkite build timestamp ordering",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXX",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 61,
+      "invariant": "Paginate Buildkite detail responses before counting",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXY",
+      "path": "scripts/lib/github-release-linker.mjs",
+      "line": 26,
+      "invariant": "Preserve the newer GitHub source version",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T5Vya",
+      "path": "scripts/lib/github-release-collector.mjs",
+      "line": 12,
+      "invariant": "Accept portable Git tag characters",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T5VyV",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 202,
+      "invariant": "Bind CI decisions to exact Buildkite claims",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T5VyW",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 218,
+      "invariant": "Bind deployment passes to receipt claims",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T5VyX",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 403,
+      "invariant": "Validate unavailable provider-source bindings",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T5VyY",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1416,
+      "invariant": "Require identifiers for non-unlinked relationships",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tc7C-",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 80,
+      "invariant": "Count only collected unique repositories",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tc7C4",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1115,
+      "invariant": "Avoid exporting raw control-ref paths on parse failures",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tc7C6",
+      "path": "reports/analytics/2026-07-23-intb-261-baseline.json",
+      "line": 379,
+      "invariant": "Regenerate stale unavailable reasons",
+      "successor": "P9"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tc7C7",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 295,
+      "invariant": "Reject not_applicable for repository metrics",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tc7Cz",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1031,
+      "invariant": "Block missing GitHub token prefixes",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td4N-",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 192,
+      "invariant": "Revalidate delivery changes in committed datasets",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td4N7",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 244,
+      "invariant": "Require HEAD to match the Git source version",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td4N8",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 33,
+      "invariant": "Write evidence when dataset JSON cannot parse",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td4OB",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 41,
+      "invariant": "Keep failed validator summaries evidence-safe",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td4OE",
+      "path": "package.json",
+      "line": 67,
+      "invariant": "Package the baseline reports used by validation",
+      "successor": "P9"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td5i_",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 132,
+      "invariant": "Block generic credential shapes in analytics security checks",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td5jA",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 244,
+      "invariant": "Bind Git source version to the reported head",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td5jC",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 192,
+      "invariant": "Validate delivery changes in committed datasets",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td5jD",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1312,
+      "invariant": "Restrict commit IDs to real Git object lengths",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td5jF",
+      "path": "tabellio.validation.json",
+      "line": 38,
+      "invariant": "Ship the analytics baseline used by package validation",
+      "successor": "P9"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td5jG",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 85,
+      "invariant": "Require the intended repository set in semantic validation",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td5jI",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 270,
+      "invariant": "Reject future provider versions in committed datasets",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td5jN",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 125,
+      "invariant": "Include provider snapshots in analytics privacy validation",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TdTIV",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 111,
+      "invariant": "Preserve evidence-mode output for operational failures",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TdTIZ",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 124,
+      "invariant": "Block all local path shapes in security validation",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TetHb",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 132,
+      "invariant": "Recompute delivery metrics from trace rows",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TetHd",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 309,
+      "invariant": "Sanitize non-provider missing-evidence reasons",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TetHP",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 183,
+      "invariant": "Scan decoded dataset values for private strings",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TetHW",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 301,
+      "invariant": "Require OIDs for Git-backed source versions",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TetHZ",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 225,
+      "invariant": "Require a linked trace for semantic pass",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tosk8",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 232,
+      "invariant": "Reject non-contract provider snapshot fields",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86ToslD",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 310,
+      "invariant": "Reject exact-validation statuses without validation evidence",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86ToslH",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 294,
+      "invariant": "Bind every provider-backed repository to a snapshot",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86ToslJ",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 412,
+      "invariant": "Require source-backed counts to stay measured",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86ToslN",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 231,
+      "invariant": "Block API key-shaped credential leaks",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tpj2_",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1112,
+      "invariant": "Reject raw sk-proj credentials in provider text",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tpj3A",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 399,
+      "invariant": "Bind validationStatus to validation evidence",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tpj3D",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1204,
+      "invariant": "Block future-dated control records",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TrAHu",
+      "path": "scripts/tabellio-analytics.mjs",
+      "line": 68,
+      "invariant": "Protect provider snapshots from output aliasing",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TrAHv",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1373,
+      "invariant": "Require control refs to resolve to commits",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TrAHy",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 227,
+      "invariant": "Validate delivery metrics against trace rows",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Trjgc",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1520,
+      "invariant": "Require direct commit objects for control refs",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Trjgg",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1449,
+      "invariant": "Reject validation run IDs with path separators",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Trjgk",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 837,
+      "invariant": "Preserve GitHub canonical IDs for tokenized remotes",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Trjgn",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1262,
+      "invariant": "Reject file-URI analytics identifiers",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Trjgo",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1278,
+      "invariant": "Block local paths hidden inside provider ETags",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Ty9lm",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 43,
+      "invariant": "Bind Buildkite snapshots to the provider repository",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Ty9ln",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 23,
+      "invariant": "Fail collection when a Plane row is malformed",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Ty9lo",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 10,
+      "invariant": "Paginate the Buildkite build inventory",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Ty9lp",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 38,
+      "invariant": "Validate WIP counts before rendering delivery decisions",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Ty9lq",
+      "path": ".buildkite/scripts/product-validation.sh",
+      "line": 18,
+      "invariant": "Resolve squash PRs without relying on the commit subject",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Ty9lt",
+      "path": "scripts/lib/github-release-linker.mjs",
+      "line": 33,
+      "invariant": "Exclude pre-merge releases in release-linker collection",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Ty9lu",
+      "path": "schemas/deployment-receipt.v0.1.schema.json",
+      "line": 31,
+      "invariant": "Restrict free-form deployment receipt fields",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tyv4-",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 34,
+      "invariant": "Verify that each Plane state belongs to the item's project",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tyv41",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 37,
+      "invariant": "Require proof fields for successful delivery states",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tyv44",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 44,
+      "invariant": "Select builds using comparable chronology across pipelines",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tyv47",
+      "path": "scripts/tabellio-delivery-evidence.mjs",
+      "line": 13,
+      "invariant": "Forward deployment receipts through the delivery CLI",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tyv4z",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 46,
+      "invariant": "Match deployment receipts to the record repository",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tyv5A",
+      "path": "scripts/lib/github-release-collector.mjs",
+      "line": 19,
+      "invariant": "Paginate the release inventory before joining evidence",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tyv5E",
+      "path": "scripts/lib/github-release-collector.mjs",
+      "line": 57,
+      "invariant": "Accept safe slash-delimited Git release tags",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPa",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 105,
+      "invariant": "Calculate WIP age at the Plane observation time",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPb",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 34,
+      "invariant": "Reject Buildkite events outside their capture time",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPG",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 77,
+      "invariant": "Ignore releases published before the merge",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPI",
+      "path": "schemas/github-release-snapshot.v0.1.schema.json",
+      "line": 22,
+      "invariant": "Keep the release-tag schema aligned with the collector",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPK",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 81,
+      "invariant": "Preserve the deployment environment when selecting proof",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPO",
+      "path": "scripts/tabellio-delivery-report.mjs",
+      "line": 7,
+      "invariant": "Prevent the report output from overwriting its snapshot",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPR",
+      "path": "scripts/tabellio-analytics-releases.mjs",
+      "line": 19,
+      "invariant": "Reject filesystem aliases of release-linker inputs",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPW",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 28,
+      "invariant": "Paginate Buildkite job and artifact details",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPY",
+      "path": "schemas/delivery-evidence-snapshot.v0.1.schema.json",
+      "line": 15,
+      "invariant": "Require observations for available evidence sources",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPZ",
+      "path": "scripts/lib/delivery-report.mjs",
+      "line": 33,
+      "invariant": "Escape delivery record identifiers in Markdown",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzDl1",
+      "path": "scripts/lib/github-release-collector.mjs",
+      "line": 47,
+      "invariant": "Reject releases published after snapshot capture",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzDl3",
+      "path": "scripts/tabellio-delivery-evidence.mjs",
+      "line": 14,
+      "invariant": "Keep delivery output distinct from all input snapshots",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzDl5",
+      "path": "scripts/tabellio-vercel-deployment.mjs",
+      "line": 7,
+      "invariant": "Allow the parsed Vercel project option",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzDl6",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 34,
+      "invariant": "Reject duplicate Plane work items",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzDl7",
+      "path": "scripts/lib/delivery-report.mjs",
+      "line": 33,
+      "invariant": "Escape delivery record IDs before rendering",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzG__",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 38,
+      "invariant": "Enforce evidence invariants before rendering delivery health",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzG_1",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 46,
+      "invariant": "Reject deployment receipts from other repositories",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzG_4",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 43,
+      "invariant": "Bind Buildkite evidence to the reviewed repository",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzG_6",
+      "path": "scripts/tabellio-delivery-evidence.mjs",
+      "line": 13,
+      "invariant": "Pass collected deployment receipts through the delivery CLI",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzG_7",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 45,
+      "invariant": "Reject conflicting GitHub release provenance",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzG_9",
+      "path": "schemas/deployment-receipt.v0.1.schema.json",
+      "line": 31,
+      "invariant": "Sanitize portable deployment provenance pointers",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzHAC",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 34,
+      "invariant": "Bind Plane states to their owning projects",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzHAE",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 38,
+      "invariant": "Align Plane identifiers with the delivery schema",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzHAG",
+      "path": "scripts/lib/github-release-linker.mjs",
+      "line": 11,
+      "invariant": "Validate provider snapshots before linking releases",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzHAI",
+      "path": "scripts/tabellio-delivery-evidence.mjs",
+      "line": 14,
+      "invariant": "Keep delivery outputs distinct from evidence inputs",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzHAK",
+      "path": "scripts/lib/github-release-collector.mjs",
+      "line": 19,
+      "invariant": "Paginate GitHub releases before declaring commits unreleased",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzHAM",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 25,
+      "invariant": "Honor unavailable provider sources before joining changes",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzHAO",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 28,
+      "invariant": "Preserve exact source provenance in joined snapshots",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzHAQ",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 23,
+      "invariant": "Block incomplete Plane work-item normalization",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzLBE",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 34,
+      "invariant": "Reject duplicate Plane join keys",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzLBF",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 39,
+      "invariant": "Reject multiline source reasons before rendering",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzLBG",
+      "path": "scripts/tabellio-vercel-deployment.mjs",
+      "line": 7,
+      "invariant": "Reject non-production Vercel environment labels",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzLBH",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 39,
+      "invariant": "Preserve valid provider delivery IDs",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzLBK",
+      "path": "scripts/lib/github-release-collector.mjs",
+      "line": 51,
+      "invariant": "Preserve pre-cutoff releases during concurrent publication",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpoa",
+      "path": ".buildkite/scripts/product-validation.sh",
+      "line": 20,
+      "invariant": "Fail closed when merged-checkpoint lookup fails",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpoc",
+      "path": ".buildkite/scripts/product-validation.sh",
+      "line": 27,
+      "invariant": "Compare the fetched checkpoint with the resolved head",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpod",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 80,
+      "invariant": "Select the earliest release for each commit",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpof",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 40,
+      "invariant": "Age WIP at the Plane observation time",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpog",
+      "path": "scripts/tabellio-delivery-report.mjs",
+      "line": 7,
+      "invariant": "Prevent the report from overwriting its snapshot",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpoh",
+      "path": "scripts/lib/cloud-run-deployment-collector.mjs",
+      "line": 19,
+      "invariant": "Bind Cloud Run receipts to the requested repository",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpoj",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 53,
+      "invariant": "Reject successful records without source observations",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpok",
+      "path": "scripts/lib/delivery-report.mjs",
+      "line": 33,
+      "invariant": "Escape delivery IDs before rendering Markdown",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpol",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 18,
+      "invariant": "Bound Buildkite detail collection",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpom",
+      "path": "schemas/github-release-snapshot.v0.1.schema.json",
+      "line": 22,
+      "invariant": "Accept namespaced GitHub release tags",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpon",
+      "path": "scripts/lib/delivery-report.mjs",
+      "line": 34,
+      "invariant": "Treat unlinked rows as an evidence gap",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzTcN",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 60,
+      "invariant": "Exclude non-production receipts from deployment health",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzTcO",
+      "path": "scripts/lib/github-release-linker.mjs",
+      "line": 31,
+      "invariant": "Match releases by commit containment",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzTcP",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 14,
+      "invariant": "Bound Buildkite detail request concurrency",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzTcQ",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 29,
+      "invariant": "Bind Plane snapshots to the expected workspace",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzTcR",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 39,
+      "invariant": "Age WIP at the Plane observation time",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzTcS",
+      "path": "schemas/github-release-snapshot.v0.1.schema.json",
+      "line": 22,
+      "invariant": "Permit slash-delimited GitHub release tags",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzTcT",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 37,
+      "invariant": "Bound deployment observation identifiers",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzTcU",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 852,
+      "invariant": "Derive local identity from the repository",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzX4l",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 12,
+      "invariant": "Derive Buildkite repository identity from the pipeline",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzX4m",
+      "path": "scripts/lib/vercel-deployment-collector.mjs",
+      "line": 26,
+      "invariant": "Verify the Vercel deployment repository before minting a receipt",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzX4n",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 17,
+      "invariant": "Capture the Buildkite observation after collection",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzX4o",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 72,
+      "invariant": "Aggregate required Buildkite pipelines before reporting CI",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzX4p",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 35,
+      "invariant": "Reject duplicate Buildkite build numbers",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzX4r",
+      "path": "scripts/lib/github-release-collector.mjs",
+      "line": 45,
+      "invariant": "Reject duplicate GitHub release identities",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzX4s",
+      "path": "scripts/lib/github-release-collector.mjs",
+      "line": 23,
+      "invariant": "Block malformed published releases instead of dropping them",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzX4t",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 44,
+      "invariant": "Reject incomplete Plane pagination metadata",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzX4u",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 51,
+      "invariant": "Reject duplicate delivery records before rendering",
+      "successor": "P7"
+    }
+  ]
+}
