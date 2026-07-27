@@ -48,7 +48,7 @@ Snapshot: GitHub PR #28 review threads read 2026-07-27 from frozen head
 
 | PR | Branch | Bounded outcome | Owned surfaces | Depends on |
 | --- | --- | --- | --- | --- |
-| 0 | `agent/intb-261-review-ledger` | Durable grouping and review-loop rules. No product behavior. | This document | None |
+| 0 | `agent/intb-261-review-ledger` | Durable grouping and review-loop rules. No product behavior. | This strategy, frozen PR #28 ledger, successor-finding ledger | None |
 | B0 | `agent/tabellio-buildkite-bootstrap` | **Merged as PR #32.** Minimal reviewed Buildkite bootstrap is on `main`. | `.buildkite` pipeline/bootstrap only, focused checks | 0 |
 | P1a | `agent/intb-261-portable-evidence-contract` | **Merged as PR #33.** Reject unsafe, incomplete, and contradictory portable evidence. | `scripts/lib/portable-evidence.mjs`, focused tests | B0 |
 | P1b | `agent/intb-261-analytics-core` | Build analytics core on the merged portable contract. | analytics core, schemas, focused tests | P1a |
@@ -72,7 +72,8 @@ Snapshot: GitHub PR #28 review threads read 2026-07-27 from frozen head
 | Plane pagination, duplicate items, malformed item rejection, state-project ownership, WIP input consistency | PR 5 |
 | Deployment receipt portability, repository/commit binding, Cloud Run/Vercel collector option behavior | PR 6 |
 | CI/release/deployment claim digest, provider availability, source conflict, cross-repository evidence binding | PR 7 |
-| Input-output aliasing, report injection, derived WIP consistency, CLI rendering | PR 8 |
+| Input-output aliasing | P1b for analytics CLI/core; P4 for release CLI/linker; P8 for delivery CLI/report |
+| Report injection, derived WIP consistency, delivery CLI rendering | P8 |
 | Packaged analytics artifacts, regenerated baseline/source digest, squash-merge checkpoint resolution | PR 9 |
 
 ## Review and Evidence Protocol
@@ -120,6 +121,9 @@ publication, or a new architecture boundary.
 - Every PR #28 finding is either addressed by a merged successor, documented
   as duplicate with its owning invariant, or retained as an explicit accepted
   non-goal.
+- Every successor-finding ledger entry is reconciled to its owning successor,
+  documented as a duplicate, regression, or accepted non-goal, or retained as
+  an explicit blocked human decision.
 - Current baseline/report/source artifacts agree on exact source identities and
   digest.
 - Required validators, package dry-run, Fallow, and Buildkite pass on the
