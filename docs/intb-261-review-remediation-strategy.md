@@ -20,15 +20,16 @@ Snapshot: GitHub PR #28 review threads read 2026-07-27 from frozen head
   thread ID, path, line, invariant, and successor destination. It is the
   durable reconciliation input; no successor may silently omit a source thread.
 - `docs/intb-261-successor-finding-ledger.json` is separate and starts empty.
-  It records findings discovered after this frozen PR #28 snapshot without
-  changing the frozen provenance or 160-thread count.
+  It records and routes every finding discovered after this frozen PR #28
+  snapshot without changing the frozen provenance or 160-thread count.
 - Findings repeat across a small set of contract failures. A successor fixes
   one invariant and its adversarial fixture, not one comment body.
 - Each successor PR links every addressed thread, and its PR description
   records `thread -> invariant -> fixture -> exact-head evidence`.
 - A new finding is either a duplicate of an existing invariant, a regression
-  in the PR that owns that invariant, or a new PR-0 ledger entry. It is never
-  appended to an unrelated successor.
+  in the PR that owns that invariant, or an entry in the separate
+  successor-finding ledger. It is never appended to the frozen ledger or an
+  unrelated successor.
 
 ## Shared Invariants
 
@@ -64,7 +65,7 @@ Snapshot: GitHub PR #28 review threads read 2026-07-27 from frozen head
 
 | Finding class | Destination |
 | --- | --- |
-| Credential/path leakage, raw provider fields, malformed IDs, source/head mismatch, canonical metric shape | P1b |
+| Credential/path leakage, raw provider fields, malformed IDs, source/head mismatch, canonical metric shape | P1b for analytics core and schemas; P2 for validator output or security checks; P6 for deployment receipt identifiers |
 | Evidence-mode crash, unavailable-state semantics, validator summary/output shape, required metric coverage | PR 2 |
 | Buildkite pagination, pipeline/repository provenance, per-build evidence identity | PR 3 |
 | Release pagination, valid Git tag grammar, release capture timing, release/source identity | PR 4 |

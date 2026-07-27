@@ -205,7 +205,7 @@
       "threadId": "PRRT_kwDOTL_Re86T0VXk",
       "path": "scripts/lib/delivery-evidence-joiner.mjs",
       "line": 82,
-      "invariant": "Exclude releases published before the delivery merge",
+      "invariant": "Exclude pre-merge releases from joined delivery claims",
       "successor": "P7"
     },
     {
@@ -632,7 +632,7 @@
       "threadId": "PRRT_kwDOTL_Re86Ty9lt",
       "path": "scripts/lib/github-release-linker.mjs",
       "line": 33,
-      "invariant": "Exclude releases published before the delivery merge",
+      "invariant": "Exclude pre-merge releases in release-linker collection",
       "successor": "P4"
     },
     {
