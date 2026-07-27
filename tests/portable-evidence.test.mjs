@@ -38,9 +38,13 @@ test("source contracts require exact state shapes and safe evidence", () => {
   assert.match(validateEvidenceSource({ status: "blocked", reason: "/tmp/private" })[0], /safe reason/);
   assert.match(validateEvidenceSource({ status: "blocked", reason: "provider error: path=/Users/alice/private" })[0], /safe reason/);
   assert.match(validateEvidenceSource({ status: "blocked", reason: "ENOENT (/home/alice/private)" })[0], /safe reason/);
+  assert.match(validateEvidenceSource({ status: "blocked", reason: "ENOENT '/home/alice/private'" })[0], /safe reason/);
+  assert.match(validateEvidenceSource({ status: "blocked", reason: "failed [/var/lib/private]" })[0], /safe reason/);
   assert.match(validateEvidenceSource({ status: "blocked", reason: "provider error: C:/Users/alice/private" })[0], /safe reason/);
   assert.match(validateEvidenceSource({ status: "blocked", reason: "https://token@github.com/IntelIP/Tabellio" })[0], /safe reason/);
   assert.match(validateEvidenceSource({ status: "unavailable", reason: "offline", workspace: "private" })[0], /not allowed/);
+  assert.match(validateEvidenceSource({ status: "unavailable", reason: "offline", version: "2026-07-25T00:00:00.000Z" }).join(" "), /cannot carry a version/);
+  assert.deepEqual(validateEvidenceSource({ status: "unavailable", reason: "offline", ghp_0123456789abcdef: true }), ["source contains a field that is not allowed"]);
   assert.match(validateEvidenceSource({ status: "available", version: "2099-01-01T00:00:00.000Z" }, { observedAt: OBSERVED_AT }).join(" "), /later than observation/);
 });
 
@@ -57,6 +61,12 @@ test("evidence binding requires canonical repository and exact head", () => {
     headCommit: HEAD,
     sourceHeadCommit: "b".repeat(40),
   }).join(" "), /repository binding.*head binding/);
+  assert.match(validateEvidenceBinding({
+    repository: "IntelIP/Tabellio",
+    sourceRepository: "IntelIP/Tabellio",
+    headCommit: HEAD,
+    sourceHeadCommit: "a".repeat(64),
+  }).join(" "), /head binding/);
 });
 
 test("provider snapshot accepts a minimal portable exact-head record", () => {
@@ -82,6 +92,7 @@ test("provider snapshot rejects unsafe and contradictory claims", () => {
     ["unknown field", (value) => { value.privatePayload = "secret"; }, /not allowed/],
     ["credentialed repository", (value) => { value.repository = "https://x:secret@github.com/IntelIP/Tabellio.git"; }, /repository/],
     ["wrong snapshot head", (value) => { value.headCommit = "b".repeat(40); }, /headCommit/],
+    ["sha256 snapshot head", (value) => { value.headCommit = "b".repeat(64); }, /headCommit/],
     ["empty snapshot wrong head", (value) => { value.deliveryChanges = []; value.headCommit = "b".repeat(40); }, /headCommit/],
     ["future capture", (value) => { value.capturedAt = "2099-01-01T00:00:00.000Z"; }, /later than observation/],
     ["normalized capture", (value) => { value.capturedAt = "2026-02-30T00:00:00.000Z"; }, /capturedAt is invalid/],

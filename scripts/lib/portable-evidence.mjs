@@ -21,7 +21,7 @@ const CREDENTIAL_PATTERNS = [
   /\bAKIA[0-9A-Z]{16}\b/,
   /:\/\/[^/\s@]+@/,
 ];
-const COMMIT_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+const COMMIT_PATTERN = /^[0-9a-f]{40}$/;
 const REPOSITORY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 
 export function hasCredentialShape(value) {
@@ -75,6 +75,9 @@ export function validateEvidenceSource(source, { observedAt } = {}) {
   }
   if (source.status !== "available" && !isSafeProviderText(source.reason)) {
     errors.push("unavailable source requires a safe reason");
+  }
+  if (source.status !== "available" && source.version !== undefined && source.version !== null) {
+    errors.push("unavailable source cannot carry a version");
   }
   if (source.status === "available" && Object.hasOwn(source, "reason")) {
     errors.push("available source cannot carry a reason");
@@ -211,7 +214,7 @@ function isCommit(value) {
 
 function hasControlOrPath(value) {
   return /[\u0000-\u001f\u007f-\u009f\u2028\u2029\\|]/.test(value)
-    || /(?:^|[\s=:(])\/(?!\/)\S*/.test(value)
+    || /(?:^|[\s=:(\[\]'"`])\/(?!\/)\S*/.test(value)
     || /(?:^|[\s=:(])~(?:\/|$)/.test(value)
     || /(?:^|[^A-Za-z0-9._-])[A-Za-z]:\/(?:\S*)/.test(value);
 }
@@ -222,7 +225,7 @@ function isPlainObject(value) {
 
 function rejectUnknownFields(value, fields, name, errors) {
   for (const key of Object.keys(value)) {
-    if (!fields.has(key)) errors.push(`${name} field ${key} is not allowed`);
+    if (!fields.has(key)) errors.push(`${name} contains a field that is not allowed`);
   }
 }
 
