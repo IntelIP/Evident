@@ -6,9 +6,17 @@ agents:
   queue: "linux-small"
 
 steps:
+  - label: ":git: Git 2.50.1"
+    key: "git-toolchain"
+    command: "bash .buildkite/scripts/build-modern-git.sh"
+    timeout_in_minutes: 15
+    artifact_paths:
+      - ".artifacts/toolchain/git-2.50.1-linux-amd64.tar.gz"
+
   - label: ":test_tube: Repository check"
     key: "repository-check"
-    command: "npm run check"
+    command: "bash .buildkite/scripts/tests.sh"
+    depends_on: "git-toolchain"
     timeout_in_minutes: 10
     plugins:
       - mise#v1.1.4:
