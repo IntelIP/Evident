@@ -18,6 +18,8 @@ steps:
     command: "bash .buildkite/scripts/tests.sh"
     depends_on: "git-toolchain"
     timeout_in_minutes: 10
+    artifact_paths:
+      - "tabellio-pr-evidence.json"
     plugins:
       - mise#v1.1.4:
           version: "2026.2.11"
