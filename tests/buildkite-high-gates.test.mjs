@@ -18,10 +18,10 @@ test("Buildkite adds bounded pull-request quality gates without CI cutover", asy
   assert.match(pipeline, /key: "fallow"/);
   assert.match(pipeline, /key: "package"/);
   assert.match(pipeline, /key: "product-validation"/);
-  assert.doesNotMatch(pipeline, /build\.pull_request\.id/);
-  assert.match(
-    pipeline,
-    /if: build\.env\("BUILDKITE_GITHUB_EVENT"\) == "pull_request"/,
+  assert.doesNotMatch(pipeline, /BUILDKITE_GITHUB_EVENT/);
+  assert.equal(
+    pipeline.match(/build\.pull_request\.id != null/g)?.length,
+    5,
   );
   assert.match(
     pipeline,
@@ -34,6 +34,7 @@ test("Buildkite adds bounded pull-request quality gates without CI cutover", asy
   assert.match(productValidation, /explicit preflight build/);
   assert.match(productValidation, /TABELLIO_BUILD_CONTEXT:-provider/);
   assert.match(productValidation, /TABELLIO_BASE_BRANCH:-main/);
+  assert.match(productValidation, /set -euo pipefail/);
   assert.match(productValidation, /exit 2/);
   assert.match(productValidation, /test "\$\(git rev-parse HEAD\^\{commit\}\)"/);
   assert.match(productValidation, /git bundle create .*validation-ref\.bundle/);

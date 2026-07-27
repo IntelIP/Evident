@@ -1,7 +1,8 @@
 # Tabellio Buildkite CI
 
-Buildkite runs the repository check on every build. Pull-request builds also
-run changed-code Fallow, package inspection, and exact-head product validation.
+Buildkite runs repository checks on pull requests and the default branch.
+Pull-request builds also run changed-code Fallow, package inspection, and
+exact-head product validation.
 The product-validation step exports the Git validation ref as a portable bundle
 instead of treating an internal `.git` ref as a workspace artifact.
 
