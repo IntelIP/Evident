@@ -23,11 +23,17 @@ test("Buildkite adds bounded pull-request quality gates without CI cutover", asy
     pipeline,
     /if: build\.env\("BUILDKITE_GITHUB_EVENT"\) == "pull_request"/,
   );
+  assert.match(
+    pipeline,
+    /build\.env\("TABELLIO_BUILD_CONTEXT"\) == "preflight"/,
+  );
   assert.match(pipeline, /build\.branch == pipeline\.default_branch/);
 
   assert.doesNotMatch(productValidation, /git show -s --format=%s/);
   assert.match(productValidation, /BUILDKITE_COMMIT:-HEAD/);
-  assert.match(productValidation, /requires a pull-request build/);
+  assert.match(productValidation, /explicit preflight build/);
+  assert.match(productValidation, /TABELLIO_BUILD_CONTEXT:-provider/);
+  assert.match(productValidation, /TABELLIO_BASE_BRANCH:-main/);
   assert.match(productValidation, /exit 2/);
   assert.match(productValidation, /test "\$\(git rev-parse HEAD\^\{commit\}\)"/);
   assert.match(productValidation, /git bundle create .*validation-ref\.bundle/);

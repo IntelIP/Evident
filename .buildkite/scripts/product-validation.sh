@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ "${BUILDKITE_PULL_REQUEST:-false}" == "false" ]]; then
-  printf '%s\n' "Buildkite product validation requires a pull-request build." >&2
+build_context="${TABELLIO_BUILD_CONTEXT:-provider}"
+if [[ "${BUILDKITE_PULL_REQUEST:-false}" == "false" && "$build_context" != "preflight" ]]; then
+  printf '%s\n' "Buildkite product validation requires a pull-request or explicit preflight build." >&2
   exit 2
 fi
 
 . .buildkite/scripts/use-modern-git.sh
 
 candidate="${BUILDKITE_COMMIT:-HEAD}"
-base_branch="${BUILDKITE_PULL_REQUEST_BASE_BRANCH:-main}"
+base_branch="${BUILDKITE_PULL_REQUEST_BASE_BRANCH:-${TABELLIO_BASE_BRANCH:-main}}"
 base_ref="origin/${base_branch}"
 
 git fetch --no-tags origin "+refs/heads/${base_branch}:refs/remotes/origin/${base_branch}"

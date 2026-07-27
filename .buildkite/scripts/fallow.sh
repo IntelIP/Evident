@@ -3,12 +3,13 @@ set -euo pipefail
 
 . .buildkite/scripts/use-modern-git.sh
 
-if [[ "${BUILDKITE_PULL_REQUEST:-false}" == "false" ]]; then
+build_context="${TABELLIO_BUILD_CONTEXT:-provider}"
+if [[ "${BUILDKITE_PULL_REQUEST:-false}" == "false" && "$build_context" != "preflight" ]]; then
   printf '%s\n' '{"kind":"audit","verdict":"pass","decision":"not_required","reason":"changed-code audit runs on pull requests."}' > fallow-audit.json
   exit 0
 fi
 
-base_branch="${BUILDKITE_PULL_REQUEST_BASE_BRANCH:-main}"
+base_branch="${BUILDKITE_PULL_REQUEST_BASE_BRANCH:-${TABELLIO_BASE_BRANCH:-main}}"
 git fetch --no-tags origin "+refs/heads/${base_branch}:refs/remotes/origin/${base_branch}"
 npm install --global fallow@2.89.0
 

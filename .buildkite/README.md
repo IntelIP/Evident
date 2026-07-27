@@ -16,6 +16,18 @@ bk pipeline validate
 npm run check
 ```
 
+When the GitHub integration does not emit a synchronized pull-request build,
+start an explicit exact-head preflight:
+
+```bash
+bk build create -y \
+  -p intelip/tabellio \
+  -b codex/example \
+  -c <exact-sha> \
+  -e TABELLIO_BUILD_CONTEXT=preflight \
+  -e TABELLIO_BASE_BRANCH=main
+```
+
 No Buildkite step deploys, publishes, or receives production provider
 credentials. Pull requests from third-party forks remain disabled during the
 migration.
