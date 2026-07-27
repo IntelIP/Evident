@@ -1,0 +1,1129 @@
+{
+  "schemaVersion": "intb-261-pr28-thread-ledger/v0.1",
+  "sourcePullRequest": 28,
+  "sourceHead": "33217d6d91470ce77bdbd96f749ed7127be50ab4",
+  "snapshotDate": "2026-07-27",
+  "unresolvedThreadCount": 160,
+  "threads": [
+    {
+      "threadId": "PRRT_kwDOTL_Re86T04o-",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 81,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T04o1",
+      "path": "scripts/lib/git-commit-containment.mjs",
+      "line": 21,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T04o2",
+      "path": "scripts/lib/paged-api-collector.mjs",
+      "line": 3,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T04o4",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 343,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T04o7",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 82,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T04pA",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 24,
+      "invariant": "Plane work-item integrity",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T09RR",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 124,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T09RS",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 129,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T09RT",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 193,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T09RU",
+      "path": "scripts/lib/cloud-run-deployment-collector.mjs",
+      "line": 47,
+      "invariant": "deployment receipt provenance",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0eHa",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 46,
+      "invariant": "Plane work-item integrity",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0eHb",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 88,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0eHc",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 31,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0eHQ",
+      "path": "scripts/lib/github-release-linker.mjs",
+      "line": 32,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0eHS",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 98,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0eHT",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 71,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0eHV",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 6,
+      "invariant": "Buildkite provenance and hosted validation",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0eHY",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 95,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0ri7",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 57,
+      "invariant": "Buildkite provenance and hosted validation",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0rjA",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 117,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0rjC",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 80,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0rjD",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 87,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0rjE",
+      "path": "scripts/lib/deployment-receipt.mjs",
+      "line": 22,
+      "invariant": "deployment receipt provenance",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXa",
+      "path": "scripts/tabellio-analytics-releases.mjs",
+      "line": 19,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXb",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 42,
+      "invariant": "Plane work-item integrity",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXd",
+      "path": "scripts/lib/delivery-report.mjs",
+      "line": 32,
+      "invariant": "CLI and report integrity",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXf",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 135,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXj",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 131,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXk",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 82,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXl",
+      "path": "scripts/lib/cloud-run-deployment-collector.mjs",
+      "line": 36,
+      "invariant": "deployment receipt provenance",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXm",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 39,
+      "invariant": "Plane work-item integrity",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXn",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 38,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXo",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 38,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXq",
+      "path": "scripts/lib/deployment-receipt-input.mjs",
+      "line": 5,
+      "invariant": "deployment receipt provenance",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXs",
+      "path": "scripts/lib/delivery-report.mjs",
+      "line": 32,
+      "invariant": "CLI and report integrity",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXu",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 73,
+      "invariant": "Buildkite provenance and hosted validation",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXX",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 61,
+      "invariant": "Buildkite provenance and hosted validation",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T0VXY",
+      "path": "scripts/lib/github-release-linker.mjs",
+      "line": 26,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T5Vya",
+      "path": "scripts/lib/github-release-collector.mjs",
+      "line": 12,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T5VyV",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 202,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T5VyW",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 218,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T5VyX",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 403,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86T5VyY",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1416,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tc7C-",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 80,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tc7C4",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1115,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tc7C6",
+      "path": "reports/analytics/2026-07-23-intb-261-baseline.json",
+      "line": 379,
+      "invariant": "baseline integration and packaging",
+      "successor": "P9"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tc7C7",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 295,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tc7Cz",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1031,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td4N-",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 192,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td4N7",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 244,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td4N8",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 33,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td4OB",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 41,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td4OE",
+      "path": "package.json",
+      "line": 67,
+      "invariant": "baseline integration and packaging",
+      "successor": "P9"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td5i_",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 132,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td5jA",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 244,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td5jC",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 192,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td5jD",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1312,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td5jF",
+      "path": "tabellio.validation.json",
+      "line": 38,
+      "invariant": "baseline integration and packaging",
+      "successor": "P9"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td5jG",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 85,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td5jI",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 270,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Td5jN",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 125,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TdTIV",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 111,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TdTIZ",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 124,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TetHb",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 132,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TetHd",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 309,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TetHP",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 183,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TetHW",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 301,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TetHZ",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 225,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tosk8",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 232,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86ToslD",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 310,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86ToslH",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 294,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86ToslJ",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 412,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86ToslN",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 231,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tpj2_",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1112,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tpj3A",
+      "path": "scripts/tabellio-analytics-validator.mjs",
+      "line": 399,
+      "invariant": "validator truthfulness and unavailable-state semantics",
+      "successor": "P2"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tpj3D",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1204,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TrAHu",
+      "path": "scripts/tabellio-analytics.mjs",
+      "line": 68,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TrAHv",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1373,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TrAHy",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 227,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Trjgc",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1520,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Trjgg",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1449,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Trjgk",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 837,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Trjgn",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1262,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Trjgo",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 1278,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Ty9lm",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 43,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Ty9ln",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 23,
+      "invariant": "Plane work-item integrity",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Ty9lo",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 10,
+      "invariant": "Buildkite provenance and hosted validation",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Ty9lp",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 38,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Ty9lq",
+      "path": ".buildkite/scripts/product-validation.sh",
+      "line": 18,
+      "invariant": "Buildkite provenance and hosted validation",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Ty9lt",
+      "path": "scripts/lib/github-release-linker.mjs",
+      "line": 33,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Ty9lu",
+      "path": "schemas/deployment-receipt.v0.1.schema.json",
+      "line": 31,
+      "invariant": "deployment receipt provenance",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tyv4-",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 34,
+      "invariant": "Plane work-item integrity",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tyv41",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 37,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tyv44",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 44,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tyv47",
+      "path": "scripts/tabellio-delivery-evidence.mjs",
+      "line": 13,
+      "invariant": "CLI and report integrity",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tyv4z",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 46,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tyv5A",
+      "path": "scripts/lib/github-release-collector.mjs",
+      "line": 19,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tyv5E",
+      "path": "scripts/lib/github-release-collector.mjs",
+      "line": 57,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPa",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 105,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPb",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 34,
+      "invariant": "Buildkite provenance and hosted validation",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPG",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 77,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPI",
+      "path": "schemas/github-release-snapshot.v0.1.schema.json",
+      "line": 22,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPK",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 81,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPO",
+      "path": "scripts/tabellio-delivery-report.mjs",
+      "line": 7,
+      "invariant": "CLI and report integrity",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPR",
+      "path": "scripts/tabellio-analytics-releases.mjs",
+      "line": 19,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPW",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 28,
+      "invariant": "Buildkite provenance and hosted validation",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPY",
+      "path": "schemas/delivery-evidence-snapshot.v0.1.schema.json",
+      "line": 15,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzaPZ",
+      "path": "scripts/lib/delivery-report.mjs",
+      "line": 33,
+      "invariant": "CLI and report integrity",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzDl1",
+      "path": "scripts/lib/github-release-collector.mjs",
+      "line": 47,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzDl3",
+      "path": "scripts/tabellio-delivery-evidence.mjs",
+      "line": 14,
+      "invariant": "CLI and report integrity",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzDl5",
+      "path": "scripts/tabellio-vercel-deployment.mjs",
+      "line": 7,
+      "invariant": "deployment receipt provenance",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzDl6",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 34,
+      "invariant": "Plane work-item integrity",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzDl7",
+      "path": "scripts/lib/delivery-report.mjs",
+      "line": 33,
+      "invariant": "CLI and report integrity",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzG__",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 38,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzG_1",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 46,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzG_4",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 43,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzG_6",
+      "path": "scripts/tabellio-delivery-evidence.mjs",
+      "line": 13,
+      "invariant": "CLI and report integrity",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzG_7",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 45,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzG_9",
+      "path": "schemas/deployment-receipt.v0.1.schema.json",
+      "line": 31,
+      "invariant": "deployment receipt provenance",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzHAC",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 34,
+      "invariant": "Plane work-item integrity",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzHAE",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 38,
+      "invariant": "Plane work-item integrity",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzHAG",
+      "path": "scripts/lib/github-release-linker.mjs",
+      "line": 11,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzHAI",
+      "path": "scripts/tabellio-delivery-evidence.mjs",
+      "line": 14,
+      "invariant": "CLI and report integrity",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzHAK",
+      "path": "scripts/lib/github-release-collector.mjs",
+      "line": 19,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzHAM",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 25,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzHAO",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 28,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzHAQ",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 23,
+      "invariant": "Plane work-item integrity",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzLBE",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 34,
+      "invariant": "Plane work-item integrity",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzLBF",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 39,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzLBG",
+      "path": "scripts/tabellio-vercel-deployment.mjs",
+      "line": 7,
+      "invariant": "deployment receipt provenance",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzLBH",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 39,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzLBK",
+      "path": "scripts/lib/github-release-collector.mjs",
+      "line": 51,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpoa",
+      "path": ".buildkite/scripts/product-validation.sh",
+      "line": 20,
+      "invariant": "Buildkite provenance and hosted validation",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpoc",
+      "path": ".buildkite/scripts/product-validation.sh",
+      "line": 27,
+      "invariant": "Buildkite provenance and hosted validation",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpod",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 80,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpof",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 40,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpog",
+      "path": "scripts/tabellio-delivery-report.mjs",
+      "line": 7,
+      "invariant": "CLI and report integrity",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpoh",
+      "path": "scripts/lib/cloud-run-deployment-collector.mjs",
+      "line": 19,
+      "invariant": "deployment receipt provenance",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpoj",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 53,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpok",
+      "path": "scripts/lib/delivery-report.mjs",
+      "line": 33,
+      "invariant": "CLI and report integrity",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpol",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 18,
+      "invariant": "Buildkite provenance and hosted validation",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpom",
+      "path": "schemas/github-release-snapshot.v0.1.schema.json",
+      "line": 22,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86Tzpon",
+      "path": "scripts/lib/delivery-report.mjs",
+      "line": 34,
+      "invariant": "CLI and report integrity",
+      "successor": "P8"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzTcN",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 60,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzTcO",
+      "path": "scripts/lib/github-release-linker.mjs",
+      "line": 31,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzTcP",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 14,
+      "invariant": "Buildkite provenance and hosted validation",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzTcQ",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 29,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzTcR",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 39,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzTcS",
+      "path": "schemas/github-release-snapshot.v0.1.schema.json",
+      "line": 22,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzTcT",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 37,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzTcU",
+      "path": "scripts/lib/analytics.mjs",
+      "line": 852,
+      "invariant": "analytics core and portable snapshot contract",
+      "successor": "P1b"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzX4l",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 12,
+      "invariant": "Buildkite provenance and hosted validation",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzX4m",
+      "path": "scripts/lib/vercel-deployment-collector.mjs",
+      "line": 26,
+      "invariant": "deployment receipt provenance",
+      "successor": "P6"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzX4n",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 17,
+      "invariant": "Buildkite provenance and hosted validation",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzX4o",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 72,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzX4p",
+      "path": "scripts/lib/buildkite-build-collector.mjs",
+      "line": 35,
+      "invariant": "Buildkite provenance and hosted validation",
+      "successor": "P3"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzX4r",
+      "path": "scripts/lib/github-release-collector.mjs",
+      "line": 45,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzX4s",
+      "path": "scripts/lib/github-release-collector.mjs",
+      "line": 23,
+      "invariant": "release collection and identity",
+      "successor": "P4"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzX4t",
+      "path": "scripts/lib/plane-work-item-collector.mjs",
+      "line": 44,
+      "invariant": "Plane work-item integrity",
+      "successor": "P5"
+    },
+    {
+      "threadId": "PRRT_kwDOTL_Re86TzX4u",
+      "path": "scripts/lib/delivery-evidence-joiner.mjs",
+      "line": 51,
+      "invariant": "delivery claim joins",
+      "successor": "P7"
+    }
+  ]
+}

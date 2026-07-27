@@ -12,9 +12,13 @@ or Plane mutation.
 
 ## Review Inventory
 
-Snapshot: GitHub PR #28 review threads read 2026-07-27.
+Snapshot: GitHub PR #28 review threads read 2026-07-27 from frozen head
+`33217d6d91470ce77bdbd96f749ed7127be50ab4`.
 
 - 160 unresolved threads: 47 P1, 112 P2, 1 P3.
+- `docs/intb-261-pr28-thread-ledger.json` records every frozen unresolved
+  thread ID, path, line, invariant, and successor destination. It is the
+  durable reconciliation input; no successor may silently omit a source thread.
 - Findings repeat across a small set of contract failures. A successor fixes
   one invariant and its adversarial fixture, not one comment body.
 - Each successor PR links every addressed thread, and its PR description
@@ -41,16 +45,17 @@ Snapshot: GitHub PR #28 review threads read 2026-07-27.
 | PR | Branch | Bounded outcome | Owned surfaces | Depends on |
 | --- | --- | --- | --- | --- |
 | 0 | `agent/intb-261-review-ledger` | Durable grouping and review-loop rules. No product behavior. | This document | None |
-| B0 | `agent/tabellio-buildkite-bootstrap` | Put the minimal reviewed Buildkite bootstrap on `main` so successor PRs can produce hosted evidence. | `.buildkite` pipeline/bootstrap only, focused checks | 0 |
-| 1 | `agent/intb-261-portable-evidence-contract` | Reject unsafe, incomplete, and contradictory analytics evidence. | `scripts/lib/analytics.mjs`, analytics schemas, focused tests | B0 |
-| 2 | `agent/intb-261-analytics-validator` | Validator emits truthful passed or failed evidence and preserves valid unavailable states. | `scripts/tabellio-analytics-validator.mjs`, `tabellio.validation.json`, focused tests | 1 |
-| 3 | `agent/intb-261-buildkite-collector` | Buildkite inventory is complete and exact evidence is repository-bound. | `scripts/lib/buildkite-build-collector.mjs`, focused tests | 1 |
-| 4 | `agent/intb-261-release-evidence` | Release collection/linking supports valid tags, complete pages, and temporal provenance. | release collector/linker, release schemas, focused tests | 1 |
-| 5 | `agent/intb-261-plane-collector` | Plane snapshots reject malformed, duplicate, and cross-project state data. | `scripts/lib/plane-work-item-collector.mjs`, focused tests | 1 |
-| 6 | `agent/intb-261-deployment-receipts` | Deployment receipts and collectors are portable, repository-bound, and parse their documented options. | deployment receipt schema, deployment collectors, focused tests | 1 |
-| 7 | `agent/intb-261-delivery-claims` | Joined delivery records cannot claim CI, release, or deployment success without matching source evidence. | `scripts/lib/delivery-evidence-joiner.mjs`, focused tests | 2, 3, 4, 5, 6 |
-| 8 | `agent/intb-261-delivery-cli-report` | Delivery CLI protects inputs; report recomputes WIP and escapes external text. | delivery CLI, report renderer, focused tests | 7 |
-| 9 | `agent/intb-261-baseline-integration` | Rebuilt baseline, package inclusion, and merged-head Buildkite checkpoint behavior. | analytics reports, package manifest, Buildkite validation script, focused tests | 8 |
+| B0 | `agent/tabellio-buildkite-bootstrap` | **Merged as PR #32.** Minimal reviewed Buildkite bootstrap is on `main`. | `.buildkite` pipeline/bootstrap only, focused checks | 0 |
+| P1a | `agent/intb-261-portable-evidence-contract` | **Merged as PR #33.** Reject unsafe, incomplete, and contradictory portable evidence. | `scripts/lib/portable-evidence.mjs`, focused tests | B0 |
+| P1b | `agent/intb-261-analytics-core` | Build analytics core on the merged portable contract. | analytics core, schemas, focused tests | P1a |
+| P2 | `agent/intb-261-analytics-validator` | Validator emits truthful passed or failed evidence and preserves valid unavailable states. | `scripts/tabellio-analytics-validator.mjs`, `tabellio.validation.json`, focused tests | P1b |
+| P3 | `agent/intb-261-buildkite-collector` | Buildkite inventory is complete and exact evidence is repository-bound. | `scripts/lib/buildkite-build-collector.mjs`, focused tests | P1b |
+| P4 | `agent/intb-261-release-evidence` | Release collection/linking supports valid tags, complete pages, and temporal provenance. | release collector/linker, release schemas, focused tests | P1b |
+| P5 | `agent/intb-261-plane-collector` | Plane snapshots reject malformed, duplicate, and cross-project state data. | `scripts/lib/plane-work-item-collector.mjs`, focused tests | P1b |
+| P6 | `agent/intb-261-deployment-receipts` | Deployment receipts and collectors are portable, repository-bound, and parse their documented options. | deployment receipt schema, deployment collectors, focused tests | P1b |
+| P7 | `agent/intb-261-delivery-claims` | Joined delivery records cannot claim CI, release, or deployment success without matching source evidence. | `scripts/lib/delivery-evidence-joiner.mjs`, focused tests | P2, P3, P4, P5, P6 |
+| P8 | `agent/intb-261-delivery-cli-report` | Delivery CLI protects inputs; report recomputes WIP and escapes external text. | delivery CLI, report renderer, focused tests | P7 |
+| P9 | `agent/intb-261-baseline-integration` | Rebuilt baseline, package inclusion, and merged-head Buildkite checkpoint behavior. | analytics reports, package manifest, Buildkite validation script, focused tests | P8 |
 
 ## Finding Assignment Rules
 
@@ -68,8 +73,8 @@ Snapshot: GitHub PR #28 review threads read 2026-07-27.
 
 ## Review and Evidence Protocol
 
-1. Merge B0 before opening PR 1. Then start each successor from current
-   `origin/main`; do not stack code branches.
+1. B0 and P1a are merged. Start P1b from current `origin/main`; do not stack
+   code branches.
 2. One successor merges before its dependent successor is created. Rebase is not
    a substitute for rerunning exact-head evidence.
 3. Before review, add a negative fixture for every addressed invariant, run
@@ -79,22 +84,18 @@ Snapshot: GitHub PR #28 review threads read 2026-07-27.
 5. Request review only for the declared surfaces. Thread replies/resolution
    require separate authority after the fix and exact-head evidence exist.
 6. If review finds a new invariant, stop the current repair loop, add it to
-   this ledger's next unstarted destination, and keep the current PR bounded.
+   the PR-0 ledger, then route it by the finding-assignment and dependency
+   rules. Do not force it into the numerically next successor; keep the
+   current PR bounded.
 
-## Current Hosted-Evidence Blocker
+## Resolved Hosted-Evidence Blocker
 
 Buildkite builds [#31](https://buildkite.com/intelip/tabellio/builds/31) and
-[#32](https://buildkite.com/intelip/tabellio/builds/32) checked out this PR's
-exact head `491880a3a1c9b2d5598a23568827dafb08c0f199`, then failed in the
-initial pipeline-upload job before tests ran. The agent reported no default
-pipeline configuration file. `origin/main` does not contain the Buildkite
-configuration that PR #28 carried, so any clean successor based on `main`
-would fail in the same way.
-
-This is CI bootstrap absence, not a strategy-document failure. Keep PR #28
-frozen; do not stack successors onto it. B0 is the bounded prerequisite:
-extract and review only the minimum safe Buildkite bootstrap needed for the
-repository's existing validation flow, merge it separately, then begin PR 1.
+[#32](https://buildkite.com/intelip/tabellio/builds/32) exposed the former
+pipeline-upload absence. B0 extracted the minimal bootstrap and merged as
+PR #32; P1a then merged as PR #33. This is resolved historical evidence, not
+a current successor blocker. Every new successor still requires terminal
+Buildkite evidence on its own exact candidate head.
 
 ## WIP and Stop Conditions
 
