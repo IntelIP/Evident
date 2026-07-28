@@ -10,17 +10,16 @@ import {
   isPortableIdentifier,
   isSafeProviderText,
   isSafeProviderVersion,
+  parseProviderVersionTimestamp,
   validateProviderSnapshot,
 } from "./portable-evidence.mjs";
+import { validatePlatformConfig } from "./platform-config.mjs";
 import { localRepositoryId } from "./repository-identity.mjs";
 import { validateReviewCycle } from "./review-cycle.mjs";
 import { validateValidationResult } from "./validation-runner.mjs";
 
 const SCHEMA_VERSION = "tabellio-analytics-dataset/v0.1";
-const REQUIRED_VALIDATION_MANIFESTS = new Set([
-  "tabellio.analytics.validation.json",
-  "tabellio.validation.json",
-]);
+const DEFAULT_VALIDATION_MANIFEST = "tabellio.validation.json";
 const COMMIT_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const SOURCE_STATES = new Set(["available", "unavailable", "blocked"]);
@@ -158,6 +157,7 @@ async function collectRepository(input, observedAt) {
     optionalGitText(repositoryPath, ["remote", "get-url", "origin"]),
   ]);
   const canonicalId = repositoryIdentityFromRemote(remote, repositoryPath);
+  const validationManifest = await validationManifestAtHead(repositoryPath, headCommit);
   const gitSource = availableSource({
     id: `${input.id}:git`,
     system: "git",
@@ -169,6 +169,7 @@ async function collectRepository(input, observedAt) {
     collectControlSource(repositoryPath, input.id, observedAt, control, {
       canonicalRepositoryId: canonicalId,
       headCommit,
+      validationManifest,
     })
   ));
   const controls = controlEvidence.map((evidence) => evidence.source);
@@ -333,13 +334,17 @@ function candidateReviewRecords(records, { canonicalRepositoryId: repository, he
   );
 }
 
-function latestCandidateValidationResult(records, { canonicalRepositoryId: repository, headCommit }) {
+function latestCandidateValidationResult(
+  records,
+  { canonicalRepositoryId: repository, headCommit, validationManifest },
+) {
   const expectedRepository = normalizedAnalyticsRepositoryId(repository);
   return records
     .filter((record) => validationResultMatchesCandidate(
       record,
       expectedRepository,
       headCommit,
+      validationManifest,
     ))
     .sort((left, right) =>
       Date.parse(right.completedAt) - Date.parse(left.completedAt)
@@ -347,18 +352,14 @@ function latestCandidateValidationResult(records, { canonicalRepositoryId: repos
     )[0] ?? null;
 }
 
-function validationResultMatchesCandidate(record, expectedRepository, headCommit) {
+function validationResultMatchesCandidate(record, expectedRepository, headCommit, validationManifest) {
   return validationRepositoryMatches(record, expectedRepository)
     && validationHeadCommit(record) === headCommit
-    && requiredValidationManifest(record);
+    && record?.suite?.manifestPath === validationManifest;
 }
 
 function validationRepositoryMatches(record, expectedRepository) {
   return normalizedAnalyticsRepositoryId(record?.repository?.id) === expectedRepository;
-}
-
-function requiredValidationManifest(record) {
-  return REQUIRED_VALIDATION_MANIFESTS.has(record?.suite?.manifestPath);
 }
 
 function normalizedAnalyticsRepositoryId(value) {
@@ -1042,15 +1043,19 @@ function validateSourcePayload(source) {
 }
 
 function versionNotAfterObservation(source) {
-  const versionTimestamp = parseableProviderTimestamp(source.sourceVersion);
+  const versionTimestamp = parseProviderVersionTimestamp(source.sourceVersion);
   return versionTimestamp === null
     || versionTimestamp <= Date.parse(source.observedAt);
 }
 
-function parseableProviderTimestamp(value) {
-  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}(?:T|$)/.test(value)
-    ? parseableTimestamp(value)
-    : null;
+async function validationManifestAtHead(repositoryPath, headCommit) {
+  const path = await gitText(
+    repositoryPath,
+    ["ls-tree", "--name-only", headCommit, "--", "tabellio.platform.json"],
+  );
+  if (path === "") return DEFAULT_VALIDATION_MANIFEST;
+  const source = await gitText(repositoryPath, ["show", `${headCommit}:tabellio.platform.json`]);
+  return validatePlatformConfig(JSON.parse(source)).validation.manifest;
 }
 
 function parseableTimestamp(value) {

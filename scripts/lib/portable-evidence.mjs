@@ -55,6 +55,12 @@ export function isSafeProviderVersion(value) {
   return value === null || (isSafeProviderText(value) && value.length <= 200);
 }
 
+export function parseProviderVersionTimestamp(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}(?:T|$)/.test(value)) return null;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
 export function canonicalRepositoryId(value) {
   if (typeof value !== "string" || hasCredentialShape(value) || !REPOSITORY_PATTERN.test(value)) return null;
   return value.toLowerCase();
@@ -84,7 +90,8 @@ export function validateEvidenceSource(source, { observedAt } = {}) {
   if (source.status === "available" && Object.hasOwn(source, "reason")) {
     errors.push("available source cannot carry a reason");
   }
-  if (isDateTime(source.version) && isDateTime(observedAt) && Date.parse(source.version) > Date.parse(observedAt)) {
+  const versionTimestamp = parseProviderVersionTimestamp(source.version);
+  if (versionTimestamp !== null && isDateTime(observedAt) && versionTimestamp > Date.parse(observedAt)) {
     errors.push("source version is later than observation");
   }
   return unique(errors);

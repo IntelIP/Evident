@@ -367,17 +367,13 @@ test("analytics collector binds validation claims to the latest exact repository
     fixture,
     validationResult(head, "github.com/IntelIP/Example", "passed", "exact-pass"),
   );
-  const providerPath = join(fixture.root, "provider.json");
-  const snapshot = providerSnapshot(head);
-  snapshot.deliveryChanges[0].validationStatus = "passed";
-  await writeFile(providerPath, `${JSON.stringify(snapshot, null, 2)}\n`);
-
-  const supported = await collectWithProvider(fixture.repository, providerPath);
-  const validationSource = supported.repositories[0].sources.find((source) =>
-    source.system === "tabellio-validation"
+  const { dataset: supported, providerPath, snapshot } = await collectPassedValidationClaim(
+    fixture,
+    head,
+    "provider.json",
   );
-  assert.equal(validationSource.status, "available");
-  assert.equal(validationSource.sourceVersion, head);
+  assert.equal(validationControlSource(supported).status, "available");
+  assert.equal(validationControlSource(supported).sourceVersion, head);
   assert.equal(supported.repositories[0].deliveryChanges[0].validationStatus, "passed");
 
   snapshot.deliveryChanges[0].validationStatus = "failed";
@@ -388,6 +384,30 @@ test("analytics collector binds validation claims to the latest exact repository
     providerSources(contradicted).map((source) => source.status),
     ["blocked", "blocked", "blocked", "blocked"],
   );
+});
+
+test("analytics collector respects the repository-configured validation manifest", async (context) => {
+  const fixture = await githubRepositoryFixture(context);
+  const head = await configureValidationManifest(fixture, "custom.validation.json");
+  const result = validationResult(
+    head,
+    "github.com/IntelIP/Example",
+    "passed",
+    "custom-manifest",
+  );
+  result.suite.manifestPath = "custom.validation.json";
+  const { integrity: _integrity, ...unsigned } = result;
+  result.integrity.digest = digestObject(unsigned);
+  await writeValidationControl(fixture, result);
+
+  const { dataset } = await collectPassedValidationClaim(
+    fixture,
+    head,
+    "custom-provider.json",
+  );
+  assert.equal(validationControlSource(dataset).status, "available");
+  assert.equal(validationControlSource(dataset).sourceVersion, head);
+  assert.equal(dataset.repositories[0].deliveryChanges[0].validationStatus, "passed");
 });
 
 test("analytics collector blocks stale and cross-repository validation controls", async (context) => {
@@ -416,16 +436,12 @@ test("analytics collector blocks stale and cross-repository validation controls"
     const fixture = await githubRepositoryFixture(context);
     const { head } = fixture;
     await writeValidationControl(fixture, value.record(head));
-    const providerPath = join(fixture.root, `${value.name.replaceAll(" ", "-")}.json`);
-    const snapshot = providerSnapshot(head);
-    snapshot.deliveryChanges[0].validationStatus = "passed";
-    await writeFile(providerPath, `${JSON.stringify(snapshot, null, 2)}\n`);
-
-    const dataset = await collectWithProvider(fixture.repository, providerPath);
-    const validationSource = dataset.repositories[0].sources.find((source) =>
-      source.system === "tabellio-validation"
+    const { dataset } = await collectPassedValidationClaim(
+      fixture,
+      head,
+      `${value.name.replaceAll(" ", "-")}.json`,
     );
-    assert.equal(validationSource.status, "blocked", value.name);
+    assert.equal(validationControlSource(dataset).status, "blocked", value.name);
     assert.deepEqual(dataset.repositories[0].deliveryChanges, [], value.name);
   }
 });
@@ -455,6 +471,21 @@ test("analytics collector converts malformed provider input to blocked evidence"
   );
   assert.deepEqual(providerSources.map((source) => source.status), ["blocked", "blocked", "blocked", "blocked"]);
   assert.doesNotMatch(JSON.stringify(dataset), /Users\/private|provider\.json/);
+});
+
+test("analytics collector converts future date-only provider versions to blocked evidence", async (context) => {
+  const fixture = await githubRepositoryFixture(context);
+  const providerPath = join(fixture.root, "future-provider.json");
+  const snapshot = providerSnapshot(fixture.head);
+  snapshot.sources.github.version = "2099-01-01";
+  await writeFile(providerPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+
+  const dataset = await collectWithProvider(fixture.repository, providerPath);
+  assert.deepEqual(
+    providerSources(dataset).map((source) => source.status),
+    ["blocked", "blocked", "blocked", "blocked"],
+  );
+  assert.deepEqual(dataset.repositories[0].deliveryChanges, []);
 });
 
 test("analytics collector blocks indirect control refs without exporting ref paths", async (context) => {
@@ -913,6 +944,19 @@ async function githubRepositoryFixture(context) {
   };
 }
 
+async function configureValidationManifest(fixture, manifestPath) {
+  const source = await readFile(new URL("../tabellio.platform.json", import.meta.url), "utf8");
+  const platform = JSON.parse(source);
+  platform.validation.manifest = manifestPath;
+  await writeFile(
+    join(fixture.repository, "tabellio.platform.json"),
+    `${JSON.stringify(platform, null, 2)}\n`,
+  );
+  await git(fixture.repository, ["add", "tabellio.platform.json"]);
+  await git(fixture.repository, ["commit", "-m", "Configure validation manifest"]);
+  return git(fixture.repository, ["rev-parse", "HEAD"]);
+}
+
 async function analyticsCliFixture(context, outputRelativePath) {
   const fixture = await gitRepositoryFixture(context);
   const configPath = join(fixture.root, "config.json");
@@ -953,6 +997,24 @@ function providerSources(dataset) {
   return dataset.repositories[0].sources.filter((source) =>
     ["plane", "github", "github-actions", "buildkite"].includes(source.system)
   );
+}
+
+function validationControlSource(dataset) {
+  return dataset.repositories[0].sources.find((source) =>
+    source.system === "tabellio-validation"
+  );
+}
+
+async function collectPassedValidationClaim(fixture, head, filename) {
+  const providerPath = join(fixture.root, filename);
+  const snapshot = providerSnapshot(head);
+  snapshot.deliveryChanges[0].validationStatus = "passed";
+  await writeFile(providerPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+  return {
+    dataset: await collectWithProvider(fixture.repository, providerPath),
+    providerPath,
+    snapshot,
+  };
 }
 
 function validationResult(headCommit, repositoryId, status, runId) {
