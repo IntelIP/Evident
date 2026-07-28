@@ -146,7 +146,7 @@
     "record": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "linkBasis", "pullRequestNumber", "headCommit", "mergeCommit", "mergedAt", "sourceClaimDigest", "plane", "ci", "release", "deployment"],
+      "required": ["id", "linkBasis", "pullRequestNumber", "headCommit", "mergeCommit", "mergedAt", "releaseCommit", "sourceClaimDigest", "plane", "ci", "release", "deployment"],
       "properties": {
         "id": { "$ref": "#/$defs/portableIdentifier" },
         "linkBasis": { "enum": ["explicit", "manual-reconciliation", "unlinked"] },
@@ -154,6 +154,7 @@
         "headCommit": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
         "mergeCommit": { "type": ["string", "null"], "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
         "mergedAt": { "type": ["string", "null"], "format": "date-time" },
+        "releaseCommit": { "type": ["string", "null"], "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
         "sourceClaimDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "plane": { "$ref": "#/$defs/plane" },
         "ci": { "$ref": "#/$defs/ci" },

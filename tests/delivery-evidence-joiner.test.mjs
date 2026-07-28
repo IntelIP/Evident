@@ -150,6 +150,48 @@ test("delivery join preserves terminal CI and blocked deployment states", () => 
   assert.equal(failed.deliveryRecords[0].deployment.deployedAt, null);
 });
 
+test("delivery join selects the newest Buildkite build number", () => {
+  const snapshot = buildkite();
+  snapshot.builds = [
+    {
+      ...snapshot.builds[0],
+      number: 6,
+      createdAt: "2026-07-25T11:00:00.000Z",
+      finishedAt: "2026-07-25T11:59:00.000Z",
+      state: "passed",
+    },
+    {
+      ...snapshot.builds[0],
+      number: 7,
+      createdAt: "2026-07-25T11:58:00.000Z",
+      finishedAt: null,
+      state: "running",
+    },
+  ];
+  const record = join({ buildkiteSnapshots: [snapshot] }).deliveryRecords[0];
+  assert.equal(record.ci.status, "in_progress");
+  assert.equal(record.ci.buildNumber, 7);
+});
+
+test("delivery join honors blocked provider Buildkite evidence", () => {
+  const providerSnapshot = provider();
+  providerSnapshot.sources.buildkite = {
+    status: "blocked",
+    version: null,
+    reason: "Buildkite unavailable.",
+  };
+  assert.throws(
+    () => join({ providerSnapshot }),
+    /Provider and Buildkite source availability mismatch/,
+  );
+  const snapshot = join({
+    providerSnapshot,
+    buildkiteSnapshots: [],
+  });
+  assert.equal(snapshot.sources.buildkite.status, "blocked");
+  assert.equal(snapshot.deliveryRecords[0].ci.status, "blocked");
+});
+
 test("delivery join preserves blocked provider sources as blocked records", () => {
   const providerSnapshot = provider();
   providerSnapshot.sources.plane = {
@@ -221,6 +263,23 @@ test("delivery join follows landed squash commits", () => {
   assert.equal(snapshot.deliveryRecords[0].release.status, "shipped");
   assert.equal(snapshot.deliveryRecords[0].deployment.status, "passed");
   assert.equal(snapshot.deliveryRecords[0].deployment.commit, mergeCommit);
+});
+
+test("delivery join preserves containment-linked release commits", () => {
+  const mergeCommit = "b".repeat(40);
+  const releaseCommit = "c".repeat(40);
+  const providerSnapshot = provider();
+  Object.assign(providerSnapshot.deliveryChanges[0], {
+    mergeCommit,
+    releasedAt: fixture.at,
+    releaseCommit,
+  });
+  const releaseSnapshot = releases();
+  releaseSnapshot.releases[0].commit = releaseCommit;
+  const snapshot = join({ providerSnapshot, releaseSnapshot });
+  assert.equal(snapshot.deliveryRecords[0].releaseCommit, releaseCommit);
+  assert.equal(snapshot.deliveryRecords[0].release.status, "shipped");
+  assert.equal(snapshot.deliveryRecords[0].release.commit, releaseCommit);
 });
 
 test("delivery join selects earliest post-merge release", () => {
@@ -382,6 +441,7 @@ test("delivery snapshot rejects unsupported successful and failed claims", () =>
 test("delivery snapshot binds CI, release, and deployment decisions to claims", () => {
   for (const mutate of [
     (record) => { record.pullRequestNumber = 99; },
+    (record) => { record.releaseCommit = "b".repeat(40); },
     (record) => { record.plane.stateGroup = "completed"; },
     (record) => { record.ci.status = "failed"; },
     (record) => { record.release.tagName = "v9.9.9"; },

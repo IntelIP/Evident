@@ -90,7 +90,10 @@ export function joinDeliveryEvidence({
         boundedObservationId("plane", planeSnapshot.workspace),
         planeClaims(planeSnapshot),
       ),
-      buildkite: aggregateBuildkite(buildkiteSnapshots),
+      buildkite: aggregateBuildkite(
+        buildkiteSnapshots,
+        providerSnapshot.sources.buildkite.status,
+      ),
       githubRelease: sourceState(
         releaseSnapshot.status,
         releaseSnapshot,
@@ -159,6 +162,7 @@ function assertJoinBindings(input) {
 }
 
 function assertBuildkiteBinding({
+  providerSnapshot,
   buildkiteAuthority,
   buildkiteSnapshots,
 }) {
@@ -177,6 +181,11 @@ function assertBuildkiteBinding({
         && snapshot.pipeline === buildkiteAuthority.pipeline,
     ),
     "Buildkite snapshot authority mismatch.",
+  );
+  ensure(
+    providerSnapshot.sources.buildkite.status === "available"
+      || !buildkiteSnapshots.some((snapshot) => snapshot.status === "available"),
+    "Provider and Buildkite source availability mismatch.",
   );
 }
 
@@ -284,6 +293,7 @@ function recordContext(input) {
     stateById,
     planeSnapshot,
     buildkiteSnapshots,
+    providerBuildkiteStatus: providerSnapshot.sources.buildkite.status,
     releaseSnapshot,
     deploymentReceipts: targetReceipts,
     deploymentBlockedReason,
@@ -308,9 +318,14 @@ function recordFor(change, context) {
     headCommit: change.headCommit,
     mergeCommit: change.mergeCommit || null,
     mergedAt: change.mergedAt || null,
+    releaseCommit: change.releaseCommit || null,
     sourceClaimDigest: digestClaim(providerChangeClaim(change)),
     plane: planeEvidenceFor(change, context),
-    ci: ciEvidenceFor(build, context.buildkiteSnapshots),
+    ci: ciEvidenceFor(
+      build,
+      context.buildkiteSnapshots,
+      context.providerBuildkiteStatus,
+    ),
     release: releaseEvidenceFor(release, context.releaseSnapshot),
     deployment: deploymentEvidenceFor(receipt, context),
   };
@@ -370,10 +385,11 @@ function missingPlaneStatus(snapshot) {
   return snapshot.status === "available" ? "unlinked" : "blocked";
 }
 
-function ciEvidenceFor(build, snapshots) {
+function ciEvidenceFor(build, snapshots, providerStatus) {
   if (!build) {
     return {
-      status: snapshots.some((snapshot) => snapshot.status === "blocked")
+      status: providerStatus !== "available"
+        || snapshots.some((snapshot) => snapshot.status === "blocked")
         ? "blocked"
         : "unavailable",
       pipeline: null,
@@ -445,7 +461,7 @@ function latestBuildFor(commit, snapshots) {
       .filter((build) => build.commit === commit)
       .map((build) => ({ ...build, pipeline: snapshot.pipeline }));
   });
-  return latestBy(builds, (build) => build.finishedAt ?? build.createdAt);
+  return builds.sort((left, right) => right.number - left.number)[0] ?? null;
 }
 
 function releaseFor(change, snapshot) {
@@ -523,7 +539,13 @@ function deploymentObservation(receipt) {
   );
 }
 
-function aggregateBuildkite(snapshots) {
+function aggregateBuildkite(snapshots, providerStatus) {
+  if (providerStatus !== "available") {
+    return unavailableSource(
+      "Provider Buildkite evidence unavailable.",
+      "blocked",
+    );
+  }
   if (snapshots.length === 0) {
     return unavailableSource("No Buildkite snapshots collected.");
   }
@@ -586,6 +608,7 @@ function providerChangeClaim(change) {
     headCommit: change.headCommit,
     mergeCommit: change.mergeCommit || null,
     mergedAt: change.mergedAt || null,
+    releaseCommit: change.releaseCommit || null,
     planeStoryId: change.planeStoryId,
   };
 }
@@ -731,6 +754,7 @@ function assertProviderRecordEvidence(record, source) {
     headCommit: record.headCommit,
     mergeCommit: record.mergeCommit,
     mergedAt: record.mergedAt,
+    releaseCommit: record.releaseCommit,
     planeStoryId: record.plane.key,
   });
   assertBoundClaim(
@@ -844,7 +868,7 @@ function assertReleaseEvidence(record, release, source, capturedAt) {
     "Shipped release evidence requires an available GitHub Release source observation.",
   );
   ensure(
-    changeCommits(record).includes(release.commit),
+    releaseCommitMatchesRecord(record, release.commit),
     "Release evidence commit is not bound to the delivery record.",
   );
   ensure(
@@ -866,6 +890,11 @@ function assertReleaseEvidence(record, release, source, capturedAt) {
     "Shipped release evidence is not bound to the GitHub Release observation.",
   );
   assertEventNotAfterCapture(release.publishedAt, capturedAt, "Release");
+}
+
+function releaseCommitMatchesRecord(record, commit) {
+  if (record.releaseCommit !== null) return record.releaseCommit === commit;
+  return changeCommits(record).includes(commit);
 }
 
 function hasShippedReleaseFields(release) {
