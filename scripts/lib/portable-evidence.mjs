@@ -132,10 +132,6 @@ export function validateProviderSnapshot(snapshot, { repository, headCommit, obs
       if (!Object.hasOwn(sources, system)) errors.push(`provider source ${system} is missing`);
       else errors.push(...prefix(system, validateEvidenceSource(sources[system], { observedAt: snapshot.capturedAt })));
     }
-    if (!isPlainObject(sources.plane)
-      || !Object.hasOwn(sources.plane, "workspace")) {
-      errors.push("provider Plane source workspace is missing");
-    }
   }
   if (!Array.isArray(snapshot.deliveryChanges)) {
     errors.push("provider snapshot deliveryChanges are invalid");

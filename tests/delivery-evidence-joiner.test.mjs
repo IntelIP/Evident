@@ -151,6 +151,27 @@ test("delivery join preserves terminal CI and blocked deployment states", () => 
   assert.equal(failed.deliveryRecords[0].deployment.deployedAt, null);
 });
 
+test("delivery join preserves every unfinished Buildkite state", () => {
+  for (const state of [
+    "canceling",
+    "creating",
+    "failing",
+    "running",
+    "scheduled",
+    "waiting",
+    "waiting_failed",
+  ]) {
+    const snapshot = buildkite();
+    snapshot.builds[0].state = state;
+    snapshot.builds[0].finishedAt = null;
+    assert.equal(
+      join({ buildkiteSnapshots: [snapshot] }).deliveryRecords[0].ci.status,
+      "in_progress",
+      state,
+    );
+  }
+});
+
 test("delivery join selects the newest Buildkite build number", () => {
   const snapshot = buildkite();
   snapshot.builds = [
@@ -169,9 +190,28 @@ test("delivery join selects the newest Buildkite build number", () => {
       state: "running",
     },
   ];
-  const record = join({ buildkiteSnapshots: [snapshot] }).deliveryRecords[0];
+  const joined = join({ buildkiteSnapshots: [snapshot] });
+  const record = joined.deliveryRecords[0];
   assert.equal(record.ci.status, "in_progress");
   assert.equal(record.ci.buildNumber, 7);
+
+  record.ci = {
+    status: "passed",
+    pipeline: "tabellio",
+    buildNumber: 6,
+    finishedAt: "2026-07-25T11:59:00.000Z",
+    sourceClaimDigest: digest({
+      pipeline: "tabellio",
+      buildNumber: 6,
+      commit: fixture.commit,
+      status: "passed",
+      finishedAt: "2026-07-25T11:59:00.000Z",
+    }),
+  };
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(joined),
+    /do not match the validated source evidence/,
+  );
 });
 
 test("delivery join honors blocked provider Buildkite evidence", () => {
@@ -313,6 +353,23 @@ test("delivery join selects earliest post-merge release", () => {
   assert.equal(
     snapshot.deliveryRecords[0].release.publishedAt,
     "2026-07-25T11:00:00.000Z",
+  );
+  const record = snapshot.deliveryRecords[0];
+  Object.assign(record.release, {
+    releaseId: "later",
+    tagName: "v0.6.0",
+    publishedAt: "2026-07-25T11:30:00.000Z",
+  });
+  record.release.sourceClaimDigest = digest({
+    id: record.release.releaseId,
+    tagName: record.release.tagName,
+    publishedAt: record.release.publishedAt,
+    commit: record.release.commit,
+    commitStatus: "resolved",
+  });
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(snapshot),
+    /do not match the validated source evidence/,
   );
 });
 
@@ -569,6 +626,33 @@ test("delivery snapshot preserves blocked sources and portable receipt IDs", () 
       /oneOf contract|prohibited contract|required pattern|exact receipt fields/,
     );
   }
+});
+
+test("delivery snapshot rejects record downgrades and forged WIP totals", () => {
+  for (const mutate of [
+    (record) => { record.plane.status = "unlinked"; },
+    (record) => { record.ci.status = "in_progress"; },
+    (record) => { record.release.status = "unreleased"; },
+    (record) => { record.deployment.status = "unavailable"; },
+  ]) {
+    const snapshot = deployedSnapshot();
+    mutate(snapshot.deliveryRecords[0]);
+    assert.throws(
+      () => validateDeliveryEvidenceSnapshot(snapshot),
+      /do not match the validated source evidence/,
+    );
+  }
+  const forgedWip = join();
+  forgedWip.wipByProject[0] = {
+    project: "INTB",
+    activeItemCount: 0,
+    aging3dCount: 0,
+    overLimit: false,
+  };
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(forgedWip),
+    /WIP rows do not match the validated Plane evidence/,
+  );
 });
 
 test("delivery snapshot rejects future record events", () => {

@@ -4,7 +4,7 @@
   "title": "Tabellio delivery evidence snapshot v0.1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "repository", "capturedAt", "ciAuthority", "sources", "wipByProject", "deliveryRecords"],
+  "required": ["schemaVersion", "repository", "capturedAt", "ciAuthority", "deploymentEnvironment", "sources", "wipByProject", "deliveryRecords"],
   "properties": {
     "schemaVersion": { "const": "tabellio-delivery-evidence-snapshot/v0.1" },
     "repository": { "$ref": "#/$defs/repositoryIdentifier" },
@@ -17,6 +17,10 @@
         "organization": { "type": "string", "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,62}[A-Za-z0-9])?$" },
         "pipeline": { "type": "string", "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,126}[A-Za-z0-9])?$" }
       }
+    },
+    "deploymentEnvironment": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
     },
     "sources": {
       "type": "object",

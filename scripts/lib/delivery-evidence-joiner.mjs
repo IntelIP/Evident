@@ -82,6 +82,7 @@ export function joinDeliveryEvidence({
     repository: providerSnapshot.repository,
     capturedAt,
     ciAuthority: buildkiteAuthority,
+    deploymentEnvironment,
     sources: {
       provider: availableSource([
         observation(
@@ -134,6 +135,7 @@ export function validateDeliveryEvidenceSnapshot(snapshot) {
   for (const record of snapshot.deliveryRecords) {
     assertRecordEvidence(record, snapshot);
   }
+  assertDerivedEvidence(snapshot);
   return snapshot;
 }
 
@@ -847,6 +849,83 @@ function assertWipRows(rows) {
   }
 }
 
+function assertDerivedEvidence(snapshot) {
+  const providerSnapshot =
+    snapshot.sources.provider.observations[0].evidence;
+  const planeSnapshot = sourceSnapshotOrBlocked(
+    snapshot.sources.plane,
+    blockedPlaneSnapshot(providerSnapshot, snapshot),
+  );
+  const releaseSnapshot = sourceSnapshotOrBlocked(
+    snapshot.sources.githubRelease,
+    blockedReleaseSnapshot(snapshot),
+  );
+  const buildkiteSnapshots =
+    snapshot.sources.buildkite.observations.map((item) => item.evidence);
+  const deploymentReceipts =
+    snapshot.sources.deployment.observations.map((item) => item.evidence);
+  const context = recordContext({
+    providerSnapshot,
+    planeSnapshot,
+    buildkiteSnapshots,
+    releaseSnapshot,
+    targetReceipts: deploymentReceipts,
+    deploymentBlockedReason:
+      snapshot.sources.deployment.status === "blocked"
+        ? snapshot.sources.deployment.reason
+        : null,
+    deploymentEnvironment: snapshot.deploymentEnvironment,
+  });
+  const expectedRecords = providerSnapshot.deliveryChanges.map(
+    (change) => recordFor(change, context),
+  );
+  ensure(
+    sameJson(snapshot.deliveryRecords, expectedRecords),
+    "Delivery records do not match the validated source evidence.",
+  );
+  ensure(
+    sameJson(
+      snapshot.wipByProject,
+      wipByProject(planeSnapshot, planeSnapshot.capturedAt),
+    ),
+    "Delivery WIP rows do not match the validated Plane evidence.",
+  );
+}
+
+function sourceSnapshotOrBlocked(source, blockedSnapshot) {
+  return source.status === "available"
+    ? source.observations[0].evidence
+    : blockedSnapshot;
+}
+
+function blockedPlaneSnapshot(providerSnapshot, snapshot) {
+  return {
+    schemaVersion: "tabellio-plane-work-items/v0.1",
+    workspace: providerSnapshot.sources.plane.workspace,
+    capturedAt: snapshot.capturedAt,
+    status: "blocked",
+    reason: snapshot.sources.plane.reason,
+    projects: [],
+    states: [],
+    workItems: [],
+  };
+}
+
+function blockedReleaseSnapshot(snapshot) {
+  return {
+    schemaVersion: "tabellio-github-release-snapshot/v0.1",
+    repository: snapshot.repository,
+    capturedAt: snapshot.capturedAt,
+    status: "blocked",
+    reason: snapshot.sources.githubRelease.reason,
+    releases: [],
+  };
+}
+
+function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 function assertRecordEvidence(record, snapshot) {
   assertProviderRecordEvidence(record, snapshot.sources.provider);
   assertPlaneEvidence(record.plane, snapshot.sources.plane, snapshot.capturedAt);
@@ -1119,7 +1198,16 @@ function assertEventNotAfterCapture(value, capturedAt, label) {
 function ciStatus(state) {
   if (state === "passed") return "passed";
   if (["failed", "canceled", "cancelled"].includes(state)) return "failed";
-  if (["scheduled", "running", "canceling", "cancelling"].includes(state)) {
+  if ([
+    "canceling",
+    "cancelling",
+    "creating",
+    "failing",
+    "running",
+    "scheduled",
+    "waiting",
+    "waiting_failed",
+  ].includes(state)) {
     return "in_progress";
   }
   return "blocked";
