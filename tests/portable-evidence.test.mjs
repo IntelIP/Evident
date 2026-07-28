@@ -12,6 +12,7 @@ import {
 } from "../scripts/lib/portable-evidence.mjs";
 
 const HEAD = "a".repeat(40);
+const SHA256_HEAD = "b".repeat(64);
 const OBSERVED_AT = "2026-07-27T00:00:00.000Z";
 
 test("portable identifiers reject paths, control text, and credential shapes", () => {
@@ -55,6 +56,12 @@ test("evidence binding requires canonical repository and exact head", () => {
     headCommit: HEAD,
     sourceHeadCommit: HEAD,
   }), []);
+  assert.deepEqual(validateEvidenceBinding({
+    repository: "IntelIP/Tabellio",
+    sourceRepository: "intelip/tabellio",
+    headCommit: SHA256_HEAD,
+    sourceHeadCommit: SHA256_HEAD,
+  }), []);
   assert.match(validateEvidenceBinding({
     repository: "IntelIP/Tabellio",
     sourceRepository: "IntelIP/Other",
@@ -87,12 +94,21 @@ test("provider snapshot accepts Buildkite as hosted evidence", () => {
   }), []);
 });
 
+test("provider snapshot accepts an exact SHA-256 repository head", () => {
+  const value = snapshot(SHA256_HEAD);
+  assert.deepEqual(validateProviderSnapshot(value, {
+    repository: "IntelIP/Tabellio",
+    headCommit: SHA256_HEAD,
+    observedAt: OBSERVED_AT,
+  }), []);
+});
+
 test("provider snapshot rejects unsafe and contradictory claims", () => {
   const cases = [
     ["unknown field", (value) => { value.privatePayload = "secret"; }, /not allowed/],
     ["credentialed repository", (value) => { value.repository = "https://x:secret@github.com/IntelIP/Tabellio.git"; }, /repository/],
     ["wrong snapshot head", (value) => { value.headCommit = "b".repeat(40); }, /headCommit/],
-    ["sha256 snapshot head", (value) => { value.headCommit = "b".repeat(64); }, /headCommit/],
+    ["wrong SHA-256 snapshot head", (value) => { value.headCommit = "b".repeat(64); }, /headCommit/],
     ["empty snapshot wrong head", (value) => { value.deliveryChanges = []; value.headCommit = "b".repeat(40); }, /headCommit/],
     ["future capture", (value) => { value.capturedAt = "2099-01-01T00:00:00.000Z"; }, /later than observation/],
     ["normalized capture", (value) => { value.capturedAt = "2026-02-30T00:00:00.000Z"; }, /capturedAt is invalid/],
@@ -123,11 +139,11 @@ test("provider snapshot rejects unsafe and contradictory claims", () => {
   }
 });
 
-function snapshot() {
+function snapshot(headCommit = HEAD) {
   return {
     schemaVersion: "tabellio-analytics-provider-snapshot/v0.1",
     repository: "IntelIP/Tabellio",
-    headCommit: HEAD,
+    headCommit,
     capturedAt: "2026-07-26T00:00:00.000Z",
     sources: {
       plane: { status: "available", version: "2026-07-25T00:00:00.000Z" },
@@ -144,7 +160,7 @@ function snapshot() {
       storyCreatedAt: "2026-07-20T00:00:00.000Z",
       firstActivityAt: "2026-07-21T00:00:00.000Z",
       mergedAt: "2026-07-22T00:00:00.000Z",
-      headCommit: HEAD,
+      headCommit,
       validationStatus: "passed",
       hostedStatus: "passed",
     }],

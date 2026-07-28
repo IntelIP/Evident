@@ -12,6 +12,7 @@ import {
   recomputeDeliveryMetrics,
   validateAnalyticsDataset,
 } from "../scripts/lib/analytics.mjs";
+import { digestObject } from "../scripts/lib/stack-operation.mjs";
 
 const HEAD = "a".repeat(40);
 const OBSERVED_AT = "2026-07-27T00:00:00.000Z";
@@ -109,6 +110,11 @@ test("analytics core rejects stale, unsafe, and contradictory imported evidence"
         reason: "validation unavailable",
       });
     }, /validationStatus requires available exact validation evidence/],
+    ["stale validation source", (dataset) => {
+      dataset.repositories[0].sources.find((source) =>
+        source.system === "tabellio-validation"
+      ).sourceVersion = "b".repeat(40);
+    }, /Validation source version does not match headCommit/],
   ];
 
   for (const [name, mutate, expected] of cases) {
@@ -156,9 +162,8 @@ test("analytics collector derives the same local identity through filesystem ali
 });
 
 test("analytics collector accepts a bound sanitized provider snapshot", async (context) => {
-  const fixture = await gitRepositoryFixture(context);
-  await git(fixture.repository, ["remote", "add", "origin", "git@github.com:IntelIP/Example.git"]);
-  const head = await git(fixture.repository, ["rev-parse", "HEAD"]);
+  const fixture = await githubRepositoryFixture(context);
+  const { head } = fixture;
   const providerPath = join(fixture.root, "provider.json");
   await writeFile(providerPath, `${JSON.stringify(providerSnapshot(head), null, 2)}\n`);
   const dataset = await collectAnalyticsDataset({
@@ -177,6 +182,87 @@ test("analytics collector accepts a bound sanitized provider snapshot", async (c
   assert.equal(dataset.repositories[0].metrics.deliveryChangeCount.value, 1);
   assert.equal(dataset.repositories[0].deliveryChanges[0].releasedAt, null);
   assert.equal(validateAnalyticsDataset(dataset), dataset);
+});
+
+test("analytics collector exports provider sources deterministically", async (context) => {
+  const fixture = await githubRepositoryFixture(context);
+  const { head } = fixture;
+  const firstPath = join(fixture.root, "provider-first.json");
+  const secondPath = join(fixture.root, "provider-second.json");
+  const firstSnapshot = providerSnapshot(head);
+  const secondSnapshot = structuredClone(firstSnapshot);
+  secondSnapshot.sources = Object.fromEntries(Object.entries(secondSnapshot.sources).reverse());
+  await writeFile(firstPath, `${JSON.stringify(firstSnapshot, null, 2)}\n`);
+  await writeFile(secondPath, `${JSON.stringify(secondSnapshot, null, 2)}\n`);
+
+  const first = await collectWithProvider(fixture.repository, firstPath);
+  const second = await collectWithProvider(fixture.repository, secondPath);
+
+  assert.deepEqual(
+    first.repositories[0].sources.map((source) => source.system),
+    second.repositories[0].sources.map((source) => source.system),
+  );
+  assert.equal(first.integrity.digest, second.integrity.digest);
+});
+
+test("analytics collector binds validation claims to the latest exact repository result", async (context) => {
+  const fixture = await githubRepositoryFixture(context);
+  const { head } = fixture;
+  await writeValidationControl(
+    fixture,
+    validationResult(head, "IntelIP/Example", "passed", "exact-pass"),
+  );
+  const providerPath = join(fixture.root, "provider.json");
+  const snapshot = providerSnapshot(head);
+  snapshot.deliveryChanges[0].validationStatus = "passed";
+  await writeFile(providerPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+
+  const supported = await collectWithProvider(fixture.repository, providerPath);
+  const validationSource = supported.repositories[0].sources.find((source) =>
+    source.system === "tabellio-validation"
+  );
+  assert.equal(validationSource.status, "available");
+  assert.equal(validationSource.sourceVersion, head);
+  assert.equal(supported.repositories[0].deliveryChanges[0].validationStatus, "passed");
+
+  snapshot.deliveryChanges[0].validationStatus = "failed";
+  await writeFile(providerPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+  const contradicted = await collectWithProvider(fixture.repository, providerPath);
+  assert.deepEqual(contradicted.repositories[0].deliveryChanges, []);
+  assert.deepEqual(
+    providerSources(contradicted).map((source) => source.status),
+    ["blocked", "blocked", "blocked", "blocked"],
+  );
+});
+
+test("analytics collector blocks stale and cross-repository validation controls", async (context) => {
+  const cases = [
+    {
+      name: "stale head",
+      record: (head) => validationResult("b".repeat(head.length), "IntelIP/Example", "passed", "stale"),
+    },
+    {
+      name: "cross repository",
+      record: (head) => validationResult(head, "IntelIP/Other", "passed", "cross-repository"),
+    },
+  ];
+
+  for (const value of cases) {
+    const fixture = await githubRepositoryFixture(context);
+    const { head } = fixture;
+    await writeValidationControl(fixture, value.record(head));
+    const providerPath = join(fixture.root, `${value.name.replaceAll(" ", "-")}.json`);
+    const snapshot = providerSnapshot(head);
+    snapshot.deliveryChanges[0].validationStatus = "passed";
+    await writeFile(providerPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+
+    const dataset = await collectWithProvider(fixture.repository, providerPath);
+    const validationSource = dataset.repositories[0].sources.find((source) =>
+      source.system === "tabellio-validation"
+    );
+    assert.equal(validationSource.status, "blocked", value.name);
+    assert.deepEqual(dataset.repositories[0].deliveryChanges, [], value.name);
+  }
 });
 
 test("analytics collector converts malformed provider input to blocked evidence", async (context) => {
@@ -254,40 +340,32 @@ test("analytics CLI rejects config, provider, symlink, and repository output ali
   await symlink(providerPath, symlinkPath);
   const hardlinkPath = join(fixture.root, "provider-hardlink.json");
   await link(providerPath, hardlinkPath);
-  const common = [
-    "scripts/tabellio-analytics.mjs",
-    "collect",
-    "--config", configPath,
-    "--id", "INTB-261-p1b",
-    "--observed-at", OBSERVED_AT,
-    "--since", "2026-07-01T00:00:00.000Z",
-    "--until", "2026-07-26T00:00:00.000Z",
-  ];
+  const common = analyticsCollectArgs(configPath);
   await assertCliFailure([...common, "--out", configPath], /must not alias an input/);
   await assertCliFailure([...common, "--out", providerPath], /must not alias an input/);
   await assertCliFailure([...common, "--out", symlinkPath], /must not be a symbolic link/);
   await assertCliFailure([...common, "--out", hardlinkPath], /must not alias an input/);
   await assertCliFailure([...common, "--out", join(fixture.repository, "analytics.json")], /outside collected repositories/);
   assert.equal(await readFile(configPath, "utf8"), originalConfig);
+
+  const missingProviderPath = join(fixture.root, "missing-provider.json");
+  const missingConfigPath = join(fixture.root, "missing-config.json");
+  await writeFile(missingConfigPath, `${JSON.stringify({
+    repositories: [{
+      id: "fixture",
+      path: fixture.repository,
+      providerSnapshot: missingProviderPath,
+    }],
+  }, null, 2)}\n`);
+  await assertCliFailure(
+    analyticsCollectArgs(missingConfigPath, missingProviderPath),
+    /must not alias an input/,
+  );
 });
 
 test("analytics CLI collects and rechecks a deterministic dataset", async (context) => {
-  const fixture = await gitRepositoryFixture(context);
-  const configPath = join(fixture.root, "config.json");
-  const outputPath = join(fixture.root, "dataset.json");
-  await writeFile(configPath, `${JSON.stringify({
-    repositories: [{ id: "fixture", path: fixture.repository }],
-  }, null, 2)}\n`);
-  const collect = await execFileAsync(process.execPath, [
-    "scripts/tabellio-analytics.mjs",
-    "collect",
-    "--config", configPath,
-    "--id", "INTB-261-p1b",
-    "--observed-at", OBSERVED_AT,
-    "--since", "2026-07-01T00:00:00.000Z",
-    "--until", "2026-07-26T00:00:00.000Z",
-    "--out", outputPath,
-  ], { cwd: new URL("..", import.meta.url) });
+  const { configPath, outputPath } = await analyticsCliFixture(context, "dataset.json");
+  const collect = await runAnalyticsCollect(configPath, outputPath);
   assert.match(collect.stdout, /analytics_dataset_ready/);
   const first = await readFile(outputPath, "utf8");
   const check = await execFileAsync(process.execPath, [
@@ -299,6 +377,17 @@ test("analytics CLI collects and rechecks a deterministic dataset", async (conte
   assert.equal(JSON.stringify(JSON.parse(first)), JSON.stringify(JSON.parse(await readFile(outputPath, "utf8"))));
 });
 
+test("analytics CLI creates fresh artifact directory trees", async (context) => {
+  const { outputPath, configPath } = await analyticsCliFixture(
+    context,
+    join("fresh", "artifacts", "dataset.json"),
+  );
+  const collect = await runAnalyticsCollect(configPath, outputPath);
+
+  assert.match(collect.stdout, /analytics_dataset_ready/);
+  assert.equal(JSON.parse(await readFile(outputPath, "utf8")).schemaVersion, "tabellio-analytics-dataset/v0.1");
+});
+
 test("analytics schema requires source observations and canonical metric states", async () => {
   const schema = JSON.parse(await readFile(
     new URL("../schemas/analytics-dataset.v0.1.schema.json", import.meta.url),
@@ -307,12 +396,40 @@ test("analytics schema requires source observations and canonical metric states"
   assert.ok(schema.$defs.source.required.includes("observedAt"));
   assert.deepEqual(schema.$defs.metric.properties.status.enum, ["measured", "unavailable"]);
   assert.equal(schema.$defs.commit.pattern, "^(?:[0-9a-f]{40}|[0-9a-f]{64})$");
+  assert.deepEqual(
+    schema.$defs.portableIdentifier.allOf.map((rule) => rule.not.pattern),
+    ["^file:", ":/", "//", "\\.\\."],
+  );
+  const metricState = schema.$defs.metric.allOf[0];
+  assert.equal(metricState.then.properties.value.type, "number");
+  assert.equal(metricState.then.properties.reason.type, "null");
+  assert.equal(metricState.else.properties.value.type, "null");
+  assert.equal(metricState.else.properties.reason.type, "string");
+  assert.equal(metricState.else.properties.numerator.type, "null");
+  assert.equal(metricState.else.properties.denominator.type, "null");
+  const providerSchema = JSON.parse(await readFile(
+    new URL("../schemas/analytics-provider-snapshot.v0.1.schema.json", import.meta.url),
+    "utf8",
+  ));
+  assert.equal(
+    providerSchema.properties.schemaVersion.const,
+    "tabellio-analytics-provider-snapshot/v0.1",
+  );
+  assert.ok(providerSchema.required.includes("headCommit"));
+  assert.deepEqual(
+    providerSchema.properties.sources.required,
+    ["plane", "github", "github-actions", "buildkite"],
+  );
   const deliverySchema = JSON.parse(await readFile(
     new URL("../schemas/delivery-evidence-snapshot.v0.1.schema.json", import.meta.url),
     "utf8",
   ));
   assert.ok(deliverySchema.$defs.source.required.includes("observations"));
   assert.equal(deliverySchema.$defs.source.allOf[0].then.properties.observations.minItems, 1);
+  assert.equal(
+    deliverySchema.properties.schemaVersion.const,
+    "tabellio-delivery-evidence-snapshot/v0.1",
+  );
 });
 
 test("analytics core rejects duplicate repository and source identities", () => {
@@ -451,6 +568,27 @@ async function gitRepositoryFixture(context) {
   return { root, repository };
 }
 
+async function githubRepositoryFixture(context) {
+  const fixture = await gitRepositoryFixture(context);
+  await git(fixture.repository, ["remote", "add", "origin", "git@github.com:IntelIP/Example.git"]);
+  return {
+    ...fixture,
+    head: await git(fixture.repository, ["rev-parse", "HEAD"]),
+  };
+}
+
+async function analyticsCliFixture(context, outputRelativePath) {
+  const fixture = await gitRepositoryFixture(context);
+  const configPath = join(fixture.root, "config.json");
+  await writeFile(configPath, `${JSON.stringify({
+    repositories: [{ id: "fixture", path: fixture.repository }],
+  }, null, 2)}\n`);
+  return {
+    configPath,
+    outputPath: join(fixture.root, outputRelativePath),
+  };
+}
+
 async function collectFixture(repository) {
   return collectAnalyticsDataset({
     id: "INTB-261-p1b",
@@ -463,13 +601,110 @@ async function collectFixture(repository) {
   });
 }
 
-async function git(cwd, args) {
+async function collectWithProvider(repository, providerSnapshotPath) {
+  return collectAnalyticsDataset({
+    id: "INTB-261-p1b",
+    observedAt: OBSERVED_AT,
+    window: {
+      since: "2026-07-01T00:00:00.000Z",
+      until: "2026-07-26T00:00:00.000Z",
+    },
+    repositories: [{ id: "fixture", path: repository, providerSnapshot: providerSnapshotPath }],
+  });
+}
+
+function providerSources(dataset) {
+  return dataset.repositories[0].sources.filter((source) =>
+    ["plane", "github", "github-actions", "buildkite"].includes(source.system)
+  );
+}
+
+function validationResult(headCommit, repositoryId, status, runId) {
+  const commandStatus = status === "passed" ? "passed" : "failed";
+  const result = {
+    schemaVersion: "tabellio-validation-result/v0.1",
+    runId,
+    repository: { id: repositoryId },
+    revision: {
+      baseCommit: "a".repeat(headCommit.length),
+      mergeBase: "a".repeat(headCommit.length),
+      headCommit,
+    },
+    suite: {
+      id: "analytics-test",
+      manifestPath: "tabellio.validation.json",
+      manifestDigest: "c".repeat(64),
+    },
+    runner: { id: "test", runtime: "node-test" },
+    status,
+    checkpoints: ["checkpoint-001"],
+    commands: [{
+      id: "analytics",
+      argv: ["node", "--test"],
+      cwd: ".",
+      required: true,
+      status: commandStatus,
+      exitCode: status === "passed" ? 0 : 1,
+      signal: null,
+      durationMs: 1,
+      stdout: {
+        bytes: 0,
+        digest: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        tail: "",
+        truncated: false,
+      },
+      stderr: {
+        bytes: 0,
+        digest: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        tail: "",
+        truncated: false,
+      },
+      startedAt: "2026-07-20T00:00:00.000Z",
+      completedAt: "2026-07-20T00:01:00.000Z",
+      error: null,
+    }],
+    startedAt: "2026-07-20T00:00:00.000Z",
+    completedAt: "2026-07-20T00:01:00.000Z",
+  };
+  result.integrity = { algorithm: "sha256", digest: digestObject(result) };
+  return result;
+}
+
+async function writeValidationControl(fixture, result) {
+  const valuePath = join(fixture.root, `${result.runId}.json`);
+  const indexPath = join(fixture.root, `${result.runId}.index`);
+  const recordPath = `commits/${result.revision.headCommit}/${result.runId}.json`;
+  await writeFile(valuePath, `${JSON.stringify(result, null, 2)}\n`);
+  try {
+    const blob = await git(fixture.repository, ["hash-object", "-w", "--", valuePath]);
+    const indexEnv = { GIT_INDEX_FILE: indexPath };
+    await git(fixture.repository, ["read-tree", "--empty"], indexEnv);
+    await git(
+      fixture.repository,
+      ["update-index", "--add", "--cacheinfo", `100644,${blob},${recordPath}`],
+      indexEnv,
+    );
+    const tree = await git(fixture.repository, ["write-tree"], indexEnv);
+    const commit = await git(
+      fixture.repository,
+      ["commit-tree", tree, "-m", `Record validation ${result.runId}`],
+      indexEnv,
+    );
+    await git(fixture.repository, ["update-ref", "refs/tabellio/validations", commit]);
+  } finally {
+    await rm(valuePath, { force: true });
+    await rm(indexPath, { force: true });
+  }
+}
+
+async function git(cwd, args, env = {}) {
   const { stdout } = await execFileAsync("git", args, {
     cwd,
     env: {
       ...process.env,
       GIT_AUTHOR_DATE: "2026-07-20T00:00:00.000Z",
       GIT_COMMITTER_DATE: "2026-07-20T00:00:00.000Z",
+      ...env,
     },
   });
   return stdout.trim();
@@ -478,6 +713,28 @@ async function git(cwd, args) {
 async function writeFixture(path, content) {
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, content);
+}
+
+function analyticsCollectArgs(configPath, outputPath = null) {
+  const args = [
+    "scripts/tabellio-analytics.mjs",
+    "collect",
+    "--config", configPath,
+    "--id", "INTB-261-p1b",
+    "--observed-at", OBSERVED_AT,
+    "--since", "2026-07-01T00:00:00.000Z",
+    "--until", "2026-07-26T00:00:00.000Z",
+  ];
+  if (outputPath !== null) args.push("--out", outputPath);
+  return args;
+}
+
+async function runAnalyticsCollect(configPath, outputPath) {
+  return execFileAsync(
+    process.execPath,
+    analyticsCollectArgs(configPath, outputPath),
+    { cwd: new URL("..", import.meta.url) },
+  );
 }
 
 async function assertCliFailure(args, pattern) {

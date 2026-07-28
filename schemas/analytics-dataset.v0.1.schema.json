@@ -44,7 +44,13 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 200,
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$"
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$",
+      "allOf": [
+        { "not": { "pattern": "^file:" } },
+        { "not": { "pattern": ":/" } },
+        { "not": { "pattern": "//" } },
+        { "not": { "pattern": "\\.\\." } }
+      ]
     },
     "commit": {
       "type": "string",
@@ -125,7 +131,48 @@
         "reason": { "type": ["string", "null"], "minLength": 1, "maxLength": 500 },
         "numerator": { "type": ["number", "null"] },
         "denominator": { "type": ["number", "null"] }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "measured" } },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "value": { "type": "number" },
+              "reason": { "type": "null" }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": { "unit": { "const": "ratio" } },
+                  "required": ["unit"]
+                },
+                "then": {
+                  "properties": {
+                    "numerator": { "type": "number" },
+                    "denominator": { "type": "number", "exclusiveMinimum": 0 }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "numerator": { "type": "null" }
+                  }
+                }
+              }
+            ]
+          },
+          "else": {
+            "properties": {
+              "value": { "type": "null" },
+              "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+              "numerator": { "type": "null" },
+              "denominator": { "type": "null" }
+            }
+          }
+        }
+      ]
     },
     "metrics": {
       "type": "object",

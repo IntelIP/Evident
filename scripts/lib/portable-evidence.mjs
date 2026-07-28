@@ -21,7 +21,7 @@ const CREDENTIAL_PATTERNS = [
   /\bAKIA[0-9A-Z]{16}\b/,
   /:\/\/[^/\s@]+@/,
 ];
-const COMMIT_PATTERN = /^[0-9a-f]{40}$/;
+const COMMIT_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const REPOSITORY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 
 export function hasCredentialShape(value) {

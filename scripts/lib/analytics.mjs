@@ -10,6 +10,7 @@ import {
   isPortableIdentifier,
   isSafeProviderText,
   isSafeProviderVersion,
+  sameRepository,
   validateProviderSnapshot,
 } from "./portable-evidence.mjs";
 import { localRepositoryId } from "./repository-identity.mjs";
@@ -132,15 +133,23 @@ async function collectRepository(input, observedAt) {
     sourceVersion: headCommit,
     content: { headCommit, headCommittedAt, branch },
   });
-  const controls = await Promise.all(CONTROL_SOURCES.map((control) =>
-    collectControlSource(repositoryPath, input.id, observedAt, control)
+  const controlEvidence = await Promise.all(CONTROL_SOURCES.map((control) =>
+    collectControlSource(repositoryPath, input.id, observedAt, control, {
+      canonicalRepositoryId: canonicalId,
+      headCommit,
+    })
   ));
+  const controls = controlEvidence.map((evidence) => evidence.source);
+  const validationResult = controlEvidence.find((evidence) =>
+    evidence.system === "tabellio-validation"
+  )?.validationResult ?? null;
   const provider = await collectProviderEvidence({
     input,
     repositoryPath,
     canonicalRepositoryId: canonicalId,
     headCommit,
     observedAt,
+    validationResult,
   });
   await assertRepositorySnapshotStable(repositoryPath, { headCommit, branch, remote });
   return {
@@ -172,33 +181,53 @@ function validateRepositoryInput(input) {
   if (typeof input.path !== "string") throw new Error("Repository input path is required.");
 }
 
-async function collectControlSource(repositoryPath, repositoryId, observedAt, control) {
+async function collectControlSource(repositoryPath, repositoryId, observedAt, control, candidate) {
   const exists = await runGit({
     cwd: repositoryPath,
     args: ["show-ref", "--verify", "--quiet", control.ref],
     acceptableExitCodes: [0, 1],
   });
   if (exists.exitCode !== 0) {
-    return unavailableSource({
-      id: `${repositoryId}:${control.id}`,
+    return {
       system: control.id,
-      observedAt,
-      reason: "Control evidence is unavailable.",
-    });
+      source: unavailableSource({
+        id: `${repositoryId}:${control.id}`,
+        system: control.id,
+        observedAt,
+        reason: "Control evidence is unavailable.",
+      }),
+      validationResult: null,
+    };
   }
   try {
-    return await collectExistingControlSource(repositoryPath, repositoryId, observedAt, control);
-  } catch {
-    return blockedSource({
-      id: `${repositoryId}:${control.id}`,
-      system: control.id,
+    return await collectExistingControlSource(
+      repositoryPath,
+      repositoryId,
       observedAt,
-      reason: "Control evidence is malformed or unsafe.",
-    });
+      control,
+      candidate,
+    );
+  } catch {
+    return {
+      system: control.id,
+      source: blockedSource({
+        id: `${repositoryId}:${control.id}`,
+        system: control.id,
+        observedAt,
+        reason: "Control evidence is malformed or unsafe.",
+      }),
+      validationResult: null,
+    };
   }
 }
 
-async function collectExistingControlSource(repositoryPath, repositoryId, observedAt, control) {
+async function collectExistingControlSource(
+  repositoryPath,
+  repositoryId,
+  observedAt,
+  control,
+  candidate,
+) {
   const version = await gitText(repositoryPath, ["rev-parse", "--verify", control.ref]);
   const objectType = await gitText(repositoryPath, ["cat-file", "-t", control.ref]);
   if (objectType !== "commit") throw new Error("Control ref is not a direct commit.");
@@ -206,16 +235,51 @@ async function collectExistingControlSource(repositoryPath, repositoryId, observ
   if (!isAtOrBefore(normalizeDateTime(committedAt), observedAt)) {
     throw new Error("Control ref is newer than observation.");
   }
-  const records = control.validateRecord
-    ? await readControlRecords(repositoryPath, version, control.validateRecord, observedAt)
-    : [];
-  return availableSource({
-    id: `${repositoryId}:${control.id}`,
+  const records = await controlRecords(repositoryPath, version, control, observedAt);
+  const selected = selectControlEvidence(control, records, candidate, version);
+  return {
     system: control.id,
-    observedAt,
-    sourceVersion: version,
-    content: { records, version },
-  });
+    source: availableSource({
+      id: `${repositoryId}:${control.id}`,
+      system: control.id,
+      observedAt,
+      sourceVersion: selected.sourceVersion,
+      content: { records: selected.records, version },
+    }),
+    validationResult: selected.validationResult,
+  };
+}
+
+function controlRecords(repositoryPath, version, control, observedAt) {
+  if (control.validateRecord === null) return [];
+  return readControlRecords(repositoryPath, version, control.validateRecord, observedAt);
+}
+
+function selectControlEvidence(control, records, candidate, version) {
+  if (control.id !== "tabellio-validation") {
+    return { records, sourceVersion: version, validationResult: null };
+  }
+  const validationResult = latestCandidateValidationResult(records, candidate);
+  if (validationResult === null) {
+    throw new Error("Validation control evidence does not bind the repository head.");
+  }
+  return {
+    records: [validationResult],
+    sourceVersion: candidate.headCommit,
+    validationResult,
+  };
+}
+
+function latestCandidateValidationResult(records, { canonicalRepositoryId: repository, headCommit }) {
+  return records
+    .filter((record) =>
+      sameRepository(record?.repository?.id, repository)
+      && validationHeadCommit(record) === headCommit
+    )
+    .sort((left, right) =>
+      Date.parse(right.completedAt) - Date.parse(left.completedAt)
+      || right.runId.localeCompare(left.runId)
+    )[0] ?? null;
 }
 
 async function readControlRecords(repositoryPath, version, validateRecord, observedAt) {
@@ -289,6 +353,7 @@ async function collectProviderEvidence({
   canonicalRepositoryId,
   headCommit,
   observedAt,
+  validationResult,
 }) {
   if (input.providerSnapshot === undefined) {
     return missingProviderEvidence(input.id, observedAt);
@@ -300,6 +365,7 @@ async function collectProviderEvidence({
       canonicalRepositoryId,
       headCommit,
       observedAt,
+      validationResult,
     });
   } catch {
     return blockedProviderEvidence(input.id, observedAt);
@@ -312,6 +378,7 @@ async function collectProviderSnapshot({
   canonicalRepositoryId,
   headCommit,
   observedAt,
+  validationResult,
 }) {
   const snapshotPath = await realpath(resolveInputPath(repositoryPath, input.providerSnapshot));
   const snapshot = JSON.parse(await readFile(snapshotPath, "utf8"));
@@ -321,12 +388,22 @@ async function collectProviderSnapshot({
     observedAt,
   });
   if (errors.length > 0) throw new Error("Provider snapshot is invalid.");
+  if (!validationClaimsSupported(snapshot.deliveryChanges, validationResult)) {
+    throw new Error("Provider validation claims do not match exact-head validation evidence.");
+  }
   return {
-    sources: Object.entries(snapshot.sources).map(([system, source]) =>
-      providerSource(input.id, system, source, snapshot.capturedAt)
+    sources: [...PROVIDER_SYSTEMS].map((system) =>
+      providerSource(input.id, system, snapshot.sources[system], snapshot.capturedAt)
     ),
     deliveryChanges: snapshot.deliveryChanges.map(normalizeDeliveryChange),
   };
+}
+
+function validationClaimsSupported(deliveryChanges, validationResult) {
+  return deliveryChanges.every((change) =>
+    change.validationStatus === "unavailable"
+    || change.validationStatus === validationResult?.status
+  );
 }
 
 function resolveInputPath(repositoryPath, value) {
@@ -466,10 +543,24 @@ function validateRepository(repository, observedAt) {
   ]));
   errors.push(...validateSources(repository.sources, observedAt));
   errors.push(...validateRevision(repository, observedAt));
+  errors.push(...validateValidationSourceBinding(repository));
   errors.push(...validateDeliveryChanges(repository.deliveryChanges, observedAt, repository.headCommit));
   errors.push(...validateDeliverySourceConsistency(repository));
   errors.push(...validateMetrics(repository));
   return errors;
+}
+
+function validateValidationSourceBinding(repository) {
+  const validationSource = repository.sources?.find((source) =>
+    source?.system === "tabellio-validation"
+  );
+  if (validationSource?.status !== "available") return [];
+  return ruleErrors([
+    [
+      validationSource.sourceVersion === repository.headCommit,
+      "Validation source version does not match headCommit.",
+    ],
+  ]);
 }
 
 function validateSource(source, observedAt) {

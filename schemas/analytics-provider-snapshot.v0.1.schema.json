@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intelip.co/tabellio/schemas/analytics-provider-snapshot.v0.1.schema.json",
+  "title": "Tabellio analytics provider snapshot v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "repository", "headCommit", "capturedAt", "sources", "deliveryChanges"],
+  "properties": {
+    "schemaVersion": { "const": "tabellio-analytics-provider-snapshot/v0.1" },
+    "repository": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+    },
+    "headCommit": { "$ref": "#/$defs/commit" },
+    "capturedAt": { "type": "string", "format": "date-time" },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plane", "github", "github-actions", "buildkite"],
+      "properties": {
+        "plane": { "$ref": "#/$defs/source" },
+        "github": { "$ref": "#/$defs/source" },
+        "github-actions": { "$ref": "#/$defs/source" },
+        "buildkite": { "$ref": "#/$defs/source" }
+      }
+    },
+    "deliveryChanges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/deliveryChange" }
+    }
+  },
+  "$defs": {
+    "commit": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "portableIdentifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$",
+      "allOf": [
+        { "not": { "pattern": "^file:" } },
+        { "not": { "pattern": ":/" } },
+        { "not": { "pattern": "//" } },
+        { "not": { "pattern": "\\.\\." } }
+      ]
+    },
+    "safeText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "allOf": [
+        { "not": { "pattern": "file:" } },
+        { "not": { "pattern": "(?:^|[ =:(\\[\\]'\"`])/(?!/)" } },
+        { "not": { "pattern": "(?:^|[ =:(])~(?:/|$)" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9._-])[A-Za-z]:/" } }
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["available", "unavailable", "blocked"] },
+        "version": {
+          "oneOf": [
+            { "type": "string", "minLength": 1, "maxLength": 200 },
+            { "type": "null" }
+          ]
+        },
+        "reason": { "$ref": "#/$defs/safeText" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "available" } },
+            "required": ["status"]
+          },
+          "then": {
+            "required": ["version"],
+            "properties": { "version": { "type": "string", "minLength": 1, "maxLength": 200 } },
+            "not": { "required": ["reason"] }
+          },
+          "else": {
+            "required": ["reason"],
+            "properties": { "version": { "type": "null" } }
+          }
+        }
+      ]
+    },
+    "deliveryChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "linkBasis",
+        "linkEvidence",
+        "planeStoryId",
+        "pullRequestNumber",
+        "storyCreatedAt",
+        "firstActivityAt",
+        "mergedAt",
+        "headCommit",
+        "validationStatus",
+        "hostedStatus"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/portableIdentifier" },
+        "linkBasis": { "enum": ["explicit", "manual-reconciliation", "unlinked"] },
+        "linkEvidence": {
+          "oneOf": [
+            { "$ref": "#/$defs/safeText" },
+            { "type": "null" }
+          ]
+        },
+        "planeStoryId": {
+          "oneOf": [
+            { "$ref": "#/$defs/portableIdentifier" },
+            { "type": "null" }
+          ]
+        },
+        "pullRequestNumber": { "type": ["integer", "null"], "minimum": 1 },
+        "storyCreatedAt": { "type": ["string", "null"], "format": "date-time" },
+        "firstActivityAt": { "type": ["string", "null"], "format": "date-time" },
+        "mergedAt": { "type": ["string", "null"], "format": "date-time" },
+        "headCommit": { "$ref": "#/$defs/commit" },
+        "validationStatus": { "enum": ["passed", "failed", "blocked", "unavailable"] },
+        "hostedStatus": { "enum": ["passed", "failed", "blocked", "unavailable"] }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "linkBasis": { "const": "unlinked" } },
+            "required": ["linkBasis"]
+          },
+          "then": {
+            "properties": {
+              "linkEvidence": { "type": "null" },
+              "planeStoryId": { "type": "null" },
+              "pullRequestNumber": { "type": "null" }
+            }
+          },
+          "else": {
+            "properties": {
+              "planeStoryId": { "$ref": "#/$defs/portableIdentifier" },
+              "pullRequestNumber": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
