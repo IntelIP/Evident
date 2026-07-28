@@ -321,6 +321,56 @@ test("delivery snapshot rejects provider source status relabeling without record
   );
 });
 
+test("delivery snapshot rejects erasing available Plane and release observations", () => {
+  for (const sourceName of ["plane", "githubRelease"]) {
+    const snapshot = join();
+    snapshot.sources[sourceName] = {
+      status: "blocked",
+      reason: "Collector unavailable.",
+      observations: [],
+    };
+    if (sourceName === "plane") {
+      snapshot.wipByProject = [];
+      snapshot.deliveryRecords[0].plane = {
+        status: "blocked",
+        workspace: "intelip",
+        key: "INTB-260",
+        createdAt: null,
+        stateGroup: null,
+        updatedAt: null,
+        sourceClaimDigest: null,
+      };
+    } else {
+      snapshot.deliveryRecords[0].release = {
+        status: "blocked",
+        releaseId: null,
+        tagName: null,
+        publishedAt: null,
+        commit: null,
+        sourceClaimDigest: null,
+      };
+    }
+    assert.throws(
+      () => validateDeliveryEvidenceSnapshot(snapshot),
+      /authority requires a validated/,
+    );
+  }
+});
+
+test("delivery join preserves maximum portable IDs and blocked reasons", () => {
+  const providerSnapshot = provider();
+  providerSnapshot.deliveryChanges[0].id = "a".repeat(200);
+  const releaseSnapshot = {
+    ...releases(),
+    status: "blocked",
+    reason: "x".repeat(500),
+    releases: [],
+  };
+  const snapshot = join({ providerSnapshot, releaseSnapshot });
+  assert.equal(snapshot.deliveryRecords[0].id.length, 200);
+  assert.equal(snapshot.sources.githubRelease.reason.length, 500);
+});
+
 test("delivery join preserves blocked provider sources as blocked records", () => {
   const providerSnapshot = provider();
   providerSnapshot.sources.plane = {

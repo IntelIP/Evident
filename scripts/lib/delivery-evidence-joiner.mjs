@@ -19,8 +19,8 @@ const SCHEMA = JSON.parse(readFileSync(
   new URL("../../schemas/delivery-evidence-snapshot.v0.1.schema.json", import.meta.url),
   "utf8",
 ));
-const DELIVERY_RECORD_ID = /^[^\r\n|#`][^\r\n|#`]{0,127}$/;
-const SAFE_REASON = /^[^\r\n]{1,200}$/;
+const DELIVERY_RECORD_ID = /^[^\r\n|#`][^\r\n|#`]{0,199}$/;
+const SAFE_REASON = /^[^\r\n]{1,500}$/;
 const ENVIRONMENT = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const BUILDKITE_SLUG = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,126}[A-Za-z0-9])?$/;
 const OBSERVATION_CONTRACTS = {
@@ -1127,6 +1127,16 @@ function assertDerivedAuthorityStates(
   planeSnapshot,
   releaseSnapshot,
 ) {
+  ensure(
+    providerSnapshot.sources.plane.status !== "available"
+      || snapshot.sources.plane.observations.length === 1,
+    "Available Plane authority requires a validated collector observation.",
+  );
+  ensure(
+    providerSnapshot.sources.github.status !== "available"
+      || snapshot.sources.githubRelease.observations.length === 1,
+    "Available GitHub authority requires a validated release observation.",
+  );
   const expectedPlane = authoritySourceState(
     providerSnapshot.sources.plane.status,
     planeSnapshot.status,
