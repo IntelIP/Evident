@@ -40,6 +40,22 @@ const ALLOWED_OPTIONS = new Set([
 ]);
 const PROVIDER_SYSTEMS = ["plane", "github", "github-actions", "buildkite"];
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
+const SENSITIVE_PATTERNS = [
+  /(?:api[_-]?key|authorization|access[_-]?token|client[_-]?secret|private[_-]?key|password|token|secret)\s*[=:]/i,
+  /file:/i,
+  /(?:^|[\s=:(])~(?:\/|$)/,
+  /(?:^|[\s=:(\['"`])\.\.?[\\/]\S*/,
+  /(?:^|[^A-Za-z0-9/])\/(?:Users|private|tmp|home|var|etc)\//i,
+  /(?:^|[^A-Za-z0-9+.-])[A-Za-z]:[\\/]+\S+/,
+  /(?:^|[^\\])\\\\[^\\\s]+\\/,
+];
+const PROFILE_RUNNERS = {
+  schema: schemaProfile,
+  semantic: semanticProfile,
+  workflow: workflowProfile,
+  operational: operationalProfile,
+  security: securityProfile,
+};
 
 try {
   const options = parseOptions(process.argv.slice(2));
@@ -110,39 +126,69 @@ try {
 }
 
 function parseOptions(args) {
-  if (args.length % 2 !== 0) throw new Error("Analytics validator options require values.");
+  assertPairedOptions(args);
   const options = { source: [], requiredRepository: [] };
   for (let index = 0; index < args.length; index += 2) {
-    const flag = args[index];
-    const value = args[index + 1];
-    if (typeof flag !== "string" || !flag.startsWith("--")) {
-      throw new Error("Analytics validator options are invalid.");
-    }
-    const key = flag.slice(2).replace(/-([a-z])/g, (_match, letter) => letter.toUpperCase());
-    if (!ALLOWED_OPTIONS.has(key)) throw new Error("Analytics validator option is unsupported.");
-    if (REPEATABLE_OPTIONS.has(key)) {
-      options[key].push(value);
-    } else {
-      if (Object.hasOwn(options, key)) throw new Error("Analytics validator option is duplicated.");
-      options[key] = value;
-    }
+    assignOption(options, optionKey(args[index]), args[index + 1]);
   }
   return options;
 }
 
 function validateOptions(options) {
-  for (const key of ["profile", "validatorId", "dataset", "out"]) {
-    if (typeof options[key] !== "string" || options[key] === "") {
-      throw new Error(`--${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)} is required.`);
-    }
+  ["profile", "validatorId", "dataset", "out"].forEach((key) =>
+    assertRequiredOption(options, key)
+  );
+  assertSupportedProfile(options.profile);
+  assertSafeValidatorId(options.validatorId);
+  assertExitMode(options.exitMode);
+  assertSemanticRepositories(options);
+}
+
+function assertPairedOptions(args) {
+  if (args.length % 2 !== 0) throw new Error("Analytics validator options require values.");
+}
+
+function optionKey(flag) {
+  if (typeof flag !== "string" || !flag.startsWith("--")) {
+    throw new Error("Analytics validator options are invalid.");
   }
-  if (!PROFILES.has(options.profile)) throw new Error("Analytics validator profile is unsupported.");
-  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(options.validatorId)) {
+  const key = flag.slice(2).replace(/-([a-z])/g, (_match, letter) => letter.toUpperCase());
+  if (!ALLOWED_OPTIONS.has(key)) throw new Error("Analytics validator option is unsupported.");
+  return key;
+}
+
+function assignOption(options, key, value) {
+  if (REPEATABLE_OPTIONS.has(key)) {
+    options[key].push(value);
+    return;
+  }
+  if (Object.hasOwn(options, key)) throw new Error("Analytics validator option is duplicated.");
+  options[key] = value;
+}
+
+function assertRequiredOption(options, key) {
+  if (typeof options[key] === "string" && options[key] !== "") return;
+  const flag = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+  throw new Error(`--${flag} is required.`);
+}
+
+function assertSupportedProfile(profile) {
+  if (!PROFILES.has(profile)) throw new Error("Analytics validator profile is unsupported.");
+}
+
+function assertSafeValidatorId(validatorId) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(validatorId)) {
     throw new Error("Analytics validator id is invalid.");
   }
-  if (options.exitMode !== undefined && options.exitMode !== "evidence") {
+}
+
+function assertExitMode(exitMode) {
+  if (exitMode !== undefined && exitMode !== "evidence") {
     throw new Error("Analytics validator exit mode is unsupported.");
   }
+}
+
+function assertSemanticRepositories(options) {
   if (options.profile === "semantic" && options.requiredRepository.length === 0) {
     throw new Error("Semantic validation requires --required-repository.");
   }
@@ -164,9 +210,17 @@ async function readJsonInput(path, label) {
 
 function validateExpectedDigest(expectedDigest, dataset, errors) {
   if (expectedDigest === undefined) return;
-  if (!SHA256_PATTERN.test(expectedDigest)) {
-    errors.push("Expected dataset digest is invalid.");
-  } else if (dataset !== null && dataset?.integrity?.digest !== expectedDigest) {
+  validateExpectedDigestShape(expectedDigest, errors);
+  validateExpectedDigestBinding(expectedDigest, dataset, errors);
+}
+
+function validateExpectedDigestShape(expectedDigest, errors) {
+  if (!SHA256_PATTERN.test(expectedDigest)) errors.push("Expected dataset digest is invalid.");
+}
+
+function validateExpectedDigestBinding(expectedDigest, dataset, errors) {
+  if (dataset === null) return;
+  if (dataset.integrity?.digest !== expectedDigest) {
     errors.push("Dataset digest does not match the expected digest.");
   }
 }
@@ -191,14 +245,13 @@ function validateDatasetInput(dataset, errors) {
 }
 
 function validateSnapshotInputs(snapshots, dataset, errors) {
-  for (const snapshot of snapshots) {
-    const snapshotErrors = validateProviderSnapshot(snapshot, {
+  errors.push(...snapshots.flatMap((snapshot) =>
+    validateProviderSnapshot(snapshot, {
       repository: snapshot?.repository,
       headCommit: snapshot?.headCommit,
       observedAt: dataset?.observedAt,
-    });
-    errors.push(...snapshotErrors.map(() => "Provider snapshot contract is invalid."));
-  }
+    }).map(() => "Provider snapshot contract is invalid.")
+  ));
 }
 
 function rejectDuplicateSnapshots(snapshots, errors) {
@@ -212,11 +265,7 @@ function rejectDuplicateSnapshots(snapshots, errors) {
 
 function runProfile(profile, context) {
   try {
-    if (profile === "schema") return schemaProfile(context);
-    if (profile === "semantic") return semanticProfile(context);
-    if (profile === "workflow") return workflowProfile(context);
-    if (profile === "operational") return operationalProfile(context);
-    return securityProfile(context);
+    return PROFILE_RUNNERS[profile](context);
   } catch {
     return { errors: ["Profile execution failed."], repositoryCount: 0, traceCount: 0, snapshotCount: 0 };
   }
@@ -328,51 +377,68 @@ function bindingErrors(dataset, snapshots, requiredRepositories) {
   const snapshotMap = new Map(
     snapshots.map((snapshot) => [canonicalRepositoryId(snapshot.repository), snapshot])
   );
-  const errors = [];
-  for (const repositoryId of snapshotMap.keys()) {
-    if (!repositories.has(repositoryId)) errors.push("Provider snapshot has no dataset repository.");
-  }
-  for (const repository of dataset.repositories) {
-    const repositoryId = canonicalRepositoryId(repository.canonicalRepositoryId);
-    const snapshot = snapshotMap.get(repositoryId);
-    const required = requiredRepositories.includes(repositoryId);
-    if (!snapshot) {
-      if (required || providerEvidenceRequiresSnapshot(repository)) {
-        errors.push("Repository provider evidence lacks a bound snapshot.");
-      }
-      continue;
-    }
-    errors.push(...providerBindingErrors(dataset, repository, snapshot));
-  }
-  for (const repositoryId of requiredRepositories) {
-    if (!snapshotMap.has(repositoryId)) errors.push("Required repository lacks a provider snapshot.");
-  }
-  return errors;
+  return [
+    ...unknownSnapshotErrors(repositories, snapshotMap),
+    ...dataset.repositories.flatMap((repository) =>
+      repositoryBindingErrors(dataset, repository, snapshotMap, requiredRepositories)
+    ),
+    ...requiredSnapshotErrors(snapshotMap, requiredRepositories),
+  ];
+}
+
+function unknownSnapshotErrors(repositories, snapshotMap) {
+  return [...snapshotMap.keys()].flatMap((repositoryId) =>
+    repositories.has(repositoryId) ? [] : ["Provider snapshot has no dataset repository."]
+  );
+}
+
+function repositoryBindingErrors(dataset, repository, snapshotMap, requiredRepositories) {
+  const repositoryId = canonicalRepositoryId(repository.canonicalRepositoryId);
+  const snapshot = snapshotMap.get(repositoryId);
+  if (snapshot) return providerBindingErrors(dataset, repository, snapshot);
+  const required = requiredRepositories.includes(repositoryId);
+  return [required, providerEvidenceRequiresSnapshot(repository)].some(Boolean)
+    ? ["Repository provider evidence lacks a bound snapshot."]
+    : [];
+}
+
+function requiredSnapshotErrors(snapshotMap, requiredRepositories) {
+  return requiredRepositories.flatMap((repositoryId) =>
+    snapshotMap.has(repositoryId) ? [] : ["Required repository lacks a provider snapshot."]
+  );
 }
 
 function providerBindingErrors(dataset, repository, snapshot) {
-  const errors = validateProviderSnapshot(snapshot, {
+  return [
+    ...validateProviderSnapshot(snapshot, {
     repository: repository.canonicalRepositoryId,
     headCommit: repository.headCommit,
     observedAt: dataset.observedAt,
-  }).map(() => "Provider snapshot does not bind the dataset repository.");
-  for (const system of PROVIDER_SYSTEMS) {
-    errors.push(...sourceBindingErrors(repository, snapshot, system));
-  }
+    }).map(() => "Provider snapshot does not bind the dataset repository."),
+    ...PROVIDER_SYSTEMS.flatMap((system) => sourceBindingErrors(repository, snapshot, system)),
+    ...deliveryTraceBindingErrors(repository, snapshot),
+    ...validationEvidenceBindingErrors(repository, snapshot),
+  ];
+}
+
+function deliveryTraceBindingErrors(repository, snapshot) {
   const expectedChanges = snapshot.deliveryChanges.map((change) => ({
     ...structuredClone(change),
     releasedAt: null,
   })).sort(compareIds);
   const actualChanges = structuredClone(repository.deliveryChanges).sort(compareIds);
-  if (canonicalJson(actualChanges) !== canonicalJson(expectedChanges)) {
-    errors.push("Dataset delivery traces do not match the provider snapshot.");
-  }
-  if (snapshot.deliveryChanges.some((change) =>
-    change.validationStatus !== "unavailable"
-  ) && !availableSource(repository, "tabellio-validation")) {
-    errors.push("Exact validation status lacks validation evidence.");
-  }
-  return errors;
+  return canonicalJson(actualChanges) === canonicalJson(expectedChanges)
+    ? []
+    : ["Dataset delivery traces do not match the provider snapshot."];
+}
+
+function validationEvidenceBindingErrors(repository, snapshot) {
+  const exactStatusExists = snapshot.deliveryChanges.some(
+    (change) => change.validationStatus !== "unavailable"
+  );
+  return exactStatusExists && !availableSource(repository, "tabellio-validation")
+    ? ["Exact validation status lacks validation evidence."]
+    : [];
 }
 
 function sourceBindingErrors(repository, snapshot, system) {
@@ -473,35 +539,31 @@ function profileMetrics(profile, status, result, durationMs) {
   const common = [
     { name: "analytics_validator_duration_ms", value: durationMs, unit: "milliseconds" },
   ];
-  if (profile === "schema") {
-    return [{ name: "analytics_validator_schema_pass", value: pass, unit: "boolean" }, ...common];
-  }
-  if (profile === "semantic") {
-    return [
+  const metrics = {
+    schema: () => [
+      { name: "analytics_validator_schema_pass", value: pass, unit: "boolean" },
+    ],
+    semantic: () => [
       { name: "analytics_validator_semantic_pass", value: pass, unit: "boolean" },
       { name: "analytics_repository_count", value: result.repositoryCount, unit: "count" },
       { name: "analytics_trace_count", value: result.traceCount, unit: "count" },
-      ...common,
-    ];
-  }
-  if (profile === "workflow") {
-    return [
+    ],
+    workflow: () => [
       { name: "analytics_validator_workflow_pass", value: pass, unit: "boolean" },
       { name: "analytics_snapshot_count", value: result.snapshotCount, unit: "count" },
-      ...common,
-    ];
-  }
-  if (profile === "operational") {
-    return [
+    ],
+    operational: () => [
       {
         name: "analytics_projection_25x_duration_ms",
         value: result.projectionDurationMs ?? 0,
         unit: "milliseconds",
       },
-      ...common,
-    ];
-  }
-  return [{ name: "analytics_validator_security_pass", value: pass, unit: "boolean" }, ...common];
+    ],
+    security: () => [
+      { name: "analytics_validator_security_pass", value: pass, unit: "boolean" },
+    ],
+  };
+  return [...metrics[profile](), ...common];
 }
 
 function stringsIn(value) {
@@ -519,24 +581,21 @@ function visit(value, strings) {
     value.forEach((entry) => visit(entry, strings));
     return;
   }
-  if (value && typeof value === "object") {
-    for (const [key, entry] of Object.entries(value)) {
-      strings.push(key);
-      visit(entry, strings);
-    }
+  visitObject(value, strings);
+}
+
+function visitObject(value, strings) {
+  if (value === null) return;
+  if (typeof value !== "object") return;
+  for (const [key, entry] of Object.entries(value)) {
+    strings.push(key);
+    visit(entry, strings);
   }
 }
 
 function sensitiveEvidence(value) {
-  if (hasCredentialShape(value)) return true;
-  if (/(?:api[_-]?key|authorization|access[_-]?token|client[_-]?secret|private[_-]?key|password|token|secret)\s*[=:]/i.test(value)) {
-    return true;
-  }
-  if (/file:/i.test(value) || /(?:^|[\s=:(])~(?:\/|$)/.test(value)) return true;
-  if (/(?:^|[\s=:(\['"`])\.\.?[\\/]\S*/.test(value)) return true;
-  if (/(?:^|[^A-Za-z0-9/])\/(?:Users|private|tmp|home|var|etc)\//i.test(value)) return true;
-  if (/(?:^|[^A-Za-z0-9+.-])[A-Za-z]:[\\/]+\S+/.test(value)) return true;
-  return /(?:^|[^\\])\\\\[^\\\s]+\\/.test(value);
+  return [hasCredentialShape(value), SENSITIVE_PATTERNS.some((pattern) => pattern.test(value))]
+    .some(Boolean);
 }
 
 function artifact(name, bytes) {
@@ -567,14 +626,22 @@ function captureValidation(action) {
 async function safeOutputPath(output, protectedInputs) {
   const outputPath = resolve(output);
   const outputState = await pathState(outputPath);
-  if (outputState?.symbolicLink) throw new Error("Validator output must not be a symbolic link.");
+  assertOutputNotSymlink(outputState);
   const outputCandidate = await canonicalCandidatePath(outputPath, outputState);
-  for (const input of protectedInputs) {
-    const inputState = await pathState(input);
-    const inputCandidate = await canonicalCandidatePath(input, inputState);
-    if (outputCandidate === inputCandidate || sameFile(outputState, inputState)) {
-      throw new Error("Validator output must not alias an input.");
-    }
-  }
+  await Promise.all(protectedInputs.map((input) =>
+    assertInputNotAliased(input, outputCandidate, outputState)
+  ));
   return outputPath;
+}
+
+function assertOutputNotSymlink(outputState) {
+  if (outputState?.symbolicLink) throw new Error("Validator output must not be a symbolic link.");
+}
+
+async function assertInputNotAliased(input, outputCandidate, outputState) {
+  const inputState = await pathState(input);
+  const inputCandidate = await canonicalCandidatePath(input, inputState);
+  if ([outputCandidate === inputCandidate, sameFile(outputState, inputState)].some(Boolean)) {
+    throw new Error("Validator output must not alias an input.");
+  }
 }

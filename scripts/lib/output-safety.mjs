@@ -40,9 +40,16 @@ export async function canonicalCandidatePath(path, state) {
 }
 
 export function sameFile(left, right) {
-  if (left === null || right === null) return false;
-  return left.resolvedPath === right.resolvedPath
-    || (left.device === right.device && left.inode === right.inode);
+  if (left === null) return false;
+  if (right === null) return false;
+  return [
+    left.resolvedPath === right.resolvedPath,
+    sameInode(left, right),
+  ].some(Boolean);
+}
+
+function sameInode(left, right) {
+  return left.device === right.device && left.inode === right.inode;
 }
 
 async function optionalRealpath(path) {
