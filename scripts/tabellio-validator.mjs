@@ -51,7 +51,7 @@ function validateConfig(value) {
   if (value.schemaVersion !== "tabellio-adapter/v0.1") throw new Error("adapter config schemaVersion must be tabellio-adapter/v0.1.");
   object(value.profiles, "adapter config.profiles");
   const entries = Object.entries(value.profiles);
-  if (entries.length < 1 || entries.length > 20) throw new Error("adapter config.profiles must contain 1 to 20 profiles.");
+  if (entries.length < 1 || entries.length > 64) throw new Error("adapter config.profiles must contain 1 to 64 profiles.");
   for (const [id, profile] of entries) validateProfile(id, profile);
   return value;
 }

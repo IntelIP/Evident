@@ -96,6 +96,42 @@
       "metrics": [{"name": "analytics_validator_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
       "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
       "summary": "Analytics validator privacy boundaries"
+    },
+    "buildkite-collector-static": {
+      "commands": [["node", "--test", "tests/buildkite-build-collector.test.mjs", "tests/buildkite-high-gates.test.mjs", "tests/validation-adapter.test.mjs"]],
+      "metrics": [],
+      "cost": {"telemetry": "not_applicable", "usd": null, "modelCalls": null, "toolCalls": null},
+      "summary": "Buildkite collector and merged-checkpoint focused tests"
+    },
+    "buildkite-collector-schema": {
+      "commands": [["node", "--test", "--test-name-pattern", "snapshot rejects|unsafe slugs", "tests/buildkite-build-collector.test.mjs"]],
+      "metrics": [{"name": "buildkite_collector_schema_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Buildkite snapshot and input contracts"
+    },
+    "buildkite-collector-semantic": {
+      "commands": [["node", "--test", "--test-name-pattern", "derives|identity|duplicate|outside capture|mismatched pipeline", "tests/buildkite-build-collector.test.mjs"]],
+      "metrics": [{"name": "buildkite_collector_semantic_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Buildkite repository, identity, and temporal semantics"
+    },
+    "buildkite-collector-workflow": {
+      "commands": [["node", "--test", "--test-name-pattern", "preserves complete|paginates|detailed build response|embedded and paged|merged-head", "tests/buildkite-build-collector.test.mjs", "tests/buildkite-high-gates.test.mjs"]],
+      "metrics": [{"name": "buildkite_collector_workflow_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Buildkite pagination and merged-checkpoint workflow"
+    },
+    "buildkite-collector-operational": {
+      "commands": [["node", "--test", "--test-name-pattern", "concurrent detail", "tests/buildkite-build-collector.test.mjs"]],
+      "metrics": [{"name": "buildkite_detail_max_concurrency", "unit": "requests", "pattern": "buildkite_detail_max_concurrency=([0-9]+)"}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Buildkite detail request concurrency"
+    },
+    "buildkite-collector-security": {
+      "commands": [["node", "--test", "--test-name-pattern", "blocks safely|unsafe slugs", "tests/buildkite-build-collector.test.mjs"]],
+      "metrics": [{"name": "buildkite_collector_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Buildkite path, credential, and error privacy boundaries"
     }
   }
 }

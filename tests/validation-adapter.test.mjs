@@ -37,6 +37,33 @@ test("repository adapter emits passed, failed, blocked, and extracted evidence",
   assert.match(blocked.summary, /command unavailable/);
 });
 
+test("repository adapter bounds an extensible validator profile registry", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "tabellio-adapter-profiles-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const profiles = Object.fromEntries(
+    Array.from({ length: 64 }, (_, index) => [
+      `profile-${index + 1}`,
+      profile([[process.execPath, "-e", "process.exit(0)"]]),
+    ]),
+  );
+  await writeFile(join(root, "validators.json"), JSON.stringify({
+    schemaVersion: "tabellio-adapter/v0.1",
+    profiles,
+  }));
+  const passed = await runAdapter(root, "profile-64", "bounded-registry", "bounded.json");
+  assert.equal(passed.status, "passed");
+
+  profiles["profile-65"] = profile([[process.execPath, "-e", "process.exit(0)"]]);
+  await writeFile(join(root, "validators.json"), JSON.stringify({
+    schemaVersion: "tabellio-adapter/v0.1",
+    profiles,
+  }));
+  await assert.rejects(
+    runAdapter(root, "profile-65", "oversized-registry", "oversized.json"),
+    /1 to 64 profiles/,
+  );
+});
+
 async function runAdapter(root, profileName, validatorId, out) {
   await execFileAsync(process.execPath, [
     new URL("../scripts/tabellio-validator.mjs", import.meta.url).pathname,
