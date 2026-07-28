@@ -23,7 +23,8 @@
     "tabellio-control-ref": "scripts/tabellio-control-ref.mjs",
     "tabellio-ledger": "scripts/tabellio-ledger.mjs",
     "tabellio-preflight": "scripts/tabellio-preflight.mjs",
-    "tabellio-release": "scripts/tabellio-release.mjs"
+    "tabellio-release": "scripts/tabellio-release.mjs",
+    "tabellio-analytics": "scripts/tabellio-analytics.mjs"
   },
   "bugs": {
     "url": "https://github.com/IntelIP/Tabellio/issues"

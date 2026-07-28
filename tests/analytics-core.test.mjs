@@ -37,6 +37,14 @@ test("analytics core binds exact Git evidence and recomputes delivery metrics", 
   assert.equal(dataset.repositories[0].metrics.cycleTimeHours.value, 24);
   assert.equal(dataset.repositories[0].metrics.ciDisagreementRate.value, 0);
   assert.equal(dataset.repositories[0].metrics.releaseLagHours.value, 24);
+  for (const metric of [
+    dataset.repositories[0].metrics.leadTimeHours,
+    dataset.repositories[0].metrics.cycleTimeHours,
+    dataset.repositories[0].metrics.releaseLagHours,
+  ]) {
+    assert.equal(metric.numerator, null);
+    assert.equal(metric.denominator, null);
+  }
 });
 
 test("analytics core preserves unavailable evidence instead of manufacturing zero", () => {
@@ -138,6 +146,24 @@ test("analytics core rejects stale, unsafe, and contradictory imported evidence"
     ["mixed Git object formats", (dataset) => {
       dataset.repositories[0].sources.push(source("tabellio-review", "b".repeat(64)));
     }, /Git-backed source object format does not match headCommit/],
+    ["unsafe custom source version", (dataset) => {
+      dataset.repositories[0].sources.push(source("custom-provider", "ghp_0123456789abcdef"));
+    }, /provider source version is unsafe/],
+    ["Git-backed source without repository head", (dataset) => {
+      const gitSource = dataset.repositories[0].sources.find((source) => source.system === "git");
+      Object.assign(gitSource, {
+        status: "unavailable",
+        sourceVersion: null,
+        contentDigest: null,
+        reason: "Git evidence unavailable",
+      });
+      dataset.repositories[0].headCommit = null;
+      dataset.repositories[0].headCommittedAt = null;
+      dataset.repositories[0].branch = null;
+      dataset.repositories[0].deliveryChanges = [];
+      dataset.repositories[0].sources.push(source("tabellio-review", "b".repeat(40)));
+      dataset.repositories[0].metrics = recomputeDeliveryMetrics(dataset.repositories[0]);
+    }, /Available Git-backed source requires a repository headCommit/],
   ];
 
   for (const [name, mutate, expected] of cases) {
@@ -456,6 +482,16 @@ test("analytics CLI rejects config, provider, symlink, and repository output ali
   await assertCliFailure([...common, "--out", symlinkPath], /must not be a symbolic link/);
   await assertCliFailure([...common, "--out", hardlinkPath], /must not alias an input/);
   await assertCliFailure([...common, "--out", join(fixture.repository, "analytics.json")], /outside collected repositories/);
+  const repositorySubdirectory = join(fixture.repository, "src");
+  await mkdir(repositorySubdirectory);
+  const subdirectoryConfigPath = join(fixture.root, "subdirectory-config.json");
+  await writeFile(subdirectoryConfigPath, `${JSON.stringify({
+    repositories: [{ id: "fixture", path: repositorySubdirectory }],
+  }, null, 2)}\n`);
+  await assertCliFailure(
+    analyticsCollectArgs(subdirectoryConfigPath, join(fixture.repository, "analytics-from-subdir.json")),
+    /outside collected repositories/,
+  );
   assert.equal(await readFile(configPath, "utf8"), originalConfig);
 
   const missingProviderPath = join(fixture.root, "missing-provider.json");
@@ -600,6 +636,10 @@ test("analytics schema requires source observations and canonical metric states"
     deliverySchema.$defs.observation.properties.id.$ref,
     "#/$defs/portableIdentifier",
   );
+  assert.equal(
+    deliverySchema.$defs.record.properties.id.$ref,
+    "#/$defs/portableIdentifier",
+  );
   for (const unsafe of [
     "ghp_0123456789abcdef",
     "file:///private/evidence.json",
@@ -617,6 +657,11 @@ test("analytics schema requires source observations and canonical metric states"
     deliverySchema.properties.schemaVersion.const,
     "tabellio-delivery-evidence-snapshot/v0.1",
   );
+  const packageDefinition = JSON.parse(await readFile(
+    new URL("../package.json", import.meta.url),
+    "utf8",
+  ));
+  assert.equal(packageDefinition.bin["tabellio-analytics"], "scripts/tabellio-analytics.mjs");
 });
 
 test("analytics core rejects duplicate repository and source identities", () => {

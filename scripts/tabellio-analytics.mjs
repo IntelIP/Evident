@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { randomUUID } from "node:crypto";
+import { execFile } from "node:child_process";
 import {
   lstat,
   mkdir,
@@ -12,6 +13,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
+import { promisify } from "node:util";
 
 import {
   collectAnalyticsDataset,
@@ -27,6 +29,7 @@ const ALLOWED_OPTIONS = {
   collect: ["config", "id", "observedAt", "since", "until", "out"],
   check: ["dataset"],
 };
+const execFileAsync = promisify(execFile);
 
 try {
   const options = parseCommandOptions(process.argv.slice(2), ALLOWED_OPTIONS);
@@ -46,7 +49,7 @@ async function collectCommand(options) {
   if (!Array.isArray(config.repositories)) throw new Error("Config repositories must be an array.");
   const providerInputs = await Promise.all(config.repositories.map(providerSnapshotPaths));
   const protectedInputs = [configPath, ...providerInputs.flat()];
-  const repositoryRoots = config.repositories.map((repository) => repository.path);
+  const repositoryRoots = await Promise.all(config.repositories.map(repositoryRootPath));
   const outputPath = await assertSafeOutput(options.out, protectedInputs, repositoryRoots);
   const dataset = await collectAnalyticsDataset({
     id: options.id,
@@ -81,6 +84,22 @@ async function providerSnapshotPaths(repository) {
   return [resolve(repositoryRoot, repository.providerSnapshot)];
 }
 
+async function repositoryRootPath(repository) {
+  const repositoryPath = await realpath(resolve(repository.path));
+  const { stdout: bareOutput } = await execFileAsync(
+    "git",
+    ["rev-parse", "--is-bare-repository"],
+    { cwd: repositoryPath, encoding: "utf8" },
+  );
+  if (bareOutput.trim() === "true") return repositoryPath;
+  const { stdout: rootOutput } = await execFileAsync(
+    "git",
+    ["rev-parse", "--show-toplevel"],
+    { cwd: repositoryPath, encoding: "utf8" },
+  );
+  return realpath(rootOutput.trim());
+}
+
 async function assertSafeOutput(output, inputs, repositoryRoots) {
   const outputPath = resolve(output);
   const inputPaths = inputs.map((input) => resolve(input));
@@ -93,8 +112,7 @@ async function assertSafeOutput(output, inputs, repositoryRoots) {
     canonicalCandidatePath(input, inputStates[index])
   ));
   assertOutputDoesNotNameInput(candidate, inputCandidates);
-  const roots = await Promise.all(repositoryRoots.map((root) => realpath(resolve(root))));
-  assertOutputOutsideRepositories(candidate, roots);
+  assertOutputOutsideRepositories(candidate, repositoryRoots);
   return outputPath;
 }
 

@@ -611,18 +611,29 @@ function validateValidationSourceBinding(repository) {
 }
 
 function validateGitSourceFormatBinding(repository) {
-  if (!matches(COMMIT_PATTERN, repository.headCommit)) return [];
   return repositorySources(repository).flatMap((source, index) =>
-    gitSourceFormatMismatch(source, repository.headCommit)
-      ? [`sources[${index}]: Git-backed source object format does not match headCommit.`]
-      : []
+    prefix(`sources[${index}]`, validateGitSourceFormat(source, repository.headCommit))
   );
 }
 
-function gitSourceFormatMismatch(source, headCommit) {
-  if (!isAvailableGitBackedSource(source)) return false;
-  if (!matches(COMMIT_PATTERN, source.sourceVersion)) return false;
-  return source.sourceVersion.length !== headCommit.length;
+function validateGitSourceFormat(source, headCommit) {
+  if (!isAvailableGitBackedSource(source)) return [];
+  return ruleErrors([
+    [
+      matches(COMMIT_PATTERN, headCommit),
+      "Available Git-backed source requires a repository headCommit.",
+    ],
+    [
+      compatibleGitObjectFormats(source.sourceVersion, headCommit),
+      "Git-backed source object format does not match headCommit.",
+    ],
+  ]);
+}
+
+function compatibleGitObjectFormats(sourceVersion, headCommit) {
+  return !matches(COMMIT_PATTERN, headCommit)
+    || !matches(COMMIT_PATTERN, sourceVersion)
+    || sourceVersion.length === headCommit.length;
 }
 
 function isAvailableGitBackedSource(source) {
@@ -778,7 +789,7 @@ function validateAvailableSource(source) {
     [matches(SHA256_PATTERN, source.contentDigest), "available source requires a content digest."],
     [source.reason === null, "available source cannot have a reason."],
     [validGitSourceVersion(source), "Git-backed source version must be a commit object id."],
-    [validProviderSourceVersion(source), "provider source version is unsafe."],
+    [validPortableSourceVersion(source), "provider source version is unsafe."],
   ]);
 }
 
@@ -923,7 +934,7 @@ function durationMetric(repository, changes, startField, endField, systems) {
     .filter((change) => validDurationPair(change, startField, endField))
     .map((change) => (Date.parse(change[endField]) - Date.parse(change[startField])) / 3_600_000);
   if (values.length === 0) return unavailable("hours", "No complete lifecycle observations.");
-  return measured("hours", values.reduce((total, value) => total + value, 0) / values.length, null, values.length);
+  return measured("hours", values.reduce((total, value) => total + value, 0) / values.length);
 }
 
 function disagreementMetric(repository, changes) {
@@ -985,9 +996,9 @@ function validGitSourceVersion(source) {
     || matches(COMMIT_PATTERN, source.sourceVersion);
 }
 
-function validProviderSourceVersion(source) {
-  return !PROVIDER_SYSTEMS.has(source.system)
-    || (typeof source.sourceVersion === "string" && isSafeProviderVersion(source.sourceVersion));
+function validPortableSourceVersion(source) {
+  return typeof source.sourceVersion === "string"
+    && isSafeProviderVersion(source.sourceVersion);
 }
 
 function validDurationPair(change, startField, endField) {

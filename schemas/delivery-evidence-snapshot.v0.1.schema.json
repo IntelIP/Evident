@@ -131,7 +131,7 @@
       "additionalProperties": false,
       "required": ["id", "linkBasis", "pullRequestNumber", "headCommit", "mergeCommit", "plane", "ci", "release", "deployment"],
       "properties": {
-        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "id": { "$ref": "#/$defs/portableIdentifier" },
         "linkBasis": { "enum": ["explicit", "manual-reconciliation", "unlinked"] },
         "pullRequestNumber": { "type": ["integer", "null"], "minimum": 1 },
         "headCommit": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
