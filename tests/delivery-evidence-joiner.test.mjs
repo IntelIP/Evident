@@ -6,6 +6,7 @@ import {
   joinDeliveryEvidence,
   validateDeliveryEvidenceSnapshot,
 } from "../scripts/lib/delivery-evidence-joiner.mjs";
+import { isJsonDateTime } from "../scripts/lib/json-schema-validator.mjs";
 import {
   buildkite,
   deployment,
@@ -197,6 +198,13 @@ test("delivery join selects earliest post-merge release", () => {
   );
 });
 
+test("delivery join never ships an unmerged change", () => {
+  const providerSnapshot = provider();
+  providerSnapshot.deliveryChanges[0].mergedAt = null;
+  const snapshot = join({ providerSnapshot });
+  assert.equal(snapshot.deliveryRecords[0].release.status, "unreleased");
+});
+
 test("delivery join ages WIP at Plane observation time", () => {
   const planeSnapshot = plane();
   planeSnapshot.capturedAt = "2026-07-22T12:00:00.000Z";
@@ -240,21 +248,21 @@ test("delivery snapshot rejects unsafe source text and future evidence", () => {
     unsafe.sources.plane.observations = [];
     assert.throws(
       () => validateDeliveryEvidenceSnapshot(unsafe),
-      /portable single-line/,
+      /portable single-line|oneOf contract/,
     );
   }
   const unsafeRecord = join();
   unsafeRecord.deliveryRecords[0].id = "/Users/private/change";
   assert.throws(
     () => validateDeliveryEvidenceSnapshot(unsafeRecord),
-    /portable single-line identifiers/,
+    /portable single-line identifiers|required pattern/,
   );
   const unsafeObservation = join();
   unsafeObservation.sources.plane.observations[0].id =
     "ghp_abcdefghijklmnopqrstuvwxyz1234567890";
   assert.throws(
     () => validateDeliveryEvidenceSnapshot(unsafeObservation),
-    /observation IDs must be portable/,
+    /observation IDs must be portable|prohibited contract/,
   );
   const future = join();
   future.sources.plane.observations[0].version =
@@ -263,6 +271,23 @@ test("delivery snapshot rejects unsafe source text and future evidence", () => {
     () => validateDeliveryEvidenceSnapshot(future),
     /cannot be newer/,
   );
+});
+
+test("delivery schema enforces allOf siblings and not constraints", () => {
+  const unsafeRepository = join();
+  unsafeRepository.repository = "/Users/private/repo";
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(unsafeRepository),
+    /required pattern/,
+  );
+  const unsafeRelease = join();
+  unsafeRelease.deliveryRecords[0].release.releaseId =
+    "ghp_abcdefghijklmnopqrstuvwxyz1234567890";
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(unsafeRelease),
+    /prohibited contract|oneOf contract|not bound/,
+  );
+  assert.equal(isJsonDateTime("2026-07-25T12:00:00-07:00"), true);
 });
 
 test("delivery snapshot rejects unsupported successful and failed claims", () => {

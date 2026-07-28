@@ -35,33 +35,66 @@ export function isJsonDateTime(value) {
 }
 
 function validateNode(value, schema, rootSchema, path) {
-  const redirected = redirectSchema(value, schema, rootSchema, path);
-  if (redirected !== null) return redirected;
   const keywordErrors = validateValueKeywords(value, schema, path);
   if (keywordErrors.length > 0) return keywordErrors;
   const validator =
     VALUE_VALIDATORS[Object.prototype.toString.call(value)] ?? noErrors;
-  return validator(value, schema, rootSchema, path);
+  return [
+    ...validator(value, schema, rootSchema, path),
+    ...validateCompositions(value, schema, rootSchema, path),
+  ];
 }
 
-function redirectSchema(value, schema, rootSchema, path) {
-  if (schema.$ref) {
-    return validateNode(
+function validateCompositions(value, schema, rootSchema, path) {
+  return [
+    ...validateReferenceKeyword(value, schema, rootSchema, path),
+    ...validateOneOfKeyword(value, schema, rootSchema, path),
+    ...validateAllOfKeyword(value, schema, rootSchema, path),
+    ...validateNotKeyword(value, schema, rootSchema, path),
+    ...validateConditionalKeyword(value, schema, rootSchema, path),
+  ];
+}
+
+function validateReferenceKeyword(value, schema, rootSchema, path) {
+  return schema.$ref
+    ? validateNode(
       value,
       resolveReference(rootSchema, schema.$ref),
       rootSchema,
       path,
-    );
-  }
-  if (Array.isArray(schema.oneOf)) {
-    return validateOneOf(value, schema.oneOf, rootSchema, path);
-  }
-  if (Array.isArray(schema.allOf)) {
-    return schema.allOf.flatMap(
+    )
+    : [];
+}
+
+function validateOneOfKeyword(value, schema, rootSchema, path) {
+  return Array.isArray(schema.oneOf)
+    ? validateOneOf(value, schema.oneOf, rootSchema, path)
+    : [];
+}
+
+function validateAllOfKeyword(value, schema, rootSchema, path) {
+  return Array.isArray(schema.allOf)
+    ? schema.allOf.flatMap(
       (candidate) => validateNode(value, candidate, rootSchema, path),
-    );
-  }
-  return null;
+    )
+    : [];
+}
+
+function validateNotKeyword(value, schema, rootSchema, path) {
+  if (!isPlainObject(schema.not)) return [];
+  return validateNode(value, schema.not, rootSchema, path).length === 0
+    ? [`${path} matches a prohibited contract.`]
+    : [];
+}
+
+function validateConditionalKeyword(value, schema, rootSchema, path) {
+  if (!isPlainObject(schema.if)) return [];
+  const conditionMatches =
+    validateNode(value, schema.if, rootSchema, path).length === 0;
+  const branch = conditionMatches ? schema.then : schema.else;
+  return isPlainObject(branch)
+    ? validateNode(value, branch, rootSchema, path)
+    : [];
 }
 
 function resolveReference(rootSchema, reference) {

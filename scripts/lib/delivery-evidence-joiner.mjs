@@ -420,7 +420,7 @@ function releaseTimestampMatches(change, candidate) {
 }
 
 function releaseFollowsMerge(change, candidate) {
-  if (!change.mergedAt) return true;
+  if (!change.mergedAt) return false;
   return Date.parse(candidate.publishedAt) >= Date.parse(change.mergedAt);
 }
 
