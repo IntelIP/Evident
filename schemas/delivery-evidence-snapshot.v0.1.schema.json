@@ -75,6 +75,12 @@
         { "not": { "pattern": "://[^/\\s@]+@" } }
       ]
     },
+    "safeReleaseText": {
+      "allOf": [
+        { "$ref": "#/$defs/safeText" },
+        { "maxLength": 128 }
+      ]
+    },
     "source": {
       "type": "object",
       "additionalProperties": false,
@@ -181,8 +187,18 @@
       "required": ["status", "releaseId", "tagName", "publishedAt", "commit", "sourceClaimDigest"],
       "properties": {
         "status": { "enum": ["shipped", "unreleased", "blocked"] },
-        "releaseId": { "type": ["string", "null"], "maxLength": 128 },
-        "tagName": { "type": ["string", "null"], "maxLength": 128 },
+        "releaseId": {
+          "oneOf": [
+            { "$ref": "#/$defs/safeReleaseText" },
+            { "type": "null" }
+          ]
+        },
+        "tagName": {
+          "oneOf": [
+            { "$ref": "#/$defs/safeReleaseText" },
+            { "type": "null" }
+          ]
+        },
         "publishedAt": { "type": ["string", "null"], "format": "date-time" },
         "commit": { "type": ["string", "null"], "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
         "sourceClaimDigest": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" }

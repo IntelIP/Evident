@@ -264,13 +264,31 @@
         "releaseLagHours"
       ],
       "properties": {
-        "deliveryChangeCount": { "$ref": "#/$defs/metric" },
-        "taskToPrTraceability": { "$ref": "#/$defs/metric" },
-        "leadTimeHours": { "$ref": "#/$defs/metric" },
-        "cycleTimeHours": { "$ref": "#/$defs/metric" },
-        "ciDisagreementRate": { "$ref": "#/$defs/metric" },
-        "releaseLagHours": { "$ref": "#/$defs/metric" }
+        "deliveryChangeCount": { "$ref": "#/$defs/countMetric" },
+        "taskToPrTraceability": { "$ref": "#/$defs/ratioMetric" },
+        "leadTimeHours": { "$ref": "#/$defs/hoursMetric" },
+        "cycleTimeHours": { "$ref": "#/$defs/hoursMetric" },
+        "ciDisagreementRate": { "$ref": "#/$defs/ratioMetric" },
+        "releaseLagHours": { "$ref": "#/$defs/hoursMetric" }
       }
+    },
+    "countMetric": {
+      "allOf": [
+        { "$ref": "#/$defs/metric" },
+        { "properties": { "unit": { "const": "count" } } }
+      ]
+    },
+    "ratioMetric": {
+      "allOf": [
+        { "$ref": "#/$defs/metric" },
+        { "properties": { "unit": { "const": "ratio" } } }
+      ]
+    },
+    "hoursMetric": {
+      "allOf": [
+        { "$ref": "#/$defs/metric" },
+        { "properties": { "unit": { "const": "hours" } } }
+      ]
     },
     "deliveryChange": {
       "type": "object",

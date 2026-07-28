@@ -47,12 +47,15 @@ async function collectCommand(options) {
   const configPath = resolve(options.config);
   const config = JSON.parse(await readFile(configPath, "utf8"));
   if (!Array.isArray(config.repositories)) throw new Error("Config repositories must be an array.");
-  const repositoryRoots = await Promise.all(config.repositories.map(repositoryRootPath));
+  const repositoryLocations = await Promise.all(config.repositories.map(repositoryLocation));
   const providerInputs = config.repositories.flatMap((repository, index) =>
-    providerSnapshotPaths(repository, repositoryRoots[index])
+    providerSnapshotPaths(repository, repositoryLocations[index].root)
   );
   const protectedInputs = [configPath, ...providerInputs];
-  const outputPath = await assertSafeOutput(options.out, protectedInputs, repositoryRoots);
+  const protectedRoots = [...new Set(
+    repositoryLocations.flatMap((location) => location.protectedRoots)
+  )];
+  const outputPath = await assertSafeOutput(options.out, protectedInputs, protectedRoots);
   const dataset = await collectAnalyticsDataset({
     id: options.id,
     observedAt: options.observedAt,
@@ -85,20 +88,29 @@ function providerSnapshotPaths(repository, repositoryRoot) {
   return [resolve(repositoryRoot, repository.providerSnapshot)];
 }
 
-async function repositoryRootPath(repository) {
+async function repositoryLocation(repository) {
   const repositoryPath = await realpath(resolve(repository.path));
   const { stdout: bareOutput } = await execFileAsync(
     "git",
     ["rev-parse", "--is-bare-repository"],
     { cwd: repositoryPath, encoding: "utf8" },
   );
-  if (bareOutput.trim() === "true") return repositoryPath;
+  if (bareOutput.trim() === "true") {
+    return { root: repositoryPath, protectedRoots: [repositoryPath] };
+  }
   const { stdout: rootOutput } = await execFileAsync(
     "git",
     ["rev-parse", "--show-toplevel"],
     { cwd: repositoryPath, encoding: "utf8" },
   );
-  return realpath(rootOutput.trim());
+  const { stdout: commonDirectoryOutput } = await execFileAsync(
+    "git",
+    ["rev-parse", "--git-common-dir"],
+    { cwd: repositoryPath, encoding: "utf8" },
+  );
+  const root = await realpath(rootOutput.trim());
+  const commonDirectory = await realpath(resolve(repositoryPath, commonDirectoryOutput.trim()));
+  return { root, protectedRoots: [root, commonDirectory] };
 }
 
 async function assertSafeOutput(output, inputs, repositoryRoots) {

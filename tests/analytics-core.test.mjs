@@ -96,6 +96,10 @@ test("analytics core rejects stale, unsafe, and contradictory imported evidence"
       dataset.repositories[0].sources.find((source) => source.system === "github").sourceVersion =
         "2099-01-01T00:00:00Z";
     }, /later than its observation/],
+    ["future date-only provider version", (dataset) => {
+      dataset.repositories[0].sources.find((source) => source.system === "github").sourceVersion =
+        "2099-01-01";
+    }, /later than its observation/],
     ["forged metric", (dataset) => {
       dataset.repositories[0].metrics.deliveryChangeCount.value = 99;
     }, /metrics contradict/],
@@ -396,6 +400,16 @@ test("analytics collector blocks stale and cross-repository validation controls"
       name: "cross repository",
       record: (head) => validationResult(head, "IntelIP/Other", "passed", "cross-repository"),
     },
+    {
+      name: "unrelated suite",
+      record: (head) => {
+        const result = validationResult(head, "IntelIP/Example", "passed", "unrelated-suite");
+        result.suite.manifestPath = "unrelated.validation.json";
+        const { integrity: _integrity, ...unsigned } = result;
+        result.integrity.digest = digestObject(unsigned);
+        return result;
+      },
+    },
   ];
 
   for (const value of cases) {
@@ -570,6 +584,17 @@ test("analytics CLI rejects config, provider, symlink, and repository output ali
     analyticsCollectArgs(relativeConfigPath, providerPath),
     /must not alias an input/,
   );
+
+  const linkedWorktree = join(fixture.root, "linked-worktree");
+  await git(fixture.repository, ["worktree", "add", "--detach", linkedWorktree]);
+  const linkedConfigPath = join(fixture.root, "linked-config.json");
+  await writeFile(linkedConfigPath, `${JSON.stringify({
+    repositories: [{ id: "fixture", path: linkedWorktree }],
+  }, null, 2)}\n`);
+  await assertCliFailure(
+    analyticsCollectArgs(linkedConfigPath, join(fixture.repository, ".git", "analytics.json")),
+    /outside collected repositories/,
+  );
 });
 
 test("analytics CLI collects and rechecks a deterministic dataset", async (context) => {
@@ -631,6 +656,9 @@ test("analytics schema requires source observations and canonical metric states"
   assert.equal(metricState.else.properties.reason.$ref, "#/$defs/safeText");
   assert.equal(metricState.else.properties.numerator.type, "null");
   assert.equal(metricState.else.properties.denominator.type, "null");
+  assert.equal(schema.$defs.countMetric.allOf[1].properties.unit.const, "count");
+  assert.equal(schema.$defs.ratioMetric.allOf[1].properties.unit.const, "ratio");
+  assert.equal(schema.$defs.hoursMetric.allOf[1].properties.unit.const, "hours");
   const measuredNonRatio = metricState.then.allOf[0].else.properties;
   assert.equal(measuredNonRatio.numerator.type, "null");
   assert.equal(measuredNonRatio.denominator.type, "null");
@@ -690,6 +718,14 @@ test("analytics schema requires source observations and canonical metric states"
   assert.equal(
     deliverySchema.$defs.record.properties.id.$ref,
     "#/$defs/portableIdentifier",
+  );
+  assert.equal(
+    deliverySchema.$defs.release.properties.releaseId.oneOf[0].$ref,
+    "#/$defs/safeReleaseText",
+  );
+  assert.equal(
+    deliverySchema.$defs.release.properties.tagName.oneOf[0].$ref,
+    "#/$defs/safeReleaseText",
   );
   for (const unsafe of [
     "ghp_0123456789abcdef",

@@ -17,6 +17,10 @@ import { validateReviewCycle } from "./review-cycle.mjs";
 import { validateValidationResult } from "./validation-runner.mjs";
 
 const SCHEMA_VERSION = "tabellio-analytics-dataset/v0.1";
+const REQUIRED_VALIDATION_MANIFESTS = new Set([
+  "tabellio.analytics.validation.json",
+  "tabellio.validation.json",
+]);
 const COMMIT_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const SOURCE_STATES = new Set(["available", "unavailable", "blocked"]);
@@ -332,14 +336,29 @@ function candidateReviewRecords(records, { canonicalRepositoryId: repository, he
 function latestCandidateValidationResult(records, { canonicalRepositoryId: repository, headCommit }) {
   const expectedRepository = normalizedAnalyticsRepositoryId(repository);
   return records
-    .filter((record) =>
-      normalizedAnalyticsRepositoryId(record?.repository?.id) === expectedRepository
-      && validationHeadCommit(record) === headCommit
-    )
+    .filter((record) => validationResultMatchesCandidate(
+      record,
+      expectedRepository,
+      headCommit,
+    ))
     .sort((left, right) =>
       Date.parse(right.completedAt) - Date.parse(left.completedAt)
       || right.runId.localeCompare(left.runId)
     )[0] ?? null;
+}
+
+function validationResultMatchesCandidate(record, expectedRepository, headCommit) {
+  return validationRepositoryMatches(record, expectedRepository)
+    && validationHeadCommit(record) === headCommit
+    && requiredValidationManifest(record);
+}
+
+function validationRepositoryMatches(record, expectedRepository) {
+  return normalizedAnalyticsRepositoryId(record?.repository?.id) === expectedRepository;
+}
+
+function requiredValidationManifest(record) {
+  return REQUIRED_VALIDATION_MANIFESTS.has(record?.suite?.manifestPath);
 }
 
 function normalizedAnalyticsRepositoryId(value) {
@@ -1029,7 +1048,7 @@ function versionNotAfterObservation(source) {
 }
 
 function parseableProviderTimestamp(value) {
-  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}(?:T|$)/.test(value)
     ? parseableTimestamp(value)
     : null;
 }
