@@ -56,7 +56,7 @@
       "summary": "Analytics collection and CLI workflow"
     },
     "analytics-security": {
-      "commands": [["node", "--test", "--test-name-pattern", "never exports|blocks indirect|unsafe and future|output aliases|malformed provider", "tests/analytics-core.test.mjs"]],
+      "commands": [["node", "--test", "--test-name-pattern", "never exports|blocks indirect|unsafe and future|incomplete control|output aliases|malformed provider", "tests/analytics-core.test.mjs"]],
       "metrics": [{"name": "analytics_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
       "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
       "summary": "Analytics credential, path, alias, and temporal boundaries"

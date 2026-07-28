@@ -13,6 +13,8 @@ import {
   validateProviderSnapshot,
 } from "./portable-evidence.mjs";
 import { localRepositoryId } from "./repository-identity.mjs";
+import { validateReviewCycle } from "./review-cycle.mjs";
+import { validateValidationResult } from "./validation-runner.mjs";
 
 const SCHEMA_VERSION = "tabellio-analytics-dataset/v0.1";
 const COMMIT_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
@@ -29,7 +31,7 @@ const CONTROL_SOURCES = Object.freeze([
   Object.freeze({
     id: "tabellio-review",
     ref: "refs/tabellio/reviews",
-    validateRecord: validateGenericControlRecord,
+    validateRecord: validateReviewControlRecord,
   }),
   Object.freeze({
     id: "entire",
@@ -140,6 +142,7 @@ async function collectRepository(input, observedAt) {
     headCommit,
     observedAt,
   });
+  await assertRepositorySnapshotStable(repositoryPath, { headCommit, branch, remote });
   return {
     id: input.id,
     canonicalRepositoryId: canonicalId,
@@ -150,6 +153,17 @@ async function collectRepository(input, observedAt) {
     metrics: {},
     deliveryChanges: provider.deliveryChanges,
   };
+}
+
+async function assertRepositorySnapshotStable(repositoryPath, expected) {
+  const [headCommit, branch, remote] = await Promise.all([
+    gitText(repositoryPath, ["rev-parse", "HEAD"]),
+    gitText(repositoryPath, ["branch", "--show-current"]),
+    optionalGitText(repositoryPath, ["remote", "get-url", "origin"]),
+  ]);
+  if (canonicalJson({ headCommit, branch, remote }) !== canonicalJson(expected)) {
+    throw new Error("Repository revision or identity changed during analytics collection.");
+  }
 }
 
 function validateRepositoryInput(input) {
@@ -218,6 +232,7 @@ async function readControlRecords(repositoryPath, version, validateRecord, obser
 }
 
 function validateValidationControlRecord(record, name, observedAt) {
+  validateValidationResult(record);
   validateGenericControlRecord(record, name, observedAt);
   const headCommit = validationHeadCommit(record);
   assertRules([
@@ -226,6 +241,11 @@ function validateValidationControlRecord(record, name, observedAt) {
     [safeControlSegment(record.runId), "Validation run id is unsafe."],
     [name === validationControlPath(headCommit, record.runId), "Validation control path is invalid."],
   ]);
+}
+
+function validateReviewControlRecord(record, name, observedAt) {
+  validateReviewCycle(record);
+  validateGenericControlRecord(record, name, observedAt);
 }
 
 function validateGenericControlRecord(record, _name, observedAt) {

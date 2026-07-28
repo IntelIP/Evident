@@ -220,13 +220,20 @@ test("analytics collector blocks unsafe and future-dated control records", async
     completedAt: "2099-01-01T00:00:00.000Z",
     revision: { headCommit: head },
   }));
-  await git(fixture.repository, ["add", "."]);
-  await git(fixture.repository, ["commit", "-m", "Add unsafe control record"]);
-  const controlCommit = await git(fixture.repository, ["rev-parse", "HEAD"]);
-  await git(fixture.repository, ["update-ref", "refs/tabellio/validations", controlCommit]);
-  const source = await collectedValidationSource(fixture.repository);
-  assert.equal(source.status, "blocked");
-  assert.equal(source.reason, "Control evidence is malformed or unsafe.");
+  const source = await commitBlockedValidationRecord(fixture.repository, "Add unsafe control record");
+  assertBlockedControlSource(source);
+});
+
+test("analytics collector rejects structurally incomplete control records", async (context) => {
+  const fixture = await gitRepositoryFixture(context);
+  const head = await git(fixture.repository, ["rev-parse", "HEAD"]);
+  const recordPath = join(fixture.repository, "commits", head, "validation-run.json");
+  await writeFixture(recordPath, JSON.stringify({
+    runId: "validation-run",
+    revision: { headCommit: head },
+  }));
+  const source = await commitBlockedValidationRecord(fixture.repository, "Add incomplete control record");
+  assertBlockedControlSource(source);
 });
 
 test("analytics CLI rejects config, provider, symlink, and repository output aliases", async (context) => {
@@ -416,6 +423,19 @@ function blockPlaneSource(dataset, reason) {
 async function collectedValidationSource(repository) {
   const dataset = await collectFixture(repository);
   return dataset.repositories[0].sources.find((entry) => entry.system === "tabellio-validation");
+}
+
+async function commitBlockedValidationRecord(repository, message) {
+  await git(repository, ["add", "."]);
+  await git(repository, ["commit", "-m", message]);
+  const controlCommit = await git(repository, ["rev-parse", "HEAD"]);
+  await git(repository, ["update-ref", "refs/tabellio/validations", controlCommit]);
+  return collectedValidationSource(repository);
+}
+
+function assertBlockedControlSource(source) {
+  assert.equal(source.status, "blocked");
+  assert.equal(source.reason, "Control evidence is malformed or unsafe.");
 }
 
 async function gitRepositoryFixture(context) {
