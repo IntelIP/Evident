@@ -1,0 +1,91 @@
+{
+  "schemaVersion": "tabellio-validation/v0.2",
+  "id": "intb-261-p5-plane-collector",
+  "failFast": false,
+  "requireEntireCheckpoint": true,
+  "acceptance": {
+    "id": "INTB-261-P5",
+    "source": "INTB-261 and docs/intb-261-p5-execution-contract.md",
+    "risk": "high",
+    "outcomes": [
+      "Plane snapshots are complete, bounded, and temporally coherent.",
+      "Project, state, and work-item identity stays unique and project-bound.",
+      "Malformed provider or pagination data fails closed."
+    ],
+    "invariants": [
+      "Pagination and state-request concurrency stay inside committed limits.",
+      "Duplicate, dangling, cross-project, incomplete, and future evidence blocks.",
+      "Project identifiers and normalized work-item keys match delivery contracts.",
+      "All validators report complete zero-cost telemetry."
+    ],
+    "forbiddenOutcomes": [
+      "A truncated Plane inventory is reported as complete.",
+      "Malformed provider rows are silently discarded.",
+      "A work item is bound to another project's state.",
+      "Credential-bearing or filesystem-aliased evidence is accepted."
+    ],
+    "requiredValidatorTypes": ["static", "schema", "semantic", "workflow", "operational", "security"]
+  },
+  "validators": [
+    {
+      "id": "plane-collector-static",
+      "type": "static",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "plane-collector-static"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": null,
+      "policy": {"metricThresholds": [], "maxCostUsd": null, "requireCostTelemetry": false}
+    },
+    {
+      "id": "plane-collector-schema",
+      "type": "schema",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "plane-collector-schema", "--validator-id", "plane-collector-schema", "--out", ".artifacts/tabellio/plane-collector-schema.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/plane-collector-schema.json"},
+      "policy": {"metricThresholds": [{"metric": "plane_collector_schema_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "plane-collector-semantic",
+      "type": "semantic",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "plane-collector-semantic", "--validator-id", "plane-collector-semantic", "--out", ".artifacts/tabellio/plane-collector-semantic.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/plane-collector-semantic.json"},
+      "policy": {"metricThresholds": [{"metric": "plane_collector_semantic_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "plane-collector-workflow",
+      "type": "workflow",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "plane-collector-workflow", "--validator-id", "plane-collector-workflow", "--out", ".artifacts/tabellio/plane-collector-workflow.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/plane-collector-workflow.json"},
+      "policy": {"metricThresholds": [{"metric": "plane_collector_workflow_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "plane-collector-operational",
+      "type": "operational",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "plane-collector-operational", "--validator-id", "plane-collector-operational", "--out", ".artifacts/tabellio/plane-collector-operational.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/plane-collector-operational.json"},
+      "policy": {"metricThresholds": [{"metric": "plane_state_max_concurrency", "operator": "lte", "value": 8}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "plane-collector-security",
+      "type": "security",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "plane-collector-security", "--validator-id", "plane-collector-security", "--out", ".artifacts/tabellio/plane-collector-security.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/plane-collector-security.json"},
+      "policy": {"metricThresholds": [{"metric": "plane_collector_security_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    }
+  ]
+}
