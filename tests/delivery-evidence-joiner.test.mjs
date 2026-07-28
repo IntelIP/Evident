@@ -66,6 +66,7 @@ test("delivery evidence schema requires decision claim digests", async () => {
   assert(schema.$defs.release.required.includes("sourceClaimDigest"));
   assert(schema.$defs.deployment.required.includes("sourceClaimDigest"));
   assert.equal(schema.$defs.observation.properties.claimDigests.uniqueItems, true);
+  assert(schema.$defs.observation.required.includes("evidence"));
 });
 
 test("delivery snapshot preserves exact source provenance", () => {
@@ -461,7 +462,7 @@ test("delivery snapshot rejects imported cross-pipeline CI", () => {
   snapshot.ciAuthority.pipeline = "auxiliary";
   assert.throws(
     () => validateDeliveryEvidenceSnapshot(snapshot),
-    /designated Buildkite pipeline|designated authority/,
+    /designated Buildkite pipeline|designated authority|evidence authority/,
   );
 });
 
@@ -479,6 +480,11 @@ test("delivery snapshot binds shipped releases to record commit and merge time",
   unrelated.sources.githubRelease.observations[0].claimDigests = [
     unrelatedRecord.release.sourceClaimDigest,
   ];
+  unrelated.sources.githubRelease.observations[0].evidence.releases[0].commit =
+    unrelatedRecord.release.commit;
+  unrelated.sources.githubRelease.observations[0].digest = digest(
+    unrelated.sources.githubRelease.observations[0].evidence,
+  );
   assert.throws(
     () => validateDeliveryEvidenceSnapshot(unrelated),
     /commit is not bound/,
@@ -497,9 +503,42 @@ test("delivery snapshot binds shipped releases to record commit and merge time",
   preMerge.sources.githubRelease.observations[0].claimDigests = [
     preMergeRecord.release.sourceClaimDigest,
   ];
+  preMerge.sources.githubRelease.observations[0].evidence.releases[0].publishedAt =
+    preMergeRecord.release.publishedAt;
+  preMerge.sources.githubRelease.observations[0].digest = digest(
+    preMerge.sources.githubRelease.observations[0].evidence,
+  );
   assert.throws(
     () => validateDeliveryEvidenceSnapshot(preMerge),
     /predates the delivery record merge/,
+  );
+});
+
+test("delivery snapshot rejects self-asserted claim digest rewrites", () => {
+  const snapshot = join();
+  const record = snapshot.deliveryRecords[0];
+  record.ci.buildNumber = 999;
+  record.ci.sourceClaimDigest = digest({
+    pipeline: record.ci.pipeline,
+    buildNumber: record.ci.buildNumber,
+    commit: record.headCommit,
+    status: record.ci.status,
+    finishedAt: record.ci.finishedAt,
+  });
+  snapshot.sources.buildkite.observations[0].claimDigests = [
+    record.ci.sourceClaimDigest,
+  ];
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(snapshot),
+    /source claims do not match its evidence/,
+  );
+
+  const tamperedEvidence = join();
+  tamperedEvidence.sources.buildkite.observations[0].evidence.builds[0].number =
+    999;
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(tamperedEvidence),
+    /source digest does not match its evidence/,
   );
 });
 

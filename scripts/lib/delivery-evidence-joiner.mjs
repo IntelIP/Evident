@@ -21,6 +21,13 @@ const DELIVERY_RECORD_ID = /^[^\r\n|#`][^\r\n|#`]{0,127}$/;
 const SAFE_REASON = /^[^\r\n]{1,200}$/;
 const ENVIRONMENT = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const BUILDKITE_SLUG = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,126}[A-Za-z0-9])?$/;
+const OBSERVATION_CONTRACTS = {
+  provider: providerEvidenceContract,
+  plane: planeEvidenceContract,
+  buildkite: buildkiteEvidenceContract,
+  githubRelease: releaseEvidenceContract,
+  deployment: deploymentEvidenceContract,
+};
 
 export function joinDeliveryEvidence({
   providerSnapshot,
@@ -581,6 +588,7 @@ function observation(id, version, value, claims = []) {
     version,
     digest: digestClaim(value),
     claimDigests: [...new Set(claims.map(digestClaim))],
+    evidence: structuredClone(value),
   };
 }
 
@@ -690,7 +698,117 @@ function assertSafeSources(snapshot) {
       "Delivery evidence source reasons must be portable single-line text.",
     );
     assertSourceState(name, source, snapshot.capturedAt);
+    source.observations.forEach(
+      (item) => assertObservationEvidence(name, item, snapshot),
+    );
   }
+}
+
+function assertObservationEvidence(name, item, snapshot) {
+  ensure(
+    item.digest === digestClaim(item.evidence),
+    `${name} source digest does not match its evidence.`,
+  );
+  const contract = observationEvidenceContract(name, item.evidence, snapshot);
+  ensure(
+    item.id === contract.id && item.version === contract.version,
+    `${name} source identity does not match its evidence.`,
+  );
+  ensure(
+    sameDigestSet(
+      item.claimDigests,
+      contract.claims.map(digestClaim),
+    ),
+    `${name} source claims do not match its evidence.`,
+  );
+}
+
+function observationEvidenceContract(name, evidence, snapshot) {
+  return OBSERVATION_CONTRACTS[name](evidence, snapshot);
+}
+
+function providerEvidenceContract(evidence, snapshot) {
+  assertProviderSnapshot(evidence, snapshot.capturedAt);
+  ensure(
+    sameRepository(evidence.repository, snapshot.repository),
+    "Provider source evidence repository mismatch.",
+  );
+  return {
+    id: boundedObservationId("provider", evidence.repository),
+    version: evidence.capturedAt,
+    claims: evidence.deliveryChanges.map(providerChangeClaim),
+  };
+}
+
+function planeEvidenceContract(evidence, snapshot) {
+  validatePlaneWorkItemSnapshot(evidence);
+  const provider = snapshot.sources.provider.observations[0]?.evidence;
+  ensure(
+    evidence.status === "available"
+      && evidence.workspace === provider?.sources?.plane?.workspace,
+    "Plane source evidence authority mismatch.",
+  );
+  return {
+    id: boundedObservationId("plane", evidence.workspace),
+    version: evidence.capturedAt,
+    claims: planeClaims(evidence),
+  };
+}
+
+function buildkiteEvidenceContract(evidence, snapshot) {
+  validateBuildkiteBuildSnapshot(evidence);
+  ensure(
+    evidence.status === "available"
+      && sameRepository(evidence.repository, snapshot.repository)
+      && evidence.organization === snapshot.ciAuthority.organization
+      && evidence.pipeline === snapshot.ciAuthority.pipeline,
+    "Buildkite source evidence authority mismatch.",
+  );
+  return {
+    id: boundedObservationId(
+      "buildkite",
+      `${evidence.organization}/${evidence.pipeline}`,
+    ),
+    version: evidence.capturedAt,
+    claims: evidence.builds.map((build) => buildClaim({
+      ...build,
+      pipeline: evidence.pipeline,
+    })),
+  };
+}
+
+function releaseEvidenceContract(evidence, snapshot) {
+  validateGitHubReleaseSnapshot(evidence);
+  ensure(
+    evidence.status === "available"
+      && sameRepository(evidence.repository, snapshot.repository),
+    "GitHub Release source evidence authority mismatch.",
+  );
+  return {
+    id: boundedObservationId("github-release", evidence.repository),
+    version: evidence.capturedAt,
+    claims: evidence.releases.map(releaseClaim),
+  };
+}
+
+function deploymentEvidenceContract(evidence, snapshot) {
+  validateDeploymentReceipt(evidence);
+  ensure(
+    sameRepository(evidence.repository, snapshot.repository),
+    "Deployment source evidence repository mismatch.",
+  );
+  return {
+    id: boundedObservationId(`deployment:${evidence.provider}`, evidence.id),
+    version: evidence.observedAt,
+    claims: [deploymentClaim(evidence)],
+  };
+}
+
+function sameDigestSet(actual, expected) {
+  const actualSet = new Set(actual);
+  const expectedSet = new Set(expected);
+  return actualSet.size === expectedSet.size
+    && [...actualSet].every((value) => expectedSet.has(value));
 }
 
 function assertSourceState(name, source, capturedAt) {

@@ -119,11 +119,12 @@
     "observation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "version", "digest", "claimDigests"],
+      "required": ["id", "version", "digest", "claimDigests", "evidence"],
       "properties": {
         "id": { "$ref": "#/$defs/portableIdentifier" },
         "version": { "type": "string", "format": "date-time" },
         "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "evidence": { "type": "object" },
         "claimDigests": {
           "type": "array",
           "maxItems": 10000,

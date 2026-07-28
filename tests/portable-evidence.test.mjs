@@ -145,6 +145,7 @@ test("provider snapshot rejects unsafe and contradictory claims", () => {
     ["future capture", (value) => { value.capturedAt = "2099-01-01T00:00:00.000Z"; }, /later than observation/],
     ["normalized capture", (value) => { value.capturedAt = "2026-02-30T00:00:00.000Z"; }, /capturedAt is invalid/],
     ["missing source", (value) => { delete value.sources.github; }, /github is missing/],
+    ["missing Plane workspace", (value) => { delete value.sources.plane.workspace; }, /workspace is missing/],
     ["unknown source", (value) => { value.sources.raw = { status: "available", version: "v1" }; }, /not allowed/],
     ["bad head", (value) => { value.deliveryChanges[0].headCommit = "bad"; }, /headCommit/],
     ["future lifecycle", (value) => { value.deliveryChanges[0].mergedAt = "2099-01-01T00:00:00.000Z"; }, /later than capture/],
