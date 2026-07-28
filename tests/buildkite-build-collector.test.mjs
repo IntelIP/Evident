@@ -108,7 +108,7 @@ test("Buildkite collector paginates builds, jobs, and artifacts", async () => {
 });
 
 test("Buildkite collector preserves unfinished and waiting builds", async () => {
-  for (const state of ["waiting", "running"]) {
+  for (const state of ["waiting", "waiting_failed", "running"]) {
     const snapshot = await collectBuildkiteBuildSnapshot({
       ...collectorOptions(),
       request: fixtureRequest({
@@ -122,7 +122,7 @@ test("Buildkite collector preserves unfinished and waiting builds", async () => 
 });
 
 test("Buildkite collector rejects unfinished terminal builds", async () => {
-  for (const state of ["passed", "failed", "canceled", "not_run", "skipped", "waiting_failed"]) {
+  for (const state of ["passed", "failed", "canceled", "not_run", "skipped"]) {
     const snapshot = await collectBuildkiteBuildSnapshot({
       ...collectorOptions(),
       request: fixtureRequest({
@@ -144,6 +144,18 @@ test("Buildkite collector rejects incomplete cursor metadata", async () => {
     });
     assert.equal(snapshot.status, "blocked");
   }
+});
+
+test("Buildkite collector accepts omitted next on a short final cursor page", async () => {
+  const snapshot = await collectBuildkiteBuildSnapshot({
+    ...collectorOptions(),
+    request: fixtureRequest({
+      jobs: [{ id: "job-1" }],
+      jobLinks: {},
+    }),
+  });
+  assert.equal(snapshot.status, "available");
+  assert.equal(snapshot.builds[0].jobCount, 1);
 });
 
 test("Buildkite collector rejects build pagination beyond its bound", async () => {
@@ -320,6 +332,13 @@ test("Buildkite snapshot schema couples availability to reason and builds", asyn
   assert.equal(statusRule.else.properties.reason.type, "string");
   assert.equal(statusRule.else.properties.reason.minLength, 1);
   assert.equal(statusRule.else.properties.builds.maxItems, 0);
+  const buildRule = schema.properties.builds.items.allOf.find(
+    (rule) => rule.if?.properties?.state?.enum?.includes("passed"),
+  );
+  assert.deepEqual(
+    buildRule.then.properties.finishedAt,
+    { type: "string", format: "date-time" },
+  );
 });
 
 test("Buildkite CLI creates fresh nested output parents", async (t) => {

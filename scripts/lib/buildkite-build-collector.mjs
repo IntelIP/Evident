@@ -29,6 +29,7 @@ const UNFINISHED_BUILD_STATES = new Set([
   "running",
   "scheduled",
   "waiting",
+  "waiting_failed",
 ]);
 const OBSERVATION_DAYS = 30;
 const PAGE_SIZE = 100;
@@ -149,16 +150,23 @@ async function collectCursorPages({ path, request, maximum, label }) {
     contract.object(body, `${label} response`);
     ensure(Array.isArray(body.items), `${label} response is invalid.`);
     contract.object(body.links, `${label} pagination links`);
-    ensure(
-      Object.hasOwn(body.links, "next"),
-      `${label} pagination links are incomplete.`,
-    );
     values.push(...body.items);
     ensure(values.length <= maximum, `${label} exceeds its bounded limit.`);
-    next = cursorNextPath(body.links?.next, label);
+    next = cursorPageNext(body, label);
     if (next === null) return values;
   }
   throw new Error(`${label} pagination exceeds its bounded limit.`);
+}
+
+function cursorPageNext(body, label) {
+  if (Object.hasOwn(body.links, "next")) {
+    return cursorNextPath(body.links.next, label);
+  }
+  ensure(
+    body.items.length < PAGE_SIZE,
+    `${label} pagination links are incomplete.`,
+  );
+  return null;
 }
 
 async function collectPages({ path, request, maximum, label }) {

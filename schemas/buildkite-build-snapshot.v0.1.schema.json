@@ -72,7 +72,29 @@
           "finishedAt": {"type": ["string", "null"], "format": "date-time"},
           "jobCount": {"type": "integer", "minimum": 0, "maximum": 5000},
           "artifactCount": {"type": "integer", "minimum": 0, "maximum": 5000}
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "enum": [
+                    "canceled",
+                    "failed",
+                    "not_run",
+                    "passed",
+                    "skipped"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "finishedAt": {"type": "string", "format": "date-time"}
+              }
+            }
+          }
+        ]
       }
     }
   },
