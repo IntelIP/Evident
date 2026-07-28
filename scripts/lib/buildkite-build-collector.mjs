@@ -162,10 +162,6 @@ function cursorPageNext(body, label) {
   if (Object.hasOwn(body.links, "next")) {
     return cursorNextPath(body.links.next, label);
   }
-  ensure(
-    body.items.length < PAGE_SIZE,
-    `${label} pagination links are incomplete.`,
-  );
   return null;
 }
 

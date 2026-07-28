@@ -134,7 +134,7 @@ test("Buildkite collector rejects unfinished terminal builds", async () => {
 });
 
 test("Buildkite collector rejects incomplete cursor metadata", async () => {
-  for (const jobLinks of ["missing", {}, { next: 7 }]) {
+  for (const jobLinks of ["missing", { next: 7 }]) {
     const snapshot = await collectBuildkiteBuildSnapshot({
       ...collectorOptions(),
       request: fixtureRequest({
@@ -156,6 +156,18 @@ test("Buildkite collector accepts omitted next on a short final cursor page", as
   });
   assert.equal(snapshot.status, "available");
   assert.equal(snapshot.builds[0].jobCount, 1);
+});
+
+test("Buildkite collector accepts omitted next on a full final cursor page", async () => {
+  const snapshot = await collectBuildkiteBuildSnapshot({
+    ...collectorOptions(),
+    request: fixtureRequest({
+      jobs: Array.from({ length: 100 }, (_, index) => ({ id: `job-${index}` })),
+      jobLinks: {},
+    }),
+  });
+  assert.equal(snapshot.status, "available");
+  assert.equal(snapshot.builds[0].jobCount, 100);
 });
 
 test("Buildkite collector rejects build pagination beyond its bound", async () => {
