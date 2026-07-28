@@ -37,7 +37,7 @@ export function isPortableIdentifier(value) {
     && /^[A-Za-z0-9][A-Za-z0-9._:@/-]*$/.test(value)
     && !value.includes("//")
     && !value.includes("..")
-    && !value.startsWith("file:");
+    && !value.toLowerCase().startsWith("file:");
 }
 
 export function isSafeProviderText(value) {
@@ -46,7 +46,7 @@ export function isSafeProviderText(value) {
     && value.length <= 500
     && !hasControlOrPath(value)
     && !hasCredentialShape(value)
-    && !value.includes("file:");
+    && !value.toLowerCase().includes("file:");
 }
 
 export function isSafeProviderVersion(value) {

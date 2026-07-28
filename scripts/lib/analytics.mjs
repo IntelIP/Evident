@@ -184,11 +184,17 @@ async function collectRepository(input, observedAt) {
     canonicalRepositoryId: canonicalId,
     headCommit,
     headCommittedAt: normalizeDateTime(headCommittedAt),
-    branch: branch || "detached",
+    branch: portableBranch(branch || "detached"),
     sources: [gitSource, ...controls, ...provider.sources],
     metrics: {},
     deliveryChanges: provider.deliveryChanges,
   };
+}
+
+function portableBranch(branch) {
+  return isPortableIdentifier(branch)
+    ? branch
+    : `branch/${createHash("sha256").update(branch).digest("hex").slice(0, 16)}`;
 }
 
 async function assertRepositorySnapshotStable(repositoryPath, expected) {
@@ -578,6 +584,7 @@ function validateRepository(repository, observedAt, window) {
   ]));
   errors.push(...validateSources(repository.sources, observedAt));
   errors.push(...validateRevision(repository, observedAt));
+  errors.push(...validateGitSourceFormatBinding(repository));
   errors.push(...validateValidationSourceBinding(repository));
   errors.push(...validateDeliveryChanges(
     repository.deliveryChanges,
@@ -601,6 +608,25 @@ function validateValidationSourceBinding(repository) {
       "Validation source version does not match headCommit.",
     ],
   ]);
+}
+
+function validateGitSourceFormatBinding(repository) {
+  if (!matches(COMMIT_PATTERN, repository.headCommit)) return [];
+  return repositorySources(repository).flatMap((source, index) =>
+    gitSourceFormatMismatch(source, repository.headCommit)
+      ? [`sources[${index}]: Git-backed source object format does not match headCommit.`]
+      : []
+  );
+}
+
+function gitSourceFormatMismatch(source, headCommit) {
+  if (!isAvailableGitBackedSource(source)) return false;
+  if (!matches(COMMIT_PATTERN, source.sourceVersion)) return false;
+  return source.sourceVersion.length !== headCommit.length;
+}
+
+function isAvailableGitBackedSource(source) {
+  return source?.status === "available" && GIT_BACKED_SYSTEMS.has(source.system);
 }
 
 function validateSource(source, observedAt) {
@@ -733,14 +759,18 @@ function validateRepositories(repositories, observedAt, window) {
 
 function validateIntegrity(dataset) {
   if (!isPlainObject(dataset.integrity)) return ["Dataset integrity is invalid."];
+  const errors = [];
+  rejectUnknownFields(dataset.integrity, ["algorithm", "digest"], "integrity", errors);
   const structureErrors = ruleErrors([
     [dataset.integrity.algorithm === "sha256", "algorithm"],
     [matches(SHA256_PATTERN, dataset.integrity.digest), "digest"],
   ]);
-  if (structureErrors.length > 0) return ["Dataset integrity is invalid."];
-  return ruleErrors([
+  if (structureErrors.length > 0) errors.push("Dataset integrity is invalid.");
+  if (structureErrors.length > 0) return errors;
+  errors.push(...ruleErrors([
     [dataset.integrity.digest === digestDataset(dataset), "Dataset integrity digest does not match."],
-  ]);
+  ]));
+  return errors;
 }
 
 function validateAvailableSource(source) {

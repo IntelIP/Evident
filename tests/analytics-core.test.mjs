@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { link, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, dirname, join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
 
@@ -129,6 +129,15 @@ test("analytics core rejects stale, unsafe, and contradictory imported evidence"
     ["non-array sources", (dataset) => {
       dataset.repositories[0].sources = {};
     }, /sources are required/],
+    ["uppercase file URI reason", (dataset) => {
+      blockPlaneSource(dataset, "FILE:///Users/private/evidence.json");
+    }, /safe reason/],
+    ["extra integrity payload", (dataset) => {
+      dataset.integrity.ghp_0123456789abcdef = "/Users/private";
+    }, /integrity contains a field that is not allowed/],
+    ["mixed Git object formats", (dataset) => {
+      dataset.repositories[0].sources.push(source("tabellio-review", "b".repeat(64)));
+    }, /Git-backed source object format does not match headCommit/],
   ];
 
   for (const [name, mutate, expected] of cases) {
@@ -226,7 +235,33 @@ test("analytics collector derives the same local identity through filesystem ali
   const direct = await collectFixture(fixture.repository);
   const linked = await collectFixture(alias);
   assert.equal(direct.repositories[0].canonicalRepositoryId, linked.repositories[0].canonicalRepositoryId);
-  assert.equal(direct.repositories[0].canonicalRepositoryId, `local/${basename(fixture.repository)}`);
+  assert.match(direct.repositories[0].canonicalRepositoryId, /^local\/[0-9a-f]{16}$/);
+});
+
+test("analytics collector distinguishes local repositories with the same directory name", async (context) => {
+  const first = await gitRepositoryFixture(context);
+  const second = await gitRepositoryFixture(context);
+  const dataset = await collectAnalyticsDataset({
+    id: "INTB-261-p1b",
+    observedAt: OBSERVED_AT,
+    window: {
+      since: "2026-07-01T00:00:00.000Z",
+      until: "2026-07-26T00:00:00.000Z",
+    },
+    repositories: [
+      { id: "first", path: first.repository },
+      { id: "second", path: second.repository },
+    ],
+  });
+  const identities = dataset.repositories.map((repository) => repository.canonicalRepositoryId);
+  assert.equal(new Set(identities).size, 2);
+});
+
+test("analytics collector encodes valid non-portable Git branch names", async (context) => {
+  const fixture = await gitRepositoryFixture(context);
+  await git(fixture.repository, ["switch", "-c", "feature/a+b"]);
+  const dataset = await collectFixture(fixture.repository);
+  assert.match(dataset.repositories[0].branch, /^branch\/[0-9a-f]{16}$/);
 });
 
 test("analytics collector accepts a bound sanitized provider snapshot", async (context) => {
@@ -488,10 +523,24 @@ test("analytics schema requires source observations and canonical metric states"
   assert.ok(schema.$defs.source.required.includes("observedAt"));
   assert.deepEqual(schema.$defs.metric.properties.status.enum, ["measured", "unavailable"]);
   assert.equal(schema.$defs.commit.pattern, "^(?:[0-9a-f]{40}|[0-9a-f]{64})$");
+  const portablePatterns = schema.$defs.portableIdentifier.allOf.map((rule) => rule.not.pattern);
   assert.deepEqual(
-    schema.$defs.portableIdentifier.allOf.map((rule) => rule.not.pattern),
-    ["^file:", ":/", "//", "\\.\\."],
+    portablePatterns.slice(0, 4),
+    ["^[fF][iI][lL][eE]:", ":/", "//", "\\.\\."],
   );
+  assert.ok(portablePatterns.some((pattern) => new RegExp(pattern).test("ghp_0123456789abcdef")));
+  assert.deepEqual(
+    schema.properties.metricDefinitions.prefixItems.map((item) => item.const),
+    [
+      { id: "deliveryChangeCount", unit: "count" },
+      { id: "taskToPrTraceability", unit: "ratio" },
+      { id: "leadTimeHours", unit: "hours" },
+      { id: "cycleTimeHours", unit: "hours" },
+      { id: "ciDisagreementRate", unit: "ratio" },
+      { id: "releaseLagHours", unit: "hours" },
+    ],
+  );
+  assert.equal(schema.properties.metricDefinitions.items, false);
   const metricState = schema.$defs.metric.allOf[0];
   assert.equal(metricState.then.properties.value.type, "number");
   assert.equal(metricState.then.properties.reason.type, "null");
@@ -503,7 +552,16 @@ test("analytics schema requires source observations and canonical metric states"
   assert.equal(measuredNonRatio.numerator.type, "null");
   assert.equal(measuredNonRatio.denominator.type, "null");
   assert.equal(schema.$defs.source.allOf[0].then.properties.sourceVersion.$ref, "#/$defs/safeVersion");
+  assert.equal(schema.$defs.source.allOf[1].then.properties.sourceVersion.$ref, "#/$defs/commit");
   assert.equal(schema.$defs.deliveryChange.properties.linkEvidence.oneOf[0].$ref, "#/$defs/safeText");
+  assert.equal(
+    schema.$defs.deliveryChange.allOf[0].then.properties.pullRequestNumber.type,
+    "null",
+  );
+  assert.equal(
+    schema.$defs.deliveryChange.allOf[0].else.properties.pullRequestNumber.type,
+    "integer",
+  );
   for (const unsafe of [
     "token ghp_0123456789abcdef",
     "https://token@github.com/IntelIP/Tabellio",
@@ -538,9 +596,14 @@ test("analytics schema requires source observations and canonical metric states"
     deliverySchema.$defs.source.allOf[0].else.properties.reason.$ref,
     "#/$defs/safeText",
   );
+  assert.equal(
+    deliverySchema.$defs.observation.properties.id.$ref,
+    "#/$defs/portableIdentifier",
+  );
   for (const unsafe of [
     "ghp_0123456789abcdef",
     "file:///private/evidence.json",
+    "FILE:///private/evidence.json",
     "/Users/private/evidence.json",
   ]) {
     assert.ok(

@@ -102,8 +102,12 @@ test("context creation rejects undefined fields and impossible object IDs", () =
 });
 
 test("local repository IDs never expose Windows or POSIX parent paths", () => {
-  assert.equal(localRepositoryId("C:\\Users\\agent\\repository"), "local/repository");
-  assert.equal(localRepositoryId("/Users/agent/repository"), "local/repository");
+  assert.match(localRepositoryId("C:\\Users\\agent\\repository"), /^local\/[0-9a-f]{16}$/);
+  assert.match(localRepositoryId("/Users/agent/repository"), /^local\/[0-9a-f]{16}$/);
+  assert.notEqual(
+    localRepositoryId("/Users/first/repository"),
+    localRepositoryId("/Users/second/repository"),
+  );
   assert.match(localRepositoryId("/Users/agent/my repository"), /^local\/[0-9a-f]{16}$/);
 });
 

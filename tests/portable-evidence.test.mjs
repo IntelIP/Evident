@@ -16,7 +16,7 @@ const SHA256_HEAD = "b".repeat(64);
 const OBSERVED_AT = "2026-07-27T00:00:00.000Z";
 
 test("portable identifiers reject paths, control text, and credential shapes", () => {
-  for (const value of ["/tmp/private", "C:\\private", "file:///private", "owner\\repo", "a|b", "a\n b", "ghp_0123456789abcdef"]) {
+  for (const value of ["/tmp/private", "C:\\private", "file:///private", "FILE:///private", "owner\\repo", "a|b", "a\n b", "ghp_0123456789abcdef"]) {
     assert.equal(isPortableIdentifier(value), false, value);
   }
   assert.equal(isPortableIdentifier("INTB-261"), true);
@@ -43,6 +43,7 @@ test("source contracts require exact state shapes and safe evidence", () => {
   assert.match(validateEvidenceSource({ status: "blocked", reason: "failed [/var/lib/private]" })[0], /safe reason/);
   assert.match(validateEvidenceSource({ status: "blocked", reason: "provider error: C:/Users/alice/private" })[0], /safe reason/);
   assert.match(validateEvidenceSource({ status: "blocked", reason: "https://token@github.com/IntelIP/Tabellio" })[0], /safe reason/);
+  assert.match(validateEvidenceSource({ status: "blocked", reason: "FILE:///Users/alice/private" })[0], /safe reason/);
   assert.match(validateEvidenceSource({ status: "unavailable", reason: "offline", workspace: "private" })[0], /not allowed/);
   assert.match(validateEvidenceSource({ status: "unavailable", reason: "offline", version: "2026-07-25T00:00:00.000Z" }).join(" "), /cannot carry a version/);
   assert.deepEqual(validateEvidenceSource({ status: "unavailable", reason: "offline", ghp_0123456789abcdef: true }), ["source contains a field that is not allowed"]);
