@@ -8,15 +8,7 @@ export async function linkGitHubReleases({
 }) {
   validateGitHubReleaseSnapshot(releaseSnapshot);
   assertValidProviderSnapshot(providerSnapshot);
-  if (releaseSnapshot.status !== "available") {
-    throw new Error("Cannot link a blocked GitHub release snapshot.");
-  }
-  if (!sameRepository(providerSnapshot.repository, releaseSnapshot.repository)) {
-    throw new Error("Provider and GitHub release snapshots must name the same repository.");
-  }
-  if (providerSnapshot.sources.github.status !== "available") {
-    throw new Error("Provider snapshot requires available GitHub evidence.");
-  }
+  assertLinkableSnapshots(providerSnapshot, releaseSnapshot);
   if (typeof containsCommit !== "function") {
     throw new Error("Release linking requires a commit-containment resolver.");
   }
@@ -40,6 +32,18 @@ export async function linkGitHubReleases({
   );
   assertValidProviderSnapshot(linked);
   return linked;
+}
+
+function assertLinkableSnapshots(providerSnapshot, releaseSnapshot) {
+  if (releaseSnapshot.status !== "available") {
+    throw new Error("Cannot link a blocked GitHub release snapshot.");
+  }
+  if (!sameRepository(providerSnapshot.repository, releaseSnapshot.repository)) {
+    throw new Error("Provider and GitHub release snapshots must name the same repository.");
+  }
+  if (providerSnapshot.sources.github.status !== "available") {
+    throw new Error("Provider snapshot requires available GitHub evidence.");
+  }
 }
 
 async function linkChange(change, releases, containsCommit) {
@@ -96,16 +100,20 @@ function assertCompatibleClaim(existing, observed, message) {
 }
 
 function assertValidProviderSnapshot(snapshot) {
-  const errors = validateProviderSnapshot(snapshot, {
-    repository: snapshot?.repository,
-    headCommit: snapshot?.headCommit,
-    observedAt: snapshot?.capturedAt,
-  });
+  const candidate = Object(snapshot);
+  const errors = validateProviderSnapshot(snapshot, providerValidationContext(candidate));
   if (errors.length > 0) {
     throw new Error(`Invalid provider snapshot: ${errors.join("; ")}`);
   }
 }
 
+function providerValidationContext(snapshot) {
+  return {
+    repository: snapshot.repository,
+    headCommit: snapshot.headCommit,
+    observedAt: snapshot.capturedAt,
+  };
+}
 function compareReleases(left, right) {
   return Date.parse(left.publishedAt) - Date.parse(right.publishedAt)
     || left.id.localeCompare(right.id);

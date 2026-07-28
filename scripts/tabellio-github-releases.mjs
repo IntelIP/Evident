@@ -28,7 +28,12 @@ async function main() {
   });
   await mkdir(dirname(out), { recursive: true });
   await writeFile(out, `${JSON.stringify(snapshot, null, 2)}\n`);
-  console.log(JSON.stringify({
+  console.log(JSON.stringify(collectionSummary(snapshot, out), null, 2));
+  process.exitCode = collectionExitCode(snapshot);
+}
+
+function collectionSummary(snapshot, out) {
+  return {
     ok: snapshot.status === "available",
     status: snapshot.status === "available"
       ? "github_release_snapshot_ready"
@@ -36,10 +41,12 @@ async function main() {
     repository: snapshot.repository,
     releaseCount: snapshot.releases.length,
     out,
-  }, null, 2));
-  if (snapshot.status !== "available") process.exitCode = 1;
+  };
 }
 
+function collectionExitCode(snapshot) {
+  return snapshot.status === "available" ? 0 : 1;
+}
 async function githubRequest(path) {
   const { stdout } = await execFileAsync(
     "gh",

@@ -32,6 +32,10 @@ export async function createGitCommitContainmentResolver({
 async function verifyCommitContainment({ repo, execute }, ancestor, descendant) {
   if (!validCommitPair(ancestor, descendant)) return false;
   if (!await bothCommitsExist({ repo, execute }, ancestor, descendant)) return false;
+  return mergeBaseContains({ repo, execute }, ancestor, descendant);
+}
+
+async function mergeBaseContains({ repo, execute }, ancestor, descendant) {
   try {
     await execute("git", [
       "-C",
@@ -65,7 +69,11 @@ async function commitExists({ repo, execute }, commit) {
     await execute("git", ["-C", repo, "cat-file", "-e", `${commit}^{commit}`]);
     return true;
   } catch (error) {
-    if (error?.code === 1 || error?.code === 128) return false;
+    if (isMissingCommitError(error)) return false;
     throw new Error("Release commit containment could not be verified.");
   }
+}
+
+function isMissingCommitError(error) {
+  return new Set([1, 128]).has(Object(error).code);
 }

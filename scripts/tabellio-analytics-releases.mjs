@@ -55,19 +55,33 @@ async function main() {
 
 async function assertSafeOutput(output, inputs) {
   const outputState = await pathState(output);
-  if (outputState?.symbolicLink) throw new Error("--out must not be a symbolic link.");
+  assertOutputIsNotSymbolicLink(outputState);
   const inputStates = await Promise.all(inputs.map(pathState));
+  assertReadableDirectInputs(inputStates);
+  assertNoExistingAlias(outputState, inputStates);
+  const outputCandidate = await canonicalCandidatePath(output, outputState);
+  if (inputStates.some((state) => state.resolvedPath === outputCandidate)) {
+    throw new Error("--out must not alias an input snapshot.");
+  }
+}
+
+function assertOutputIsNotSymbolicLink(outputState) {
+  if (outputState !== null && outputState.symbolicLink) {
+    throw new Error("--out must not be a symbolic link.");
+  }
+}
+
+function assertReadableDirectInputs(inputStates) {
   if (inputStates.some((state) => state === null)) {
     throw new Error("Release-link input snapshot is inaccessible.");
   }
   if (inputStates.some((state) => state.symbolicLink)) {
     throw new Error("Release-link inputs must not be symbolic links.");
   }
+}
+
+function assertNoExistingAlias(outputState, inputStates) {
   if (inputStates.some((state) => sameFile(outputState, state))) {
-    throw new Error("--out must not alias an input snapshot.");
-  }
-  const outputCandidate = await canonicalCandidatePath(output, outputState);
-  if (inputStates.some((state) => state.resolvedPath === outputCandidate)) {
     throw new Error("--out must not alias an input snapshot.");
   }
 }

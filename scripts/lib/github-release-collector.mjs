@@ -102,13 +102,25 @@ function assertReleaseEvidence(release, index, capturedAt) {
     "commit",
     "commitStatus",
   ], `GitHub release ${index}`);
+  assertReleaseIdentity(release);
+  assertReleaseTime(release, capturedAt);
+  assertReleaseCommit(release);
+}
+
+function assertReleaseIdentity(release) {
   ensure(RELEASE_ID.test(release.id ?? ""), "GitHub release identity is invalid.");
   ensure(TAG.test(release.tagName ?? ""), "GitHub release tag is invalid.");
+}
+
+function assertReleaseTime(release, capturedAt) {
   assertDateTime(release.publishedAt, "GitHub release publishedAt");
   ensure(
     Date.parse(release.publishedAt) <= Date.parse(capturedAt),
     "Release publishedAt cannot be newer than capturedAt.",
   );
+}
+
+function assertReleaseCommit(release) {
   contract.member(release.commitStatus, ["resolved", "blocked"], "GitHub release commitStatus");
   if (release.commitStatus === "resolved") {
     ensure(OID.test(release.commit ?? ""), "Resolved release requires an exact commit.");
@@ -129,18 +141,31 @@ function assertUniqueReleases(releases) {
 }
 
 async function normalizeRelease({ repository, release, request }) {
-  const id = String(release?.id ?? "");
-  const tagName = String(release?.tag_name ?? "");
-  const publishedAt = release?.published_at;
+  const id = providerString(release, "id");
+  const tagName = providerString(release, "tag_name");
+  const publishedAt = providerValue(release, "published_at");
   assertNormalizedReleaseFields({ id, tagName, publishedAt });
   const commit = await resolveTagCommit({ repository, tagName, request });
   return {
     id,
     tagName,
     publishedAt,
-    commit,
-    commitStatus: commit ? "resolved" : "blocked",
+    ...commitEvidence(commit),
   };
+}
+
+function providerValue(record, field) {
+  return Object(record)[field];
+}
+
+function providerString(record, field) {
+  return String(providerValue(record, field) ?? "");
+}
+
+function commitEvidence(commit) {
+  return commit === null
+    ? { commit: null, commitStatus: "blocked" }
+    : { commit, commitStatus: "resolved" };
 }
 
 function assertNormalizedReleaseFields({ id, tagName, publishedAt }) {
@@ -150,11 +175,14 @@ function assertNormalizedReleaseFields({ id, tagName, publishedAt }) {
 }
 
 function observedPublishedRelease(release, capturedAt) {
-  if (release?.published_at === null || release?.published_at === undefined) return false;
-  if (!isDateTime(release.published_at)) {
-    throw new Error("Published release has an invalid timestamp.");
-  }
-  return Date.parse(release.published_at) <= Date.parse(capturedAt);
+  const publishedAt = providerValue(release, "published_at");
+  if (publishedAt == null) return false;
+  assertPublishedAt(publishedAt);
+  return Date.parse(publishedAt) <= Date.parse(capturedAt);
+}
+
+function assertPublishedAt(value) {
+  if (!isDateTime(value)) throw new Error("Published release has an invalid timestamp.");
 }
 
 async function resolveTagCommit({ repository, tagName, request }) {
@@ -169,21 +197,32 @@ async function resolveTagCommit({ repository, tagName, request }) {
 }
 
 async function peelTagReference({ repository, reference: initialReference, request }) {
-  let reference = initialReference;
-  for (let depth = 0; depth < MAX_ANNOTATED_TAG_DEPTH; depth += 1) {
-    const object = validTagObject(reference?.object);
-    if (object === null) return null;
-    if (object.type === "commit") return object.sha;
-    reference = await request(`/repos/${repository}/git/tags/${object.sha}`);
-  }
-  return null;
+  return peelTagObject({
+    repository,
+    object: Object(initialReference).object,
+    request,
+    depth: 0,
+  });
+}
+
+async function peelTagObject({ repository, object: candidate, request, depth }) {
+  if (depth >= MAX_ANNOTATED_TAG_DEPTH) return null;
+  const object = validTagObject(candidate);
+  if (object === null) return null;
+  if (object.type === "commit") return object.sha;
+  const next = await request(`/repos/${repository}/git/tags/${object.sha}`);
+  return peelTagObject({
+    repository,
+    object: Object(next).object,
+    request,
+    depth: depth + 1,
+  });
 }
 
 function validTagObject(object) {
-  if (!OID.test(object?.sha ?? "")) return null;
-  if (object.type === "commit") return object;
-  if (object.type === "tag") return object;
-  return null;
+  const candidate = Object(object);
+  if (!OID.test(candidate.sha ?? "")) return null;
+  return ["commit", "tag"].includes(candidate.type) ? candidate : null;
 }
 
 function assertDateTime(value, label) {

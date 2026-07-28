@@ -7,6 +7,9 @@ import { linkGitHubReleases } from "../scripts/lib/github-release-linker.mjs";
 const HEAD = "a".repeat(40);
 const MERGE = "b".repeat(40);
 const RELEASE = "c".repeat(40);
+const MISSING = "d".repeat(40);
+const NOT_CONTAINED = "e".repeat(40);
+const PROVIDER_ERROR = "f".repeat(40);
 
 test("release linker resolves squash delivery through landed merge containment", async () => {
   const calls = [];
@@ -84,29 +87,19 @@ test("release linker rejects conflicting existing release claims", async () => {
 });
 
 test("git containment resolver binds repository and fail-closes unexpected errors", async () => {
-  const execute = async (_command, args) => {
-    if (args.includes("get-url")) {
-      return { stdout: "https://github.com/IntelIP/Tabellio.git\n" };
-    }
-    if (args.includes("missing")) {
-      throw Object.assign(new Error("missing"), { code: 128 });
-    }
-    if (args.includes("not-contained")) {
-      throw Object.assign(new Error("not ancestor"), { code: 1 });
-    }
-    if (args.includes("provider-error")) {
-      throw Object.assign(new Error("provider"), { code: 128 });
-    }
-    return { stdout: "" };
-  };
+  const execute = fakeGitExecutor();
   const contains = await createGitCommitContainmentResolver({
     repo: "/safe/repository",
     expectedRepository: "IntelIP/Tabellio",
     execute,
   });
   assert.equal(await contains(HEAD, RELEASE), true);
-  assert.equal(await contains(HEAD, "d".repeat(40)), true);
-  assert.equal(await contains(HEAD, "e".repeat(40)), true);
+  assert.equal(await contains(HEAD, MISSING), false);
+  assert.equal(await contains(HEAD, NOT_CONTAINED), false);
+  await assert.rejects(
+    () => contains(HEAD, PROVIDER_ERROR),
+    /could not be verified/,
+  );
   assert.equal(await contains(HEAD, "not-contained"), false);
   assert.equal(await contains(HEAD, "missing"), false);
   await assert.rejects(() => createGitCommitContainmentResolver({
@@ -115,6 +108,24 @@ test("git containment resolver binds repository and fail-closes unexpected error
     execute,
   }), /identity mismatch/);
 });
+
+function fakeGitExecutor() {
+  const failures = new Map([
+    [`cat-file:${MISSING}^{commit}`, Object.assign(new Error("missing"), { code: 128 })],
+    [`merge-base:${NOT_CONTAINED}`, Object.assign(new Error("not ancestor"), { code: 1 })],
+    [`merge-base:${PROVIDER_ERROR}`, Object.assign(new Error("provider failure"), { code: 128 })],
+  ]);
+  return async (_command, args) => {
+    const operation = args[2];
+    if (operation === "remote") {
+      return { stdout: "https://github.com/IntelIP/Tabellio.git\n" };
+    }
+    const target = args.at(-1);
+    const failure = failures.get(`${operation}:${target}`);
+    if (failure) throw failure;
+    return { stdout: "" };
+  };
+}
 
 function providerSnapshot({
   mergeCommit,

@@ -12,25 +12,47 @@ export async function collectPagedApi({
   const fullPageFingerprints = new Set();
 
   for (let pageNumber = 1; pageNumber <= MAX_PAGES; pageNumber += 1) {
-    const page = await request(withPage(path, pageNumber));
-    const pageValues = valuesFor(page);
-    if (!Array.isArray(pageValues)) throw new Error(invalidPageMessage);
-    if (pageValues.length > PAGE_SIZE) throw new Error(invalidPageMessage);
-
-    if (pageValues.length === PAGE_SIZE) {
-      const fingerprint = JSON.stringify(pageValues);
-      if (fullPageFingerprints.has(fingerprint)) {
-        throw new Error("Paged API response repeated a full page.");
-      }
-      fullPageFingerprints.add(fingerprint);
-    }
-
-    values.push(...pageValues);
-    if (values.length > MAX_ITEMS) throw new Error("Paged API item limit exceeded.");
-    if (pageValues.length < PAGE_SIZE) return values;
+    const complete = await collectPage({
+      path,
+      pageNumber,
+      request,
+      valuesFor,
+      invalidPageMessage,
+      values,
+      fullPageFingerprints,
+    });
+    if (complete) return values;
   }
 
   throw new Error("Paged API page limit exceeded.");
+}
+
+async function collectPage(context) {
+  const page = await context.request(withPage(context.path, context.pageNumber));
+  const pageValues = context.valuesFor(page);
+  assertPageValues(pageValues, context.invalidPageMessage);
+  recordFullPage(pageValues, context.fullPageFingerprints);
+  context.values.push(...pageValues);
+  assertItemLimit(context.values);
+  return pageValues.length < PAGE_SIZE;
+}
+
+function assertPageValues(values, message) {
+  if (!Array.isArray(values)) throw new Error(message);
+  if (values.length > PAGE_SIZE) throw new Error(message);
+}
+
+function recordFullPage(values, fingerprints) {
+  if (values.length !== PAGE_SIZE) return;
+  const fingerprint = JSON.stringify(values);
+  if (fingerprints.has(fingerprint)) {
+    throw new Error("Paged API response repeated a full page.");
+  }
+  fingerprints.add(fingerprint);
+}
+
+function assertItemLimit(values) {
+  if (values.length > MAX_ITEMS) throw new Error("Paged API item limit exceeded.");
 }
 
 function withPage(path, pageNumber) {
