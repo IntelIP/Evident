@@ -224,7 +224,13 @@ async function readJsonInput(path, label) {
     const bytes = await readFile(path);
     const raw = bytes.toString("utf8");
     try {
-      return { bytes, raw, value: JSON.parse(raw), errors: [] };
+      const value = JSON.parse(raw);
+      return {
+        bytes,
+        raw,
+        value,
+        errors: value === null ? [`${label} must be an object.`] : [],
+      };
     } catch {
       return { bytes, raw, value: null, errors: [`${label} JSON is invalid.`] };
     }
@@ -560,23 +566,43 @@ function deliveryTraceBindingErrors(dataset, repository, snapshot) {
 }
 
 function validationEvidenceBindingErrors(dataset, repository, snapshot, evidence) {
-  const exactStatuses = snapshot.deliveryChanges
-    .filter((change) => deliveryChangeWithinWindow(change, dataset.window))
-    .map((change) => change.validationStatus)
-    .filter((status) => status !== "unavailable");
-  if (exactStatuses.length === 0) return [];
-  if (!availableSource(repository, "tabellio-validation") || evidence === undefined) {
-    return ["Exact validation status lacks validation evidence."];
-  }
+  const exactStatuses = exactValidationStatuses(dataset, snapshot);
+  const availabilityError = validationEvidenceAvailabilityError(
+    repository,
+    evidence,
+    exactStatuses,
+  );
+  if (availabilityError !== null) return [availabilityError];
+  if (evidence === undefined) return [];
   return [
     ...validationEvidenceIdentityErrors(repository, evidence),
     ...validationEvidenceDigestErrors(repository, evidence),
-    ...exactStatuses.flatMap((status) =>
+    ...validationStatusBindingErrors(exactStatuses, evidence),
+  ];
+}
+
+function exactValidationStatuses(dataset, snapshot) {
+  return snapshot.deliveryChanges
+    .filter((change) => deliveryChangeWithinWindow(change, dataset.window))
+    .map((change) => change.validationStatus)
+    .filter((status) => status !== "unavailable");
+}
+
+function validationEvidenceAvailabilityError(repository, evidence, exactStatuses) {
+  const sourceAvailable = availableSource(repository, "tabellio-validation");
+  const evidenceRequired = [sourceAvailable, exactStatuses.length > 0].some(Boolean);
+  const evidenceBound = [sourceAvailable, evidence !== undefined].every(Boolean);
+  return [evidenceRequired, !evidenceBound].every(Boolean)
+    ? "Exact validation status lacks validation evidence."
+    : null;
+}
+
+function validationStatusBindingErrors(exactStatuses, evidence) {
+  return exactStatuses.flatMap((status) =>
       status === evidence.result.status
         ? []
         : ["Validation status does not match exact validation evidence."]
-    ),
-  ];
+  );
 }
 
 function validationEvidenceIdentityErrors(repository, evidence) {

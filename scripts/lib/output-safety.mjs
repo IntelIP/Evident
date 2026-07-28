@@ -1,5 +1,6 @@
 import {
   lstat,
+  readlink,
   realpath,
   stat,
 } from "node:fs/promises";
@@ -33,27 +34,38 @@ async function resolvedState(path, entry) {
       inode: metadata.ino,
     };
   } catch (error) {
-    return resolvedStateFailure(entry, error);
+    return resolvedStateFailure(path, entry, error);
   }
 }
 
-function resolvedStateFailure(entry, error) {
+async function resolvedStateFailure(path, entry, error) {
   if (error?.code !== "ENOENT") throw error;
   if (!entry.isSymbolicLink()) throw error;
-  return danglingSymlinkState();
+  return danglingSymlinkState(path);
 }
 
-function danglingSymlinkState() {
+async function danglingSymlinkState(path) {
+  const target = await readlink(path);
   return {
     symbolicLink: true,
     resolvedPath: null,
+    linkTargetPath: resolve(dirname(path), target),
     device: null,
     inode: null,
   };
 }
 
 export async function canonicalCandidatePath(path, state) {
-  if (state !== null) return state.resolvedPath;
+  if (state !== null) return canonicalStatePath(state);
+  return canonicalMissingPath(path);
+}
+
+async function canonicalStatePath(state) {
+  if (state.resolvedPath !== null) return state.resolvedPath;
+  return canonicalMissingPath(state.linkTargetPath);
+}
+
+async function canonicalMissingPath(path) {
   const suffix = [];
   let candidate = path;
   let resolvedPath = await optionalRealpath(candidate);

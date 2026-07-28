@@ -8,7 +8,10 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
-import { createAnalyticsDataset } from "../scripts/lib/analytics.mjs";
+import {
+  createAnalyticsDataset,
+  recomputeDeliveryMetrics,
+} from "../scripts/lib/analytics.mjs";
 import { canonicalJson } from "../scripts/lib/context-packet.mjs";
 import { digestObject } from "../scripts/lib/stack-operation.mjs";
 
@@ -209,6 +212,33 @@ test("analytics validator requires exact validation evidence input", async (cont
   assert.equal((await evidenceAt(fixture.out)).status, "failed");
 });
 
+test("analytics validator binds available validation sources without delivery statuses", async (context) => {
+  const fixture = await validatorFixture(context);
+  const dataset = JSON.parse(await readFile(fixture.datasetPath, "utf8"));
+  const snapshot = JSON.parse(await readFile(fixture.sourcePaths[0], "utf8"));
+  dataset.repositories[0].deliveryChanges = [];
+  dataset.repositories[0].metrics = recomputeDeliveryMetrics(
+    dataset.repositories[0],
+    dataset.window,
+  );
+  snapshot.deliveryChanges = [];
+  resignDataset(dataset);
+  await writeFile(fixture.datasetPath, `${JSON.stringify(dataset, null, 2)}\n`);
+  await writeFile(fixture.sourcePaths[0], `${JSON.stringify(snapshot, null, 2)}\n`);
+  fixture.validationPaths = [];
+
+  await runValidator(fixture, "workflow");
+  assert.equal((await evidenceAt(fixture.out)).status, "failed");
+});
+
+test("analytics validator blocks null validation evidence documents", async (context) => {
+  const fixture = await validatorFixture(context);
+  await writeFile(fixture.validationPaths[0], "null\n");
+
+  await runValidator(fixture, "workflow");
+  assert.equal((await evidenceAt(fixture.out)).status, "blocked");
+});
+
 test("analytics validator evidence summary redacts credential and local path inputs", async (context) => {
   const fixture = await validatorFixture(context);
   for (const privateValue of [
@@ -255,6 +285,15 @@ test("analytics validator output cannot alias or link an input", async (context)
   const dangling = await runValidator(fixture, "schema");
   assert.notEqual(dangling.exitCode, 0);
   await assert.rejects(readFile(missingTarget));
+
+  await rm(fixture.out);
+  const protectedTarget = join(fixture.root, "protected-target.json");
+  await rm(fixture.datasetPath);
+  await symlink(protectedTarget, fixture.datasetPath);
+  fixture.out = protectedTarget;
+  const danglingInput = await runValidator(fixture, "schema");
+  assert.notEqual(danglingInput.exitCode, 0);
+  await assert.rejects(readFile(protectedTarget));
 });
 
 test("analytics validator emits blocked evidence for inaccessible input paths", async (context) => {
