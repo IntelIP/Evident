@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intelip.co/tabellio/schemas/delivery-evidence-snapshot.v0.1.schema.json",
+  "title": "Tabellio delivery evidence snapshot v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "repository", "capturedAt", "sources", "wipByProject", "deliveryRecords"],
+  "properties": {
+    "schemaVersion": { "const": "tabellio-delivery-evidence-snapshot/v0.1" },
+    "repository": { "$ref": "#/$defs/repositoryIdentifier" },
+    "capturedAt": { "type": "string", "format": "date-time" },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "plane", "buildkite", "githubRelease", "deployment"],
+      "properties": {
+        "provider": { "$ref": "#/$defs/source" },
+        "plane": { "$ref": "#/$defs/source" },
+        "buildkite": { "$ref": "#/$defs/source" },
+        "githubRelease": { "$ref": "#/$defs/source" },
+        "deployment": { "$ref": "#/$defs/source" }
+      }
+    },
+    "wipByProject": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/wip" }
+    },
+    "deliveryRecords": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/record" }
+    }
+  },
+  "$defs": {
+    "repositoryIdentifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+      "allOf": [
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][hH][pPoOuUsSrR]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][iI][tT][hH][uU][bB]_[pP][aA][tT]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[sS][kK]-(?:[lL][iI][vV][eE]|[pP][rR][oO][jJ])[_-][A-Za-z0-9_-]{8,}" } },
+        { "not": { "pattern": "\\bAKIA[0-9A-Z]{16}\\b" } }
+      ]
+    },
+    "portableIdentifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$",
+      "allOf": [
+        { "not": { "pattern": "^[fF][iI][lL][eE]:" } },
+        { "not": { "pattern": ":/" } },
+        { "not": { "pattern": "//" } },
+        { "not": { "pattern": "\\.\\." } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][hH][pPoOuUsSrR]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][iI][tT][hH][uU][bB]_[pP][aA][tT]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[sS][kK]-(?:[lL][iI][vV][eE]|[pP][rR][oO][jJ])[_-][A-Za-z0-9_-]{8,}" } },
+        { "not": { "pattern": "\\bAKIA[0-9A-Z]{16}\\b" } }
+      ]
+    },
+    "safeText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "allOf": [
+        { "not": { "pattern": "[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\\\|]" } },
+        { "not": { "pattern": "[fF][iI][lL][eE]:" } },
+        { "not": { "pattern": "(?:^|[\\s=:(\\[\\]'\"`])/(?!/)\\S*" } },
+        { "not": { "pattern": "(?:^|[\\s=:(\\[\\]'\"`])\\.\\.?/\\S*" } },
+        { "not": { "pattern": "(?:^|[\\s=:(])~(?:/|$)" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9._-])[A-Za-z]:/(?:\\S*)" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][hH][pPoOuUsSrR]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][iI][tT][hH][uU][bB]_[pP][aA][tT]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[sS][kK]-(?:[lL][iI][vV][eE]|[pP][rR][oO][jJ])[_-][A-Za-z0-9_-]{8,}" } },
+        { "not": { "pattern": "\\bAKIA[0-9A-Z]{16}\\b" } },
+        { "not": { "pattern": "://[^/\\s@]+@" } }
+      ]
+    },
+    "safeReleaseText": {
+      "allOf": [
+        { "$ref": "#/$defs/safeText" },
+        { "maxLength": 128 }
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason", "observations"],
+      "properties": {
+        "status": { "enum": ["available", "blocked", "unavailable"] },
+        "reason": {
+          "oneOf": [
+            { "$ref": "#/$defs/safeText" },
+            { "type": "null" }
+          ]
+        },
+        "observations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/observation" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "available" } } },
+          "then": {
+            "properties": {
+              "reason": { "type": "null" },
+              "observations": { "minItems": 1 }
+            }
+          },
+          "else": {
+            "properties": {
+              "reason": { "$ref": "#/$defs/safeText" },
+              "observations": { "maxItems": 0 }
+            }
+          }
+        }
+      ]
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "digest", "claimDigests"],
+      "properties": {
+        "id": { "$ref": "#/$defs/portableIdentifier" },
+        "version": { "type": "string", "format": "date-time" },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "claimDigests": {
+          "type": "array",
+          "maxItems": 10000,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "wip": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project", "activeItemCount", "aging3dCount", "overLimit"],
+      "properties": {
+        "project": { "type": "string", "pattern": "^[A-Z][A-Z0-9]{0,31}$" },
+        "activeItemCount": { "type": "integer", "minimum": 0 },
+        "aging3dCount": { "type": "integer", "minimum": 0 },
+        "overLimit": { "type": "boolean" }
+      }
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "linkBasis", "pullRequestNumber", "headCommit", "mergeCommit", "plane", "ci", "release", "deployment"],
+      "properties": {
+        "id": { "$ref": "#/$defs/portableIdentifier" },
+        "linkBasis": { "enum": ["explicit", "manual-reconciliation", "unlinked"] },
+        "pullRequestNumber": { "type": ["integer", "null"], "minimum": 1 },
+        "headCommit": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
+        "mergeCommit": { "type": ["string", "null"], "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
+        "plane": { "$ref": "#/$defs/plane" },
+        "ci": { "$ref": "#/$defs/ci" },
+        "release": { "$ref": "#/$defs/release" },
+        "deployment": { "$ref": "#/$defs/deployment" }
+      }
+    },
+    "plane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "key", "stateGroup", "updatedAt"],
+      "properties": {
+        "status": { "enum": ["linked", "unlinked", "blocked"] },
+        "key": { "type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9]{0,31}-[1-9][0-9]*$" },
+        "stateGroup": { "enum": ["backlog", "unstarted", "started", "completed", "cancelled", null] },
+        "updatedAt": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "ci": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "pipeline", "buildNumber", "finishedAt"],
+      "properties": {
+        "status": { "enum": ["passed", "failed", "in_progress", "unavailable", "blocked"] },
+        "pipeline": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9][-A-Za-z0-9_]{0,127}$" },
+        "buildNumber": { "type": ["integer", "null"], "minimum": 1 },
+        "finishedAt": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "releaseId", "tagName", "publishedAt", "commit", "sourceClaimDigest"],
+      "properties": {
+        "status": { "enum": ["shipped", "unreleased", "blocked"] },
+        "releaseId": {
+          "oneOf": [
+            { "$ref": "#/$defs/safeReleaseText" },
+            { "type": "null" }
+          ]
+        },
+        "tagName": {
+          "oneOf": [
+            { "$ref": "#/$defs/safeReleaseText" },
+            { "type": "null" }
+          ]
+        },
+        "publishedAt": { "type": ["string", "null"], "format": "date-time" },
+        "commit": { "type": ["string", "null"], "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
+        "sourceClaimDigest": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "deployment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "environment", "provider", "deployedAt"],
+      "properties": {
+        "status": { "enum": ["passed", "failed", "blocked", "unavailable"] },
+        "environment": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" },
+        "provider": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" },
+        "deployedAt": { "type": ["string", "null"], "format": "date-time" }
+      }
+    }
+  }
+}

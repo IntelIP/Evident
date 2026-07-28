@@ -1,0 +1,398 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intelip.co/tabellio/schemas/analytics-dataset.v0.1.schema.json",
+  "title": "Tabellio analytics dataset v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "observedAt",
+    "window",
+    "metricDefinitions",
+    "repositories",
+    "integrity"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "tabellio-analytics-dataset/v0.1" },
+    "id": { "$ref": "#/$defs/portableIdentifier" },
+    "observedAt": { "type": "string", "format": "date-time" },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["since", "until"],
+      "properties": {
+        "since": { "type": "string", "format": "date-time" },
+        "until": { "type": "string", "format": "date-time" }
+      }
+    },
+    "metricDefinitions": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "prefixItems": [
+        { "const": { "id": "deliveryChangeCount", "unit": "count" } },
+        { "const": { "id": "taskToPrTraceability", "unit": "ratio" } },
+        { "const": { "id": "leadTimeHours", "unit": "hours" } },
+        { "const": { "id": "cycleTimeHours", "unit": "hours" } },
+        { "const": { "id": "ciDisagreementRate", "unit": "ratio" } },
+        { "const": { "id": "releaseLagHours", "unit": "hours" } }
+      ],
+      "items": false
+    },
+    "repositories": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/repository" }
+    },
+    "integrity": { "$ref": "#/$defs/integrity" }
+  },
+  "$defs": {
+    "repositoryIdentifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+      "allOf": [
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][hH][pPoOuUsSrR]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][iI][tT][hH][uU][bB]_[pP][aA][tT]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[sS][kK]-(?:[lL][iI][vV][eE]|[pP][rR][oO][jJ])[_-][A-Za-z0-9_-]{8,}" } },
+        { "not": { "pattern": "\\bAKIA[0-9A-Z]{16}\\b" } }
+      ]
+    },
+    "portableIdentifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$",
+      "allOf": [
+        { "not": { "pattern": "^[fF][iI][lL][eE]:" } },
+        { "not": { "pattern": ":/" } },
+        { "not": { "pattern": "//" } },
+        { "not": { "pattern": "\\.\\." } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][hH][pPoOuUsSrR]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][iI][tT][hH][uU][bB]_[pP][aA][tT]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[sS][kK]-(?:[lL][iI][vV][eE]|[pP][rR][oO][jJ])[_-][A-Za-z0-9_-]{8,}" } },
+        { "not": { "pattern": "\\bAKIA[0-9A-Z]{16}\\b" } }
+      ]
+    },
+    "safeText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "allOf": [
+        { "not": { "pattern": "[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\\\|]" } },
+        { "not": { "pattern": "[fF][iI][lL][eE]:" } },
+        { "not": { "pattern": "(?:^|[\\s=:(\\[\\]'\"`])/(?!/)\\S*" } },
+        { "not": { "pattern": "(?:^|[\\s=:(\\[\\]'\"`])\\.\\.?/\\S*" } },
+        { "not": { "pattern": "(?:^|[\\s=:(])~(?:/|$)" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9._-])[A-Za-z]:/(?:\\S*)" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][hH][pPoOuUsSrR]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][iI][tT][hH][uU][bB]_[pP][aA][tT]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[sS][kK]-(?:[lL][iI][vV][eE]|[pP][rR][oO][jJ])[_-][A-Za-z0-9_-]{8,}" } },
+        { "not": { "pattern": "\\bAKIA[0-9A-Z]{16}\\b" } },
+        { "not": { "pattern": "://[^/\\s@]+@" } }
+      ]
+    },
+    "safeVersion": {
+      "allOf": [
+        { "$ref": "#/$defs/safeText" },
+        { "maxLength": 200 }
+      ]
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "digest"],
+      "properties": {
+        "algorithm": { "const": "sha256" },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "metricDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "unit"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*$" },
+        "unit": { "enum": ["count", "ratio", "hours"] }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "system",
+        "status",
+        "observedAt",
+        "sourceVersion",
+        "contentDigest",
+        "reason"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/portableIdentifier" },
+        "system": { "$ref": "#/$defs/portableIdentifier" },
+        "status": { "enum": ["available", "unavailable", "blocked"] },
+        "observedAt": { "type": "string", "format": "date-time" },
+        "sourceVersion": {
+          "oneOf": [
+            { "$ref": "#/$defs/safeVersion" },
+            { "type": "null" }
+          ]
+        },
+        "contentDigest": {
+          "oneOf": [
+            { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            { "type": "null" }
+          ]
+        },
+        "reason": {
+          "oneOf": [
+            { "$ref": "#/$defs/safeText" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "available" } } },
+          "then": {
+            "properties": {
+              "sourceVersion": { "$ref": "#/$defs/safeVersion" },
+              "contentDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "reason": { "type": "null" }
+            }
+          },
+          "else": {
+            "properties": {
+              "sourceVersion": { "type": "null" },
+              "contentDigest": { "type": "null" },
+              "reason": { "$ref": "#/$defs/safeText" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": { "const": "available" },
+              "system": {
+                "enum": ["git", "tabellio-validation", "tabellio-review", "entire"]
+              }
+            },
+            "required": ["status", "system"]
+          },
+          "then": {
+            "properties": {
+              "sourceVersion": { "$ref": "#/$defs/commit" }
+            }
+          }
+        }
+      ]
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "value", "unit", "reason", "numerator", "denominator"],
+      "properties": {
+        "status": { "enum": ["measured", "unavailable"] },
+        "value": { "type": ["number", "null"] },
+        "unit": { "enum": ["count", "ratio", "hours"] },
+        "reason": {
+          "oneOf": [
+            { "$ref": "#/$defs/safeText" },
+            { "type": "null" }
+          ]
+        },
+        "numerator": { "type": ["number", "null"] },
+        "denominator": { "type": ["number", "null"] }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "measured" } },
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "value": { "type": "number" },
+              "reason": { "type": "null" }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": { "unit": { "const": "ratio" } },
+                  "required": ["unit"]
+                },
+                "then": {
+                  "properties": {
+                    "numerator": { "type": "number" },
+                    "denominator": { "type": "number", "exclusiveMinimum": 0 }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "numerator": { "type": "null" },
+                    "denominator": { "type": "null" }
+                  }
+                }
+              }
+            ]
+          },
+          "else": {
+            "properties": {
+              "value": { "type": "null" },
+              "reason": { "$ref": "#/$defs/safeText" },
+              "numerator": { "type": "null" },
+              "denominator": { "type": "null" }
+            }
+          }
+        }
+      ]
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deliveryChangeCount",
+        "taskToPrTraceability",
+        "leadTimeHours",
+        "cycleTimeHours",
+        "ciDisagreementRate",
+        "releaseLagHours"
+      ],
+      "properties": {
+        "deliveryChangeCount": { "$ref": "#/$defs/countMetric" },
+        "taskToPrTraceability": { "$ref": "#/$defs/ratioMetric" },
+        "leadTimeHours": { "$ref": "#/$defs/hoursMetric" },
+        "cycleTimeHours": { "$ref": "#/$defs/hoursMetric" },
+        "ciDisagreementRate": { "$ref": "#/$defs/ratioMetric" },
+        "releaseLagHours": { "$ref": "#/$defs/hoursMetric" }
+      }
+    },
+    "countMetric": {
+      "allOf": [
+        { "$ref": "#/$defs/metric" },
+        { "properties": { "unit": { "const": "count" } } }
+      ]
+    },
+    "ratioMetric": {
+      "allOf": [
+        { "$ref": "#/$defs/metric" },
+        { "properties": { "unit": { "const": "ratio" } } }
+      ]
+    },
+    "hoursMetric": {
+      "allOf": [
+        { "$ref": "#/$defs/metric" },
+        { "properties": { "unit": { "const": "hours" } } }
+      ]
+    },
+    "deliveryChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "linkBasis",
+        "linkEvidence",
+        "planeStoryId",
+        "pullRequestNumber",
+        "storyCreatedAt",
+        "firstActivityAt",
+        "mergedAt",
+        "releasedAt",
+        "headCommit",
+        "validationStatus",
+        "hostedStatus"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/portableIdentifier" },
+        "linkBasis": { "enum": ["explicit", "manual-reconciliation", "unlinked"] },
+        "linkEvidence": {
+          "oneOf": [
+            { "$ref": "#/$defs/safeText" },
+            { "type": "null" }
+          ]
+        },
+        "planeStoryId": {
+          "oneOf": [
+            { "$ref": "#/$defs/portableIdentifier" },
+            { "type": "null" }
+          ]
+        },
+        "pullRequestNumber": { "type": ["integer", "null"], "minimum": 1 },
+        "storyCreatedAt": { "type": ["string", "null"], "format": "date-time" },
+        "firstActivityAt": { "type": ["string", "null"], "format": "date-time" },
+        "mergedAt": { "type": ["string", "null"], "format": "date-time" },
+        "releasedAt": { "type": ["string", "null"], "format": "date-time" },
+        "headCommit": { "$ref": "#/$defs/commit" },
+        "validationStatus": { "enum": ["passed", "failed", "blocked", "unavailable"] },
+        "hostedStatus": { "enum": ["passed", "failed", "blocked", "unavailable"] }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "linkBasis": { "const": "unlinked" } },
+            "required": ["linkBasis"]
+          },
+          "then": {
+            "properties": {
+              "linkEvidence": { "type": "null" },
+              "planeStoryId": { "type": "null" },
+              "pullRequestNumber": { "type": "null" }
+            }
+          },
+          "else": {
+            "properties": {
+              "planeStoryId": { "$ref": "#/$defs/portableIdentifier" },
+              "pullRequestNumber": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
+      ]
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "canonicalRepositoryId",
+        "headCommit",
+        "headCommittedAt",
+        "branch",
+        "sources",
+        "metrics",
+        "deliveryChanges"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/portableIdentifier" },
+        "canonicalRepositoryId": { "$ref": "#/$defs/repositoryIdentifier" },
+        "headCommit": {
+          "oneOf": [
+            { "$ref": "#/$defs/commit" },
+            { "type": "null" }
+          ]
+        },
+        "headCommittedAt": { "type": ["string", "null"], "format": "date-time" },
+        "branch": {
+          "oneOf": [
+            { "$ref": "#/$defs/portableIdentifier" },
+            { "type": "null" }
+          ]
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/source" }
+        },
+        "metrics": { "$ref": "#/$defs/metrics" },
+        "deliveryChanges": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/deliveryChange" }
+        }
+      }
+    }
+  }
+}

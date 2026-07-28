@@ -30,6 +30,36 @@
       "metrics": [{"name": "external_action_policy_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
       "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
       "summary": "External-action and side-effect policy checks"
+    },
+    "analytics-static": {
+      "commands": [["node", "--test", "tests/analytics-core.test.mjs"]],
+      "metrics": [],
+      "cost": {"telemetry": "not_applicable", "usd": null, "modelCalls": null, "toolCalls": null},
+      "summary": "Analytics core focused tests"
+    },
+    "analytics-schema": {
+      "commands": [["node", "--test", "--test-name-pattern", "analytics schema", "tests/analytics-core.test.mjs"]],
+      "metrics": [{"name": "analytics_schema_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Analytics schema contract"
+    },
+    "analytics-semantic": {
+      "commands": [["node", "--test", "--test-name-pattern", "analytics core", "tests/analytics-core.test.mjs"]],
+      "metrics": [{"name": "analytics_semantics_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Analytics exact-binding and metric semantics"
+    },
+    "analytics-workflow": {
+      "commands": [["node", "--test", "--test-name-pattern", "analytics collector|analytics CLI collects", "tests/analytics-core.test.mjs"]],
+      "metrics": [{"name": "analytics_workflow_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Analytics collection and CLI workflow"
+    },
+    "analytics-security": {
+      "commands": [["node", "--test", "--test-name-pattern", "never exports|blocks indirect|unsafe and future|incomplete control|output aliases|malformed provider", "tests/analytics-core.test.mjs"]],
+      "metrics": [{"name": "analytics_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Analytics credential, path, alias, and temporal boundaries"
     }
   }
 }

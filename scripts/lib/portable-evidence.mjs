@@ -21,8 +21,9 @@ const CREDENTIAL_PATTERNS = [
   /\bAKIA[0-9A-Z]{16}\b/,
   /:\/\/[^/\s@]+@/,
 ];
-const COMMIT_PATTERN = /^[0-9a-f]{40}$/;
+const COMMIT_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const REPOSITORY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+const RELATIVE_PATH_PATTERN = /(?:^|[\s=:(\['"`])\.\.?\/\S*/;
 
 export function hasCredentialShape(value) {
   return typeof value === "string" && CREDENTIAL_PATTERNS.some((pattern) => pattern.test(value));
@@ -37,7 +38,7 @@ export function isPortableIdentifier(value) {
     && /^[A-Za-z0-9][A-Za-z0-9._:@/-]*$/.test(value)
     && !value.includes("//")
     && !value.includes("..")
-    && !value.startsWith("file:");
+    && !value.toLowerCase().startsWith("file:");
 }
 
 export function isSafeProviderText(value) {
@@ -46,11 +47,18 @@ export function isSafeProviderText(value) {
     && value.length <= 500
     && !hasControlOrPath(value)
     && !hasCredentialShape(value)
-    && !value.includes("file:");
+    && !value.toLowerCase().includes("file:")
+    && !RELATIVE_PATH_PATTERN.test(value);
 }
 
 export function isSafeProviderVersion(value) {
   return value === null || (isSafeProviderText(value) && value.length <= 200);
+}
+
+export function parseProviderVersionTimestamp(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}(?:T|$)/.test(value)) return null;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
 }
 
 export function canonicalRepositoryId(value) {
@@ -82,7 +90,8 @@ export function validateEvidenceSource(source, { observedAt } = {}) {
   if (source.status === "available" && Object.hasOwn(source, "reason")) {
     errors.push("available source cannot carry a reason");
   }
-  if (isDateTime(source.version) && isDateTime(observedAt) && Date.parse(source.version) > Date.parse(observedAt)) {
+  const versionTimestamp = parseProviderVersionTimestamp(source.version);
+  if (versionTimestamp !== null && isDateTime(observedAt) && versionTimestamp > Date.parse(observedAt)) {
     errors.push("source version is later than observation");
   }
   return unique(errors);
