@@ -115,6 +115,15 @@ test("GitHub release snapshot rejects temporal and duplicate claims", () => {
   }), /must be unique/);
 });
 
+test("GitHub release snapshot rejects unsafe blocked reasons", () => {
+  assert.throws(() => validateGitHubReleaseSnapshot({
+    ...availableSnapshot(),
+    status: "blocked",
+    reason: "provider error: /Users/private/token",
+    releases: [],
+  }), /requires a reason and no releases/);
+});
+
 test("release schema tag grammar matches collector portable tags", async () => {
   const schema = JSON.parse(await readFile(
     new URL("../schemas/github-release-snapshot.v0.1.schema.json", import.meta.url),
@@ -136,6 +145,18 @@ test("release schema tag grammar matches collector portable tags", async () => {
       ...availableSnapshot(),
       releases: [{ ...availableSnapshot().releases[0], tagName: tag }],
     }), /tag is invalid/);
+  }
+  for (const unsafe of [
+    "provider error: /Users/private/token",
+    "ghp_0123456789abcdef",
+    "https://token@github.com/IntelIP/Tabellio",
+  ]) {
+    assert(
+      schema.$defs.safeText.allOf.some((rule) =>
+        new RegExp(rule.not.pattern).test(unsafe)
+      ),
+      `schema should reject unsafe reason ${unsafe}`,
+    );
   }
 });
 

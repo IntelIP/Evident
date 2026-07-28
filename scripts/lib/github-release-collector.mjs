@@ -1,6 +1,7 @@
 import { contract } from "./contract-checks.mjs";
 import { boundedMap } from "./bounded-map.mjs";
 import { collectPagedApi } from "./paged-api-collector.mjs";
+import { isSafeProviderText } from "./portable-evidence.mjs";
 
 const VERSION = "tabellio-github-release-snapshot/v0.1";
 const REPOSITORY = /^[A-Za-z0-9][A-Za-z0-9._-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
@@ -86,8 +87,7 @@ function assertStatusShape(snapshot) {
     return;
   }
   ensure(
-    typeof snapshot.reason === "string"
-      && snapshot.reason.length > 0
+    isSafeProviderText(snapshot.reason)
       && snapshot.releases.length === 0,
     "Blocked GitHub release snapshot requires a reason and no releases.",
   );

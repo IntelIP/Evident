@@ -10,7 +10,12 @@
     "repository": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,38}/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$" },
     "capturedAt": { "type": "string", "format": "date-time" },
     "status": { "enum": ["available", "blocked"] },
-    "reason": { "type": ["string", "null"], "maxLength": 200 },
+    "reason": {
+      "oneOf": [
+        { "$ref": "#/$defs/safeText" },
+        { "type": "null" }
+      ]
+    },
     "releases": {
       "type": "array",
       "maxItems": 10000,
@@ -30,6 +35,26 @@
           "commitStatus": { "enum": ["resolved", "blocked"] }
         }
       }
+    }
+  },
+  "$defs": {
+    "safeText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "allOf": [
+        { "not": { "pattern": "[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\\\|]" } },
+        { "not": { "pattern": "[fF][iI][lL][eE]:" } },
+        { "not": { "pattern": "(?:^|[\\s=:(\\[\\]'\"`])/(?!/)\\S*" } },
+        { "not": { "pattern": "(?:^|[\\s=:(\\[\\]'\"`])\\.\\.?/\\S*" } },
+        { "not": { "pattern": "(?:^|[\\s=:(])~(?:/|$)" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9._-])[A-Za-z]:/(?:\\S*)" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][hH][pPoOuUsSrR]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][iI][tT][hH][uU][bB]_[pP][aA][tT]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[sS][kK]-(?:[lL][iI][vV][eE]|[pP][rR][oO][jJ])[_-][A-Za-z0-9_-]{8,}" } },
+        { "not": { "pattern": "\\bAKIA[0-9A-Z]{16}\\b" } },
+        { "not": { "pattern": "://[^/\\s@]+@" } }
+      ]
     }
   },
   "allOf": [

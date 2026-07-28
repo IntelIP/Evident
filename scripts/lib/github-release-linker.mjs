@@ -54,13 +54,25 @@ async function linkChange(change, releases, containsCommit) {
     eligible,
     containsCommit,
   );
-  if (!matched) return structuredClone(change);
+  if (!matched) return unmatchedChange(change);
   assertCompatibleReleaseClaim(change, matched);
   return {
     ...change,
     releasedAt: matched.publishedAt,
     releaseCommit: matched.commit,
   };
+}
+
+function unmatchedChange(change) {
+  if (hasReleaseClaim(change)) {
+    throw new Error(`Existing GitHub release claim is absent for delivery change ${change.id}.`);
+  }
+  return structuredClone(change);
+}
+
+function hasReleaseClaim(change) {
+  return change.releasedAt !== undefined
+    && change.releasedAt !== null;
 }
 
 function hasLandedCommit(change) {

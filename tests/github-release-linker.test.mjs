@@ -86,6 +86,18 @@ test("release linker rejects conflicting existing release claims", async () => {
   }), /Conflicting GitHub release timestamp/);
 });
 
+test("release linker rejects existing claims absent from release evidence", async () => {
+  await assert.rejects(() => linkGitHubReleases({
+    providerSnapshot: providerSnapshot({
+      mergeCommit: MERGE,
+      releasedAt: "2026-07-25T10:30:00.000Z",
+      releaseCommit: MERGE,
+    }),
+    releaseSnapshot: releaseSnapshot({ commit: RELEASE }),
+    containsCommit: async () => false,
+  }), /Existing GitHub release claim is absent/);
+});
+
 test("git containment resolver binds repository and fail-closes unexpected errors", async () => {
   const execute = fakeGitExecutor();
   const contains = await createGitCommitContainmentResolver({
