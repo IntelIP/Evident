@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intelip.co/tabellio/schemas/plane-work-item-snapshot.v0.1.schema.json",
+  "title": "Tabellio Plane work-item snapshot v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "workspace", "capturedAt", "status", "reason", "projects", "states", "workItems"],
+  "properties": {
+    "schemaVersion": { "const": "tabellio-plane-work-items/v0.1" },
+    "workspace": { "type": "string", "pattern": "^[a-z0-9](?:[a-z0-9-]{0,98}[a-z0-9])?$" },
+    "capturedAt": { "type": "string", "format": "date-time" },
+    "status": { "enum": ["available", "blocked"] },
+    "reason": { "type": ["string", "null"], "maxLength": 200 },
+    "projects": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/project" } },
+    "states": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/state" } },
+    "workItems": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/workItem" } }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "available" } } },
+      "then": { "properties": { "reason": { "type": "null" } } }
+    },
+    {
+      "if": { "properties": { "status": { "const": "blocked" } } },
+      "then": {
+        "properties": {
+          "reason": { "$ref": "#/$defs/safeText" },
+          "projects": { "maxItems": 0 },
+          "states": { "maxItems": 0 },
+          "workItems": { "maxItems": 0 }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "uuid": { "type": "string", "pattern": "^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$" },
+    "safeText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "allOf": [
+        { "not": { "pattern": "[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\\\|]" } },
+        { "not": { "pattern": "[fF][iI][lL][eE]:" } },
+        { "not": { "pattern": "(?:^|[\\s=:(\\[\\]'\"`])/(?!/)\\S*" } },
+        { "not": { "pattern": "(?:^|[\\s=:(\\[\\]'\"`])\\.\\.?/\\S*" } },
+        { "not": { "pattern": "(?:^|[\\s=:(])~(?:/|$)" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9._-])[A-Za-z]:/(?:\\S*)" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][hH][pPoOuUsSrR]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][iI][tT][hH][uU][bB]_[pP][aA][tT]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[sS][kK]-(?:[lL][iI][vV][eE]|[pP][rR][oO][jJ])[_-][A-Za-z0-9_-]{8,}" } },
+        { "not": { "pattern": "\\bAKIA[0-9A-Z]{16}\\b" } },
+        { "not": { "pattern": "://[^/\\s@]+@" } }
+      ]
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "identifier"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "identifier": { "type": "string", "pattern": "^[A-Z](?:[A-Z0-9]|-(?=[A-Z0-9])){0,31}$" }
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "projectId", "group"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "projectId": { "$ref": "#/$defs/uuid" },
+        "group": { "enum": ["backlog", "unstarted", "started", "completed", "cancelled"] }
+      }
+    },
+    "workItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "projectId", "stateId", "sequenceNumber", "createdAt", "updatedAt", "targetDate"],
+      "properties": {
+        "id": { "$ref": "#/$defs/uuid" },
+        "projectId": { "$ref": "#/$defs/uuid" },
+        "stateId": { "$ref": "#/$defs/uuid" },
+        "sequenceNumber": { "type": "integer", "minimum": 1 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "targetDate": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+      }
+    }
+  }
+}

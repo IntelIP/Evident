@@ -168,6 +168,42 @@
       "metrics": [{"name": "github_release_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
       "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
       "summary": "Release path, input, and portable evidence boundaries"
+    },
+    "plane-collector-static": {
+      "commands": [["npm", "run", "check"]],
+      "metrics": [],
+      "cost": {"telemetry": "not_applicable", "usd": null, "modelCalls": null, "toolCalls": null},
+      "summary": "Plane collector and repository checks"
+    },
+    "plane-collector-schema": {
+      "commands": [["node", "--test", "--test-name-pattern", "schema|malformed|duplicate|reason matches", "tests/plane-work-item-collector.test.mjs"]],
+      "metrics": [{"name": "plane_collector_schema_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Plane snapshot and normalization contracts"
+    },
+    "plane-collector-semantic": {
+      "commands": [["node", "--test", "--test-name-pattern", "binds states|chronology|duplicate", "tests/plane-work-item-collector.test.mjs"]],
+      "metrics": [{"name": "plane_collector_semantic_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Plane identity, ownership, and temporal semantics"
+    },
+    "plane-collector-workflow": {
+      "commands": [["node", "--test", "--test-name-pattern", "normalizes complete|paginates every|terminal estimated|captures observation", "tests/plane-work-item-collector.test.mjs"]],
+      "metrics": [{"name": "plane_collector_workflow_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Complete Plane inventory workflow"
+    },
+    "plane-collector-operational": {
+      "commands": [["node", "--test", "--test-name-pattern", "bounds concurrent|aggregate work-item limit", "tests/plane-work-item-collector.test.mjs"]],
+      "metrics": [{"name": "plane_state_max_concurrency", "unit": "requests", "pattern": "plane_state_max_concurrency=([0-9]+)"}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Bounded Plane state-request concurrency and aggregate work-item inventory"
+    },
+    "plane-collector-security": {
+      "commands": [["node", "--test", "--test-name-pattern", "credentials|malformed|cursor metadata|pagination totals|reason matches|symlinked ancestors", "tests/plane-work-item-collector.test.mjs"]],
+      "metrics": [{"name": "plane_collector_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Plane credential, provider, and pagination boundaries"
     }
   }
 }
