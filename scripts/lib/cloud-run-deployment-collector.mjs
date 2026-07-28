@@ -75,16 +75,18 @@ function availableResult({ repository, environment, service, project, region, ob
 }
 
 function servingRevision(payload) {
-  const revision = payload?.revision;
-  const revisionName = revision?.metadata?.name;
-  const traffic = payload?.service?.status?.traffic;
+  const revision = Object(payload).revision;
+  const revisionName = Object(Object(revision).metadata).name;
+  const traffic = Object(Object(Object(payload).service).status).traffic;
   ensure(Array.isArray(traffic), "Cloud Run service traffic is invalid.");
-  const serving = traffic.filter((entry) => entry?.percent === 100);
-  ensure(
-    serving.length === 1 && serving[0]?.revisionName === revisionName,
-    "Cloud Run service has no single serving revision.",
-  );
+  const serving = traffic.filter(hasAllTraffic);
+  ensure(serving.length === 1, "Cloud Run service has no single serving revision.");
+  ensure(serving[0].revisionName === revisionName, "Cloud Run serving revision is inconsistent.");
   return revision;
+}
+
+function hasAllTraffic(entry) {
+  return Object(entry).percent === 100;
 }
 
 function digest(value) {
