@@ -726,6 +726,18 @@ test("analytics schema requires source observations and canonical metric states"
     "tabellio-analytics-provider-snapshot/v0.1",
   );
   assert.ok(providerSchema.required.includes("headCommit"));
+  assert.equal(
+    providerSchema.$defs.deliveryChange.properties.mergeCommit.oneOf[0].$ref,
+    "#/$defs/commit",
+  );
+  assert.equal(
+    providerSchema.$defs.deliveryChange.properties.releaseCommit.oneOf[0].$ref,
+    "#/$defs/commit",
+  );
+  assert.deepEqual(
+    providerSchema.$defs.deliveryChange.properties.releasedAt.type,
+    ["string", "null"],
+  );
   assertCredentialSafeRepositorySchema(providerSchema.$defs.repositoryIdentifier);
   assert.deepEqual(
     providerSchema.properties.sources.required,

@@ -9,6 +9,9 @@ const CHANGE_FIELDS = new Set([
   "storyCreatedAt",
   "firstActivityAt",
   "mergedAt",
+  "mergeCommit",
+  "releasedAt",
+  "releaseCommit",
   "headCommit",
   "validationStatus",
   "hostedStatus",
@@ -199,6 +202,26 @@ function validateDeliveryChange(change, { sources, headCommit, capturedAt }) {
     if (Date.parse(previousValue) > Date.parse(currentValue)) {
       errors.push(`${previousName} is later than ${currentName}`);
     }
+  }
+  if (change.mergeCommit !== undefined && change.mergeCommit !== null && !isCommit(change.mergeCommit)) {
+    errors.push("mergeCommit is invalid");
+  }
+  if (change.mergeCommit !== undefined && change.mergeCommit !== null && !isDateTime(change.mergedAt)) {
+    errors.push("mergeCommit requires mergedAt");
+  }
+  if (change.releasedAt !== undefined && change.releasedAt !== null) {
+    if (!isDateTime(change.releasedAt)) errors.push("releasedAt is invalid");
+    if (isDateTime(change.releasedAt) && Date.parse(change.releasedAt) > Date.parse(capturedAt)) {
+      errors.push("releasedAt is later than capture");
+    }
+    if (isDateTime(change.mergedAt) && isDateTime(change.releasedAt)
+      && Date.parse(change.releasedAt) < Date.parse(change.mergedAt)) {
+      errors.push("mergedAt is later than releasedAt");
+    }
+    if (!isCommit(change.releaseCommit)) errors.push("releasedAt requires releaseCommit");
+    if (!isCommit(change.mergeCommit)) errors.push("releasedAt requires mergeCommit");
+  } else if (change.releaseCommit !== undefined && change.releaseCommit !== null) {
+    errors.push("releaseCommit requires releasedAt");
   }
   return errors;
 }

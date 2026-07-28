@@ -542,9 +542,14 @@ function providerSource(repositoryId, system, source, observedAt) {
 }
 
 function normalizeDeliveryChange(change) {
+  const {
+    mergeCommit: _mergeCommit,
+    releaseCommit: _releaseCommit,
+    ...normalized
+  } = structuredClone(change);
   return {
-    ...structuredClone(change),
-    releasedAt: null,
+    ...normalized,
+    releasedAt: change.releasedAt ?? null,
   };
 }
 

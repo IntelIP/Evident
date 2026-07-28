@@ -26,7 +26,9 @@
     "tabellio-release": "scripts/tabellio-release.mjs",
     "tabellio-analytics": "scripts/tabellio-analytics.mjs",
     "tabellio-analytics-validator": "scripts/tabellio-analytics-validator.mjs",
-    "tabellio-buildkite-builds": "scripts/tabellio-buildkite-builds.mjs"
+    "tabellio-buildkite-builds": "scripts/tabellio-buildkite-builds.mjs",
+    "tabellio-github-releases": "scripts/tabellio-github-releases.mjs",
+    "tabellio-analytics-releases": "scripts/tabellio-analytics-releases.mjs"
   },
   "bugs": {
     "url": "https://github.com/IntelIP/Tabellio/issues"
@@ -83,6 +85,8 @@
     "tabellio:analytics": "node scripts/tabellio-analytics.mjs",
     "tabellio:analytics:validator": "node scripts/tabellio-analytics-validator.mjs",
     "tabellio:buildkite-builds": "node scripts/tabellio-buildkite-builds.mjs",
+    "tabellio:github-releases": "node scripts/tabellio-github-releases.mjs",
+    "tabellio:analytics:releases": "node scripts/tabellio-analytics-releases.mjs",
     "tabellio:external-actions:check": "node scripts/check-tabellio-external-actions.mjs --evidence tabellio-pr-evidence.json",
     "check": "npm test && npm run tabellio:platform:check && npm run tabellio:run:example:check && npm run tabellio:stack:example:check && npm run tabellio:stack:operation:example:check && npm run tabellio:review:example:check && npm run tabellio:validate:example:check && npm run tabellio:design-memory:example:check && npm run tabellio:ledger:example:check && npm run tabellio:release:example:check && npm run tabellio:context:example:check && npm run tabellio:evidence:example:check && node scripts/check-tabellio-external-actions.mjs --evidence examples/tabellio-evidence/minimal-evidence.json"
   },

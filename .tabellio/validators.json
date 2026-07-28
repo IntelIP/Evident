@@ -132,6 +132,42 @@
       "metrics": [{"name": "buildkite_collector_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
       "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
       "summary": "Buildkite path, credential, and error privacy boundaries"
+    },
+    "github-release-static": {
+      "commands": [["npm", "run", "check"]],
+      "metrics": [],
+      "cost": {"telemetry": "not_applicable", "usd": null, "modelCalls": null, "toolCalls": null},
+      "summary": "GitHub release collector and linker focused tests"
+    },
+    "github-release-schema": {
+      "commands": [["node", "--test", "--test-name-pattern", "schema tag grammar|temporal and duplicate|malformed published", "tests/github-release-collector.test.mjs"]],
+      "metrics": [{"name": "github_release_schema_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "GitHub release snapshot and portable tag contracts"
+    },
+    "github-release-semantic": {
+      "commands": [["node", "--test", "--test-name-pattern", "squash delivery|preserves newer|excludes pre-merge|malformed provider|conflicting existing|containment resolver", "tests/github-release-linker.test.mjs"]],
+      "metrics": [{"name": "github_release_semantic_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Landed-commit containment and temporal release semantics"
+    },
+    "github-release-workflow": {
+      "commands": [["node", "--test", "--test-name-pattern", "paginates and resolves|concurrent publication|collector CLI", "tests/github-release-collector.test.mjs", "tests/github-release-cli.test.mjs"]],
+      "metrics": [{"name": "github_release_workflow_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Complete GitHub release collection workflow"
+    },
+    "github-release-operational": {
+      "commands": [["node", "--test", "--test-name-pattern", "bounds repeated full pages", "tests/github-release-collector.test.mjs"]],
+      "metrics": [{"name": "github_release_page_limit", "unit": "pages", "pattern": "github_release_page_limit=([0-9]+)"}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Bounded GitHub release pagination"
+    },
+    "github-release-security": {
+      "commands": [["node", "--test", "--test-name-pattern", "aliases|symlinked inputs|portable tags|provider snapshots", "tests/github-release-cli.test.mjs", "tests/github-release-collector.test.mjs", "tests/github-release-linker.test.mjs"]],
+      "metrics": [{"name": "github_release_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Release path, input, and portable evidence boundaries"
     }
   }
 }

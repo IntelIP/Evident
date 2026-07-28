@@ -1,4 +1,5 @@
 import { contract } from "./contract-checks.mjs";
+import { boundedMap } from "./bounded-map.mjs";
 import { parseGitHubRepositoryRemote } from "./github-repository.mjs";
 import { isSafeProviderText } from "./portable-evidence.mjs";
 
@@ -212,23 +213,6 @@ function isResponseEnvelope(value) {
 
 function withPage(path, page) {
   return `${path}${path.includes("?") ? "&" : "?"}page=${page}`;
-}
-
-async function boundedMap(values, concurrency, mapper) {
-  const results = new Array(values.length);
-  let nextIndex = 0;
-  async function worker() {
-    for (;;) {
-      const index = nextIndex;
-      nextIndex += 1;
-      if (index >= values.length) return;
-      results[index] = await mapper(values[index]);
-    }
-  }
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, values.length) }, worker),
-  );
-  return results;
 }
 
 export function validateBuildkiteBuildSnapshot(snapshot) {

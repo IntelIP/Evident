@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "tabellio-validation/v0.2",
+  "id": "intb-261-p4-github-release-evidence",
+  "failFast": false,
+  "requireEntireCheckpoint": true,
+  "acceptance": {
+    "id": "INTB-261-P4",
+    "source": "INTB-261 and docs/intb-261-p4-execution-contract.md",
+    "risk": "high",
+    "outcomes": [
+      "GitHub release inventory is complete, bounded, and temporally coherent.",
+      "Release links use landed squash commits and verified containment.",
+      "Portable release evidence remains repository-bound and input-safe."
+    ],
+    "invariants": [
+      "Provider pagination and tag resolution stay inside committed limits.",
+      "Malformed evidence blocks while post-cutoff releases are excluded.",
+      "The earliest eligible containing release is selected.",
+      "All validators report complete zero-cost telemetry."
+    ],
+    "forbiddenOutcomes": [
+      "A truncated provider page is reported as complete.",
+      "A pre-merge or unrelated release is linked.",
+      "A provider source version is rolled backward.",
+      "An output aliases or overwrites an input snapshot."
+    ],
+    "requiredValidatorTypes": [
+      "static",
+      "schema",
+      "semantic",
+      "workflow",
+      "operational",
+      "security"
+    ]
+  },
+  "validators": [
+    {
+      "id": "github-release-static",
+      "type": "static",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "github-release-static"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": null,
+      "policy": {"metricThresholds": [], "maxCostUsd": null, "requireCostTelemetry": false}
+    },
+    {
+      "id": "github-release-schema",
+      "type": "schema",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "github-release-schema", "--validator-id", "github-release-schema", "--out", ".artifacts/tabellio/github-release-schema.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/github-release-schema.json"},
+      "policy": {"metricThresholds": [{"metric": "github_release_schema_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "github-release-semantic",
+      "type": "semantic",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "github-release-semantic", "--validator-id", "github-release-semantic", "--out", ".artifacts/tabellio/github-release-semantic.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/github-release-semantic.json"},
+      "policy": {"metricThresholds": [{"metric": "github_release_semantic_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "github-release-workflow",
+      "type": "workflow",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "github-release-workflow", "--validator-id", "github-release-workflow", "--out", ".artifacts/tabellio/github-release-workflow.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/github-release-workflow.json"},
+      "policy": {"metricThresholds": [{"metric": "github_release_workflow_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "github-release-operational",
+      "type": "operational",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "github-release-operational", "--validator-id", "github-release-operational", "--out", ".artifacts/tabellio/github-release-operational.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/github-release-operational.json"},
+      "policy": {"metricThresholds": [{"metric": "github_release_page_limit", "operator": "lte", "value": 100}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "github-release-security",
+      "type": "security",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "github-release-security", "--validator-id", "github-release-security", "--out", ".artifacts/tabellio/github-release-security.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/github-release-security.json"},
+      "policy": {"metricThresholds": [{"metric": "github_release_security_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    }
+  ]
+}

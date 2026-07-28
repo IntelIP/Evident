@@ -106,6 +106,20 @@ test("provider snapshot accepts an exact SHA-256 repository head", () => {
   }), []);
 });
 
+test("provider snapshot carries landed and release commit provenance", () => {
+  const value = snapshot();
+  Object.assign(value.deliveryChanges[0], {
+    mergeCommit: "b".repeat(40),
+    releasedAt: "2026-07-23T00:00:00.000Z",
+    releaseCommit: "c".repeat(40),
+  });
+  assert.deepEqual(validateProviderSnapshot(value, {
+    repository: "IntelIP/Tabellio",
+    headCommit: HEAD,
+    observedAt: OBSERVED_AT,
+  }), []);
+});
+
 test("provider snapshot rejects unsafe and contradictory claims", () => {
   const cases = [
     ["unknown field", (value) => { value.privatePayload = "secret"; }, /not allowed/],
@@ -130,6 +144,10 @@ test("provider snapshot rejects unsafe and contradictory claims", () => {
     ["duplicate relationship", (value) => { const duplicate = structuredClone(value.deliveryChanges[0]); duplicate.id = "change-2"; value.deliveryChanges.push(duplicate); }, /duplicates Plane and pull-request relationship/],
     ["unicode control", (value) => { value.deliveryChanges[0].linkEvidence = "safe\u2028text"; }, /linkEvidence is unsafe/],
     ["extra change payload", (value) => { value.deliveryChanges[0].raw = "private"; }, /not allowed/],
+    ["release without merge commit", (value) => { value.deliveryChanges[0].releasedAt = "2026-07-23T00:00:00.000Z"; value.deliveryChanges[0].releaseCommit = "c".repeat(40); }, /releasedAt requires mergeCommit/],
+    ["release without release commit", (value) => { value.deliveryChanges[0].mergeCommit = "b".repeat(40); value.deliveryChanges[0].releasedAt = "2026-07-23T00:00:00.000Z"; }, /releasedAt requires releaseCommit/],
+    ["release before merge", (value) => { value.deliveryChanges[0].mergeCommit = "b".repeat(40); value.deliveryChanges[0].releasedAt = "2026-07-21T00:00:00.000Z"; value.deliveryChanges[0].releaseCommit = "c".repeat(40); }, /mergedAt is later than releasedAt/],
+    ["release commit without timestamp", (value) => { value.deliveryChanges[0].mergeCommit = "b".repeat(40); value.deliveryChanges[0].releaseCommit = "c".repeat(40); }, /releaseCommit requires releasedAt/],
   ];
   for (const [name, mutate, expected] of cases) {
     const value = snapshot();

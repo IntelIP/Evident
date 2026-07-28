@@ -148,6 +148,19 @@
         "storyCreatedAt": { "type": ["string", "null"], "format": "date-time" },
         "firstActivityAt": { "type": ["string", "null"], "format": "date-time" },
         "mergedAt": { "type": ["string", "null"], "format": "date-time" },
+        "mergeCommit": {
+          "oneOf": [
+            { "$ref": "#/$defs/commit" },
+            { "type": "null" }
+          ]
+        },
+        "releasedAt": { "type": ["string", "null"], "format": "date-time" },
+        "releaseCommit": {
+          "oneOf": [
+            { "$ref": "#/$defs/commit" },
+            { "type": "null" }
+          ]
+        },
         "headCommit": { "$ref": "#/$defs/commit" },
         "validationStatus": { "enum": ["passed", "failed", "blocked", "unavailable"] },
         "hostedStatus": { "enum": ["passed", "failed", "blocked", "unavailable"] }
