@@ -152,24 +152,22 @@ function assertProviderSnapshot(providerSnapshot, capturedAt) {
 }
 
 function assertJoinBindings(input) {
-  const {
-    providerSnapshot,
-    planeSnapshot,
-    buildkiteAuthority,
-    buildkiteSnapshots,
-    releaseSnapshot,
-    deploymentReceipts,
-    deploymentBlockedReason,
-    deploymentEnvironment,
-  } = input;
+  assertBuildkiteBinding(input);
+  assertRepositoryBindings(input);
+  assertPlaneBinding(input);
+  assertDeploymentBinding(input);
+}
+
+function assertBuildkiteBinding({
+  buildkiteAuthority,
+  buildkiteSnapshots,
+}) {
   ensure(
     buildkiteSnapshots.length <= 1,
     "Delivery evidence requires one designated Buildkite pipeline snapshot.",
   );
   ensure(
-    buildkiteAuthority
-      && BUILDKITE_SLUG.test(buildkiteAuthority.organization ?? "")
-      && BUILDKITE_SLUG.test(buildkiteAuthority.pipeline ?? ""),
+    validBuildkiteAuthority(buildkiteAuthority),
     "Delivery evidence requires a valid designated Buildkite authority.",
   );
   ensure(
@@ -180,32 +178,59 @@ function assertJoinBindings(input) {
     ),
     "Buildkite snapshot authority mismatch.",
   );
+}
+
+function validBuildkiteAuthority(authority) {
+  return Boolean(authority)
+    && validBuildkiteSlug(authority.organization)
+    && validBuildkiteSlug(authority.pipeline);
+}
+
+function validBuildkiteSlug(value) {
+  return typeof value === "string" && BUILDKITE_SLUG.test(value);
+}
+
+function assertRepositoryBindings({
+  providerSnapshot,
+  buildkiteSnapshots,
+  releaseSnapshot,
+  deploymentReceipts,
+}) {
+  const repository = providerSnapshot.repository;
   ensure(
-    sameRepository(releaseSnapshot.repository, providerSnapshot.repository),
+    sameRepository(releaseSnapshot.repository, repository),
     "Release snapshot repository mismatch.",
   );
   ensure(
     buildkiteSnapshots.every(
-      (snapshot) => sameRepository(snapshot.repository, providerSnapshot.repository),
+      (snapshot) => sameRepository(snapshot.repository, repository),
     ),
     "Buildkite snapshot repository mismatch.",
   );
   ensure(
     deploymentReceipts.every(
-      (receipt) => sameRepository(receipt.repository, providerSnapshot.repository),
+      (receipt) => sameRepository(receipt.repository, repository),
     ),
     "Deployment receipt repository mismatch.",
   );
+}
+
+function assertPlaneBinding({
+  providerSnapshot,
+  planeSnapshot,
+  releaseSnapshot,
+}) {
+  const providerPlane = providerSnapshot.sources.plane;
   ensure(
-    isPortableIdentifier(providerSnapshot.sources.plane.workspace),
+    isPortableIdentifier(providerPlane.workspace),
     "Provider Plane workspace is invalid.",
   );
   ensure(
-    providerSnapshot.sources.plane.workspace === planeSnapshot.workspace,
+    providerPlane.workspace === planeSnapshot.workspace,
     "Provider and Plane snapshot workspace mismatch.",
   );
   ensure(
-    (providerSnapshot.sources.plane.status === "available")
+    (providerPlane.status === "available")
       === (planeSnapshot.status === "available"),
     "Provider and Plane source availability mismatch.",
   );
@@ -214,6 +239,13 @@ function assertJoinBindings(input) {
       === (releaseSnapshot.status === "available"),
     "Provider and GitHub Release source availability mismatch.",
   );
+}
+
+function assertDeploymentBinding({
+  deploymentReceipts,
+  deploymentBlockedReason,
+  deploymentEnvironment,
+}) {
   if (deploymentEnvironment !== null) {
     ensure(
       ENVIRONMENT.test(deploymentEnvironment),
@@ -894,8 +926,7 @@ function assertDeploymentEvidence(record, snapshot) {
 
 function hasDecisiveDeploymentFields(deployment) {
   const required = [
-    isPortableIdentifier(deployment.receiptId)
-      && deployment.receiptId.length <= 128,
+    isPortableReceiptId(deployment.receiptId),
     deployment.environment,
     deployment.provider,
     deployment.commit,
@@ -908,6 +939,10 @@ function hasDecisiveDeploymentFields(deployment) {
       || isJsonDateTime(deployment.deployedAt);
   }
   return isJsonDateTime(deployment.deployedAt);
+}
+
+function isPortableReceiptId(value) {
+  return isPortableIdentifier(value) && value.length <= 128;
 }
 
 function assertBlockedSourcePreserved(source, status, label) {
