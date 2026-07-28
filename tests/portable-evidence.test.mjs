@@ -44,6 +44,8 @@ test("source contracts require exact state shapes and safe evidence", () => {
   assert.match(validateEvidenceSource({ status: "blocked", reason: "provider error: C:/Users/alice/private" })[0], /safe reason/);
   assert.match(validateEvidenceSource({ status: "blocked", reason: "https://token@github.com/IntelIP/Tabellio" })[0], /safe reason/);
   assert.match(validateEvidenceSource({ status: "blocked", reason: "FILE:///Users/alice/private" })[0], /safe reason/);
+  assert.match(validateEvidenceSource({ status: "blocked", reason: "../private/provider.json" })[0], /safe reason/);
+  assert.match(validateEvidenceSource({ status: "blocked", reason: "provider error: ./cache.json" })[0], /safe reason/);
   assert.match(validateEvidenceSource({ status: "unavailable", reason: "offline", workspace: "private" })[0], /not allowed/);
   assert.match(validateEvidenceSource({ status: "unavailable", reason: "offline", version: "2026-07-25T00:00:00.000Z" }).join(" "), /cannot carry a version/);
   assert.deepEqual(validateEvidenceSource({ status: "unavailable", reason: "offline", ghp_0123456789abcdef: true }), ["source contains a field that is not allowed"]);

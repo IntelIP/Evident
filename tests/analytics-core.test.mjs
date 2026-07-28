@@ -260,7 +260,11 @@ test("analytics collector derives the same local identity through filesystem ali
   await symlink(fixture.repository, alias);
   const direct = await collectFixture(fixture.repository);
   const linked = await collectFixture(alias);
+  const subdirectory = join(fixture.repository, "src");
+  await mkdir(subdirectory);
+  const nested = await collectFixture(subdirectory);
   assert.equal(direct.repositories[0].canonicalRepositoryId, linked.repositories[0].canonicalRepositoryId);
+  assert.equal(direct.repositories[0].canonicalRepositoryId, nested.repositories[0].canonicalRepositoryId);
   assert.match(direct.repositories[0].canonicalRepositoryId, /^local\/[0-9a-f]{16}$/);
 });
 
@@ -603,6 +607,8 @@ test("analytics schema requires source observations and canonical metric states"
     "https://token@github.com/IntelIP/Tabellio",
     "/Users/private/provider.json",
     "safe\u2028unsafe",
+    "../private/provider.json",
+    "provider error: ./cache.json",
   ]) {
     assert.ok(
       schema.$defs.safeText.allOf.some((rule) => new RegExp(rule.not.pattern).test(unsafe)),

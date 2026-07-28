@@ -145,7 +145,8 @@ function deliveryChangeWindowTimestamp(change) {
 
 async function collectRepository(input, observedAt) {
   validateRepositoryInput(input);
-  const repositoryPath = await realpath(input.path);
+  const inputPath = await realpath(input.path);
+  const repositoryPath = await gitRepositoryRoot(inputPath);
   const [headCommit, headCommittedAt, branch, remote] = await Promise.all([
     gitText(repositoryPath, ["rev-parse", "HEAD"]),
     gitText(repositoryPath, ["show", "-s", "--format=%cI", "HEAD"]),
@@ -189,6 +190,12 @@ async function collectRepository(input, observedAt) {
     metrics: {},
     deliveryChanges: provider.deliveryChanges,
   };
+}
+
+async function gitRepositoryRoot(repositoryPath) {
+  const bare = await gitText(repositoryPath, ["rev-parse", "--is-bare-repository"]);
+  if (bare === "true") return repositoryPath;
+  return realpath(await gitText(repositoryPath, ["rev-parse", "--show-toplevel"]));
 }
 
 function portableBranch(branch) {
@@ -289,9 +296,20 @@ function controlRecords(repositoryPath, version, control, observedAt) {
 }
 
 function selectControlEvidence(control, records, candidate, version) {
-  if (control.id !== "tabellio-validation") {
-    return { records, sourceVersion: version, validationResult: null };
+  if (control.id === "tabellio-review") return selectReviewEvidence(records, candidate);
+  if (control.id === "tabellio-validation") return selectValidationEvidence(records, candidate);
+  return { records, sourceVersion: version, validationResult: null };
+}
+
+function selectReviewEvidence(records, candidate) {
+  const reviewRecords = candidateReviewRecords(records, candidate);
+  if (reviewRecords.length === 0) {
+    throw new Error("Review control evidence does not bind the repository head.");
   }
+  return { records: reviewRecords, sourceVersion: candidate.headCommit, validationResult: null };
+}
+
+function selectValidationEvidence(records, candidate) {
   const validationResult = latestCandidateValidationResult(records, candidate);
   if (validationResult === null) {
     throw new Error("Validation control evidence does not bind the repository head.");
@@ -301,6 +319,14 @@ function selectControlEvidence(control, records, candidate, version) {
     sourceVersion: candidate.headCommit,
     validationResult,
   };
+}
+
+function candidateReviewRecords(records, { canonicalRepositoryId: repository, headCommit }) {
+  const expectedRepository = normalizedAnalyticsRepositoryId(repository);
+  return records.filter((record) =>
+    normalizedAnalyticsRepositoryId(record?.repository?.id) === expectedRepository
+    && record?.changeRequest?.headCommit === headCommit
+  );
 }
 
 function latestCandidateValidationResult(records, { canonicalRepositoryId: repository, headCommit }) {
@@ -366,7 +392,7 @@ function containsFutureTimestamp(value, observedAt) {
 }
 
 function fieldIsFutureTimestamp(key, value, observedAt) {
-  return key.endsWith("At")
+  return (key.endsWith("At") || key === "at")
     && isDateTime(value)
     && Date.parse(value) > Date.parse(observedAt);
 }

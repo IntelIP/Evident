@@ -12,7 +12,7 @@ import {
   unlink,
   writeFile,
 } from "node:fs/promises";
-import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
+import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 
 import {
@@ -194,7 +194,7 @@ function sameInode(left, right) {
 
 function pathWithin(candidate, root) {
   const path = relative(root, candidate);
-  return path === "" || (path !== ".." && !path.startsWith("../") && !isAbsolute(path));
+  return path === "" || (path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path));
 }
 
 async function writeAtomic(outputPath, content) {

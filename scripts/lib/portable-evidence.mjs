@@ -23,6 +23,7 @@ const CREDENTIAL_PATTERNS = [
 ];
 const COMMIT_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const REPOSITORY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+const RELATIVE_PATH_PATTERN = /(?:^|[\s=:(\['"`])\.\.?\/\S*/;
 
 export function hasCredentialShape(value) {
   return typeof value === "string" && CREDENTIAL_PATTERNS.some((pattern) => pattern.test(value));
@@ -46,7 +47,8 @@ export function isSafeProviderText(value) {
     && value.length <= 500
     && !hasControlOrPath(value)
     && !hasCredentialShape(value)
-    && !value.toLowerCase().includes("file:");
+    && !value.toLowerCase().includes("file:")
+    && !RELATIVE_PATH_PATTERN.test(value);
 }
 
 export function isSafeProviderVersion(value) {
