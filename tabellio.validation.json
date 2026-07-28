@@ -11,18 +11,21 @@
       "Agent runs, checkpoints, reviews, and validation results remain bound to exact Git state.",
       "Typed validation distinguishes passed, failed, and blocked evidence.",
       "External actions and release operations remain approval-gated and fail closed.",
-      "Validation worktrees and isolated home directories remain outside the repository and Git common directory and are removed after each run."
+      "Validation worktrees and isolated home directories remain outside the repository and Git common directory and are removed after each run.",
+      "Analytics validator evidence distinguishes malformed inputs from valid contract failures."
     ],
     "invariants": [
       "Validation never publishes, deploys, or mutates a live external system.",
       "Unknown or missing cost telemetry cannot be treated as zero.",
-      "A validation run cannot select a workspace root inside the repository or Git common directory."
+      "A validation run cannot select a workspace root inside the repository or Git common directory.",
+      "Analytics validator summaries and artifacts never copy rejected private source text."
     ],
     "forbiddenOutcomes": [
       "A stale validation result is accepted for a moved head.",
       "A blocked validator is reported as passed.",
       "An unapproved external action is executed.",
-      "A validation worktree, temporary HOME, dependency cache, or generated validator output is created under .git."
+      "A validation worktree, temporary HOME, dependency cache, or generated validator output is created under .git.",
+      "Malformed analytics input is reported as passed or as a valid product failure."
     ],
     "requiredValidatorTypes": ["static", "schema", "semantic", "workflow", "security"]
   },

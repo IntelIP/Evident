@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "tabellio-validation/v0.2",
+  "id": "intb-261-p2-analytics-validator",
+  "failFast": false,
+  "requireEntireCheckpoint": true,
+  "acceptance": {
+    "id": "INTB-261-P2",
+    "source": "INTB-261 and docs/intb-261-p2-execution-contract.md",
+    "risk": "high",
+    "outcomes": [
+      "Analytics validation emits durable passed, failed, or blocked evidence.",
+      "Required repositories and provider snapshots bind the exact dataset repository and head.",
+      "Evidence summaries and artifacts remain portable and private."
+    ],
+    "invariants": [
+      "Malformed or unavailable inputs are blocked rather than failed or passed.",
+      "Valid semantic and workflow contract violations are failed rather than blocked or passed.",
+      "Delivery metrics, traces, source states, source digests, and validation claims agree.",
+      "All validators report complete zero-cost telemetry."
+    ],
+    "forbiddenOutcomes": [
+      "A malformed input is reported as a product failure or pass.",
+      "A missing provider snapshot supports a provider-backed claim.",
+      "Rejected source text, credentials, or local paths appear in validator evidence.",
+      "Validation performs provider writes, deployments, releases, billing, or production-data access."
+    ],
+    "requiredValidatorTypes": [
+      "static",
+      "schema",
+      "semantic",
+      "workflow",
+      "operational",
+      "security"
+    ]
+  },
+  "validators": [
+    {
+      "id": "analytics-validator-static",
+      "type": "static",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "analytics-validator-static"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": null,
+      "policy": {"metricThresholds": [], "maxCostUsd": null, "requireCostTelemetry": false}
+    },
+    {
+      "id": "analytics-validator-schema",
+      "type": "schema",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "analytics-validator-schema", "--validator-id", "analytics-validator-schema", "--out", ".artifacts/tabellio/analytics-validator-schema.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/analytics-validator-schema.json"},
+      "policy": {"metricThresholds": [{"metric": "analytics_validator_schema_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "analytics-validator-semantic",
+      "type": "semantic",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "analytics-validator-semantic", "--validator-id", "analytics-validator-semantic", "--out", ".artifacts/tabellio/analytics-validator-semantic.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/analytics-validator-semantic.json"},
+      "policy": {"metricThresholds": [{"metric": "analytics_validator_semantic_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "analytics-validator-workflow",
+      "type": "workflow",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "analytics-validator-workflow", "--validator-id", "analytics-validator-workflow", "--out", ".artifacts/tabellio/analytics-validator-workflow.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/analytics-validator-workflow.json"},
+      "policy": {"metricThresholds": [{"metric": "analytics_validator_workflow_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "analytics-validator-operational",
+      "type": "operational",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "analytics-validator-operational", "--validator-id", "analytics-validator-operational", "--out", ".artifacts/tabellio/analytics-validator-operational.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/analytics-validator-operational.json"},
+      "policy": {"metricThresholds": [{"metric": "analytics_projection_25x_duration_ms", "operator": "lte", "value": 1000}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "analytics-validator-security",
+      "type": "security",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "analytics-validator-security", "--validator-id", "analytics-validator-security", "--out", ".artifacts/tabellio/analytics-validator-security.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/analytics-validator-security.json"},
+      "policy": {"metricThresholds": [{"metric": "analytics_validator_security_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    }
+  ]
+}
