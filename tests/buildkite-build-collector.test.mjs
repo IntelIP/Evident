@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
+import { promisify } from "node:util";
 
 import {
   collectBuildkiteBuildSnapshot,
@@ -9,6 +14,7 @@ import {
 const STARTED_AT = "2026-07-25T12:00:00.000Z";
 const CAPTURED_AT = "2026-07-25T12:00:01.000Z";
 const COMMIT = "a".repeat(40);
+const execFileAsync = promisify(execFile);
 
 test("Buildkite collector preserves complete exact build evidence", async () => {
   const calls = [];
@@ -82,6 +88,7 @@ test("Buildkite collector blocks mismatched pipeline response slug", async () =>
 });
 
 test("Buildkite collector paginates builds, jobs, and artifacts", async () => {
+  const calls = [];
   const builds = Array.from({ length: 101 }, (_, index) => build(index + 1));
   const jobs = Array.from({ length: 101 }, (_, index) => ({ id: `job-${index + 1}` }));
   const artifacts = Array.from(
@@ -90,13 +97,28 @@ test("Buildkite collector paginates builds, jobs, and artifacts", async () => {
   );
   const snapshot = await collectBuildkiteBuildSnapshot({
     ...collectorOptions(),
-    request: fixtureRequest({ builds, jobs, artifacts }),
+    request: fixtureRequest({ builds, jobs, artifacts, calls }),
   });
   assert.equal(snapshot.status, "available");
   assert.equal(snapshot.builds.length, 101);
   assert.equal(snapshot.builds[0].number, 101);
   assert.equal(snapshot.builds[0].jobCount, 101);
   assert.equal(snapshot.builds[0].artifactCount, 101);
+  assert.ok(calls.some((path) => path.includes("/jobs?") && path.includes("cursor=100")));
+});
+
+test("Buildkite collector preserves unfinished and waiting builds", async () => {
+  for (const state of ["waiting", "waiting_failed", "running"]) {
+    const snapshot = await collectBuildkiteBuildSnapshot({
+      ...collectorOptions(),
+      request: fixtureRequest({
+        builds: [{ ...build(4), state, finished_at: null }],
+      }),
+    });
+    assert.equal(snapshot.status, "available");
+    assert.equal(snapshot.builds[0].state, state);
+    assert.equal(snapshot.builds[0].finishedAt, null);
+  }
 });
 
 test("Buildkite collector rejects build pagination beyond its bound", async () => {
@@ -261,6 +283,45 @@ test("Buildkite snapshot contract rejects extra fields and unsafe blocked reason
   );
 });
 
+test("Buildkite snapshot schema couples availability to reason and builds", async () => {
+  const schema = JSON.parse(await readFile(
+    new URL("../schemas/buildkite-build-snapshot.v0.1.schema.json", import.meta.url),
+    "utf8",
+  ));
+  const statusRule = schema.allOf.find(
+    (rule) => rule.if?.properties?.status?.const === "available",
+  );
+  assert.deepEqual(statusRule.then.properties.reason, { type: "null" });
+  assert.equal(statusRule.else.properties.reason.type, "string");
+  assert.equal(statusRule.else.properties.reason.minLength, 1);
+  assert.equal(statusRule.else.properties.builds.maxItems, 0);
+});
+
+test("Buildkite CLI creates fresh nested output parents", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "tabellio-buildkite-cli-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const out = join(root, "fresh", "nested", "snapshot.json");
+  await execFileAsync(process.execPath, [
+    "--import",
+    new URL("./helpers/buildkite-fetch-fixture.mjs", import.meta.url).href,
+    new URL("../scripts/tabellio-buildkite-builds.mjs", import.meta.url).pathname,
+    "collect",
+    "--repository",
+    "IntelIP/Tabellio",
+    "--organization",
+    "intelip",
+    "--pipeline",
+    "tabellio",
+    "--out",
+    out,
+  ], {
+    env: { ...process.env, BUILDKITE_API_TOKEN: "test-token" },
+  });
+  const snapshot = JSON.parse(await readFile(out, "utf8"));
+  assert.equal(snapshot.status, "available");
+  assert.deepEqual(snapshot.builds, []);
+});
+
 test("Buildkite collector rejects summary and detail identity drift", async () => {
   const snapshot = await collectBuildkiteBuildSnapshot({
     ...collectorOptions(),
@@ -331,8 +392,8 @@ function fixtureResponse(path, config) {
       response: () => detailResponse(path, config),
     },
     {
-      matches: /\/jobs\?.*&page=\d+$/.test(path),
-      response: () => pageEnvelope(path, config.jobs),
+      matches: /\/jobs\?/.test(path),
+      response: () => cursorEnvelope(path, config.jobs),
     },
     {
       matches: /\/artifacts\?.*&page=\d+$/.test(path),
@@ -352,6 +413,16 @@ function detailResponse(path, config) {
   };
   if (!config.omitEmbeddedJobs) detail.jobs = config.embeddedJobs;
   return detail;
+}
+
+function cursorEnvelope(path, values) {
+  const url = new URL(path, "https://api.buildkite.com");
+  const start = Number(url.searchParams.get("cursor") ?? 0);
+  const items = values.slice(start, start + 100);
+  const next = start + items.length < values.length
+    ? `https://api.buildkite.com${url.pathname}?include_retried_jobs=true&per_page=100&cursor=${start + items.length}`
+    : null;
+  return { items, links: { next } };
 }
 
 function pageEnvelope(path, values) {

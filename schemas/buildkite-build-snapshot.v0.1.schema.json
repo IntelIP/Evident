@@ -63,7 +63,9 @@
               "passed",
               "running",
               "scheduled",
-              "skipped"
+              "skipped",
+              "waiting",
+              "waiting_failed"
             ]
           },
           "createdAt": {"type": "string", "format": "date-time"},
@@ -73,5 +75,25 @@
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {"const": "available"}
+        }
+      },
+      "then": {
+        "properties": {
+          "reason": {"type": "null"}
+        }
+      },
+      "else": {
+        "properties": {
+          "reason": {"type": "string", "minLength": 1},
+          "builds": {"maxItems": 0}
+        }
+      }
+    }
+  ]
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 
 import {
   parseCommandOptions,
@@ -30,6 +30,7 @@ async function main() {
     request: (path) => buildkiteRequest(path, token),
   });
   const out = resolve(options.out);
+  await mkdir(dirname(out), { recursive: true });
   await writeFile(out, `${JSON.stringify(snapshot, null, 2)}\n`, { flag: "wx" });
   console.log(JSON.stringify({
     ok: snapshot.status === "available",

@@ -18,6 +18,8 @@ const BUILD_STATES = new Set([
   "running",
   "scheduled",
   "skipped",
+  "waiting",
+  "waiting_failed",
 ]);
 const OBSERVATION_DAYS = 30;
 const PAGE_SIZE = 100;
@@ -103,7 +105,7 @@ async function collectBuildDetails({ build, organization, pipeline, request }) {
   assertSameBuild(build, normalized);
   assertEmbeddedJobs(detail.jobs);
   const [jobs, artifacts] = await Promise.all([
-    collectPages({
+    collectCursorPages({
       path: `${prefix}/jobs?include_retried_jobs=true&per_page=${PAGE_SIZE}`,
       request,
       maximum: MAX_JOBS,
@@ -126,6 +128,25 @@ async function collectBuildDetails({ build, organization, pipeline, request }) {
   };
 }
 
+async function collectCursorPages({ path, request, maximum, label }) {
+  const values = [];
+  const maximumPages = Math.ceil(maximum / PAGE_SIZE);
+  const visited = new Set();
+  let next = path;
+  for (let page = 1; page <= maximumPages + 1; page += 1) {
+    ensure(!visited.has(next), `${label} pagination contains a cycle.`);
+    visited.add(next);
+    const body = responseBody(await request(next));
+    contract.object(body, `${label} response`);
+    ensure(Array.isArray(body.items), `${label} response is invalid.`);
+    values.push(...body.items);
+    ensure(values.length <= maximum, `${label} exceeds its bounded limit.`);
+    next = cursorNextPath(body.links?.next, label);
+    if (next === null) return values;
+  }
+  throw new Error(`${label} pagination exceeds its bounded limit.`);
+}
+
 async function collectPages({ path, request, maximum, label }) {
   const values = [];
   const maximumPages = Math.ceil(maximum / PAGE_SIZE);
@@ -138,6 +159,17 @@ async function collectPages({ path, request, maximum, label }) {
     if (!hasNextPage(response, body)) return values;
   }
   throw new Error(`${label} pagination exceeds its bounded limit.`);
+}
+
+function cursorNextPath(value, label) {
+  if (value === null || value === undefined) return null;
+  ensure(typeof value === "string", `${label} pagination target is invalid.`);
+  const url = new URL(value, "https://api.buildkite.com");
+  ensure(url.origin === "https://api.buildkite.com", `${label} pagination target is invalid.`);
+  ensure(url.username === "" && url.password === "", `${label} pagination target is invalid.`);
+  ensure(url.pathname.startsWith("/v2/"), `${label} pagination target is invalid.`);
+  ensure(url.hash === "", `${label} pagination target is invalid.`);
+  return `${url.pathname}${url.search}`;
 }
 
 function responseBody(response) {
@@ -281,7 +313,7 @@ function normalizeBuild(build) {
 }
 
 function nullableFinishedAt(value) {
-  return value === undefined ? null : value;
+  return value === undefined || value === null ? null : value;
 }
 
 function assertSameBuild(summary, detail) {
