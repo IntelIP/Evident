@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "tabellio-deployment-receipt/v0.1",
+  "id": "cloud-run-production-0001",
+  "repository": "intelip/condere",
+  "environment": "production",
+  "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "status": "passed",
+  "deployedAt": "2026-07-25T10:00:00.000Z",
+  "observedAt": "2026-07-25T10:01:00.000Z",
+  "provider": "cloud-run",
+  "externalId": "condere-0001-abc",
+  "releaseTag": "v0.6.0",
+  "provenancePointer": "cloud-run:condere-0001-abc"
+}

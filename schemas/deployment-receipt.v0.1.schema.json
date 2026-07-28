@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intelip.co/tabellio/schemas/deployment-receipt.v0.1.schema.json",
+  "title": "Tabellio deployment receipt v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "repository", "environment", "commit", "status", "deployedAt", "observedAt", "provider", "externalId", "releaseTag", "provenancePointer"],
+  "properties": {
+    "schemaVersion": { "const": "tabellio-deployment-receipt/v0.1" },
+    "id": { "allOf": [{ "$ref": "#/$defs/safeText" }, { "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" }] },
+    "repository": { "allOf": [{ "$ref": "#/$defs/safeText" }, { "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$" }] },
+    "environment": { "allOf": [{ "$ref": "#/$defs/safeText" }, { "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" }] },
+    "commit": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
+    "status": { "enum": ["passed", "failed", "blocked"] },
+    "deployedAt": { "type": ["string", "null"], "format": "date-time" },
+    "observedAt": { "type": "string", "format": "date-time" },
+    "provider": { "enum": ["cloud-run", "vercel"] },
+    "externalId": { "allOf": [{ "$ref": "#/$defs/safeText" }, { "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$" }] },
+    "releaseTag": {
+      "oneOf": [
+        { "type": "null" },
+        { "allOf": [{ "$ref": "#/$defs/safeText" }, { "pattern": "^[A-Za-z0-9][A-Za-z0-9._+/-]{0,127}$" }] }
+      ]
+    },
+    "provenancePointer": {
+      "oneOf": [
+        { "type": "null" },
+        { "allOf": [{ "$ref": "#/$defs/safeText" }, { "pattern": "^[A-Za-z][A-Za-z0-9+.-]{0,31}:[A-Za-z0-9/][A-Za-z0-9._:/?&=-]{0,467}$" }] }
+      ]
+    }
+  },
+  "$defs": {
+    "safeText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "allOf": [
+        { "not": { "pattern": "[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\\\|]" } },
+        { "not": { "pattern": "[fF][iI][lL][eE]:" } },
+        { "not": { "pattern": "(?:^|[\\s=:(\\[\\]'\"`])/(?!/)\\S*" } },
+        { "not": { "pattern": "(?:^|[\\s=:(\\[\\]'\"`])\\.\\.?/\\S*" } },
+        { "not": { "pattern": "(?:^|[\\s=:(])~(?:/|$)" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][hH][pPoOuUsSrR]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][iI][tT][hH][uU][bB]_[pP][aA][tT]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[sS][kK]-(?:[lL][iI][vV][eE]|[pP][rR][oO][jJ])[_-][A-Za-z0-9_-]{8,}" } },
+        { "not": { "pattern": "\\bAKIA[0-9A-Z]{16}\\b" } },
+        { "not": { "pattern": "://[^/\\s@]+@" } }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "passed" } } },
+      "then": { "properties": { "deployedAt": { "type": "string", "format": "date-time" } } }
+    }
+  ]
+}
