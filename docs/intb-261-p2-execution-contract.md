@@ -30,7 +30,8 @@ Acceptance authority is INTB-261, the 19 P2 entries in
 5. Every required or provider-backed repository binds one exact provider
    snapshot, including unavailable and blocked provider-source states.
 6. Delivery rows, provider-source versions, source digests, repository heads,
-   and exact-validation claims agree with the committed dataset.
+   and exact-validation claims agree with the committed dataset and supplied
+   exact validation result.
 7. Delivery metrics are recomputed from validated trace rows.
 8. Evidence mode preserves non-passing evidence without converting it to a
    successful product decision.
@@ -45,6 +46,7 @@ Acceptance authority is INTB-261, the 19 P2 entries in
 - No invalid input reported as `failed` or `passed`.
 - No valid contract failure reported as `blocked` or `passed`.
 - No source body or rejected private value copied into validator evidence.
+- No exact validation claim accepted from source availability alone.
 
 ## Required Evidence
 

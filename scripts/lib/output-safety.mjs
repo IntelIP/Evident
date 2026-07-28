@@ -6,9 +6,23 @@ import {
 import { basename, dirname, resolve } from "node:path";
 
 export async function pathState(path) {
+  const entry = await optionalEntry(path);
+  if (entry === null) return null;
+  return resolvedState(path, entry);
+}
+
+async function optionalEntry(path) {
   try {
-    const [entry, resolvedPath, metadata] = await Promise.all([
-      lstat(path),
+    return await lstat(path);
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+async function resolvedState(path, entry) {
+  try {
+    const [resolvedPath, metadata] = await Promise.all([
       realpath(path),
       stat(path),
     ]);
@@ -19,9 +33,23 @@ export async function pathState(path) {
       inode: metadata.ino,
     };
   } catch (error) {
-    if (error?.code === "ENOENT") return null;
-    throw error;
+    return resolvedStateFailure(entry, error);
   }
+}
+
+function resolvedStateFailure(entry, error) {
+  if (error?.code !== "ENOENT") throw error;
+  if (!entry.isSymbolicLink()) throw error;
+  return danglingSymlinkState();
+}
+
+function danglingSymlinkState() {
+  return {
+    symbolicLink: true,
+    resolvedPath: null,
+    device: null,
+    inode: null,
+  };
 }
 
 export async function canonicalCandidatePath(path, state) {

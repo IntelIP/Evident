@@ -25,14 +25,16 @@ import {
   hasCredentialShape,
   validateProviderSnapshot,
 } from "./lib/portable-evidence.mjs";
+import { validateValidationResult } from "./lib/validation-runner.mjs";
 
 const PROFILES = new Set(["schema", "semantic", "workflow", "operational", "security"]);
-const REPEATABLE_OPTIONS = new Set(["source", "requiredRepository"]);
+const REPEATABLE_OPTIONS = new Set(["source", "validationEvidence", "requiredRepository"]);
 const ALLOWED_OPTIONS = new Set([
   "profile",
   "validatorId",
   "dataset",
   "source",
+  "validationEvidence",
   "requiredRepository",
   "expectedDigest",
   "out",
@@ -62,17 +64,30 @@ try {
   validateOptions(options);
   const datasetPath = resolve(options.dataset);
   const sourcePaths = options.source.map((value) => resolve(value));
-  const outputPath = await safeOutputPath(options.out, [datasetPath, ...sourcePaths]);
+  const validationPaths = options.validationEvidence.map((value) => resolve(value));
+  const outputPath = await safeOutputPath(
+    options.out,
+    [datasetPath, ...sourcePaths, ...validationPaths],
+  );
   const datasetInput = await readJsonInput(datasetPath, "Dataset");
   const sourceInputs = await Promise.all(
     sourcePaths.map((sourcePath) => readJsonInput(sourcePath, "Provider snapshot"))
   );
+  const validationInputs = await Promise.all(
+    validationPaths.map((validationPath) =>
+      readJsonInput(validationPath, "Validation evidence")
+    )
+  );
   const inputErrors = [
     ...datasetInput.errors,
     ...sourceInputs.flatMap((input) => input.errors),
+    ...validationInputs.flatMap((input) => input.errors),
   ];
   const dataset = datasetInput.value;
   const snapshots = sourceInputs
+    .map((input) => input.value)
+    .filter((value) => value !== null);
+  const validationEvidence = validationInputs
     .map((input) => input.value)
     .filter((value) => value !== null);
 
@@ -80,15 +95,22 @@ try {
   validateRequiredRepositoryOptions(options.requiredRepository, inputErrors);
   validateDatasetInput(dataset, inputErrors);
   validateSnapshotInputs(snapshots, dataset, inputErrors);
+  validateValidationEvidenceInputs(validationEvidence, dataset, inputErrors);
   rejectDuplicateSnapshots(snapshots, inputErrors);
+  rejectDuplicateValidationEvidence(validationEvidence, inputErrors);
 
   const startedAt = performance.now();
   const profileResult = inputErrors.length === 0
     ? runProfile(options.profile, {
         dataset,
         snapshots,
+        validationEvidence,
         requiredRepositories: normalizedRequiredRepositories(options.requiredRepository),
-        rawInputs: [datasetInput.raw, ...sourceInputs.map((input) => input.raw)].filter(Boolean),
+        rawInputs: [
+          datasetInput.raw,
+          ...sourceInputs.map((input) => input.raw),
+          ...validationInputs.map((input) => input.raw),
+        ].filter(Boolean),
       })
     : blockedProfileResult(options.profile);
   const durationMs = performance.now() - startedAt;
@@ -106,6 +128,9 @@ try {
       artifact("analytics-dataset", datasetInput.bytes),
       ...sourceInputs.map((input, index) =>
         artifact(`provider-snapshot-${index + 1}`, input.bytes)
+      ),
+      ...validationInputs.map((input, index) =>
+        artifact(`validation-evidence-${index + 1}`, input.bytes)
       ),
     ].filter(Boolean),
   };
@@ -127,7 +152,7 @@ try {
 
 function parseOptions(args) {
   assertPairedOptions(args);
-  const options = { source: [], requiredRepository: [] };
+  const options = { source: [], validationEvidence: [], requiredRepository: [] };
   for (let index = 0; index < args.length; index += 2) {
     assignOption(options, optionKey(args[index]), args[index + 1]);
   }
@@ -254,12 +279,78 @@ function validateSnapshotInputs(snapshots, dataset, errors) {
   ));
 }
 
+function validateValidationEvidenceInputs(values, dataset, errors) {
+  errors.push(...values.flatMap((value) =>
+    captureValidation(() => validateValidationEvidenceInput(value, dataset))
+  ));
+}
+
+function validateValidationEvidenceInput(value, dataset) {
+  assertExactKeys(
+    value,
+    ["schemaVersion", "repository", "controlVersion", "result"],
+    "Validation evidence",
+  );
+  assertValidationEvidenceSchema(value.schemaVersion);
+  assertValidationEvidenceRepository(value.repository);
+  assertValidationControlVersion(value.controlVersion);
+  validateValidationResult(value.result);
+  assertValidationEvidenceTime(value.result.completedAt, dataset?.observedAt);
+}
+
+function assertValidationEvidenceSchema(schemaVersion) {
+  if (schemaVersion !== "tabellio-analytics-validation-evidence/v0.1") {
+    throw new Error("Validation evidence schema is unsupported.");
+  }
+}
+
+function assertValidationEvidenceRepository(repository) {
+  if (canonicalRepositoryId(repository) === null) {
+    throw new Error("Validation evidence repository is invalid.");
+  }
+}
+
+function assertValidationControlVersion(controlVersion) {
+  if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(controlVersion)) {
+    throw new Error("Validation evidence control version is invalid.");
+  }
+}
+
+function assertValidationEvidenceTime(completedAt, observedAt) {
+  if (Date.parse(completedAt) > Date.parse(observedAt)) {
+    throw new Error("Validation evidence is newer than the dataset.");
+  }
+}
+
+function assertExactKeys(value, expected, label) {
+  assertPlainObject(value, label);
+  const actual = Object.keys(value).sort();
+  if (canonicalJson(actual) !== canonicalJson([...expected].sort())) {
+    throw new Error(`${label} fields are invalid.`);
+  }
+}
+
+function assertPlainObject(value, label) {
+  if (value === null) throw new Error(`${label} must be an object.`);
+  if (typeof value !== "object") throw new Error(`${label} must be an object.`);
+  if (Array.isArray(value)) throw new Error(`${label} must be an object.`);
+}
+
 function rejectDuplicateSnapshots(snapshots, errors) {
   const repositories = snapshots.map((snapshot) => canonicalRepositoryId(snapshot?.repository));
   if (repositories.some((repository, index) =>
     repository !== null && repositories.indexOf(repository) !== index
   )) {
     errors.push("Provider snapshot repositories must be unique.");
+  }
+}
+
+function rejectDuplicateValidationEvidence(values, errors) {
+  const repositories = values.map((value) => canonicalRepositoryId(value?.repository));
+  if (repositories.some((repository, index) =>
+    repository !== null && repositories.indexOf(repository) !== index
+  )) {
+    errors.push("Validation evidence repositories must be unique.");
   }
 }
 
@@ -285,7 +376,7 @@ function schemaProfile({ dataset, snapshots }) {
   return { errors, repositoryCount: 0, traceCount: 0, snapshotCount: snapshots.length };
 }
 
-function semanticProfile({ dataset, snapshots, requiredRepositories }) {
+function semanticProfile({ dataset, snapshots, validationEvidence, requiredRepositories }) {
   const repositories = Array.isArray(dataset.repositories) ? dataset.repositories : [];
   const collected = repositories.filter(hasCollectedGitEvidence);
   const collectedIds = [...new Set(
@@ -296,7 +387,7 @@ function semanticProfile({ dataset, snapshots, requiredRepositories }) {
   );
   const linkedTraces = traces.filter(isLinkedTrace);
   const errors = [
-    ...bindingErrors(dataset, snapshots, requiredRepositories),
+    ...bindingErrors(dataset, snapshots, validationEvidence, requiredRepositories),
     ...repositories.flatMap((repository) =>
       canonicalJson(repository.metrics) === canonicalJson(
         recomputeDeliveryMetrics(repository, dataset.window)
@@ -317,8 +408,8 @@ function semanticProfile({ dataset, snapshots, requiredRepositories }) {
   };
 }
 
-function workflowProfile({ dataset, snapshots }) {
-  const errors = bindingErrors(dataset, snapshots, []);
+function workflowProfile({ dataset, snapshots, validationEvidence }) {
+  const errors = bindingErrors(dataset, snapshots, validationEvidence, []);
   return {
     errors,
     repositoryCount: dataset.repositories.length,
@@ -354,8 +445,8 @@ function operationalProfile({ dataset }) {
   };
 }
 
-function securityProfile({ dataset, snapshots, rawInputs }) {
-  const decodedStrings = stringsIn([dataset, ...snapshots]);
+function securityProfile({ dataset, snapshots, validationEvidence, rawInputs }) {
+  const decodedStrings = stringsIn([dataset, ...snapshots, ...validationEvidence]);
   const rawStrings = rawInputs.flatMap((raw) => [raw]);
   const errors = [...decodedStrings, ...rawStrings]
     .flatMap((value) => sensitiveEvidence(value) ? ["Private evidence text is forbidden."] : []);
@@ -367,7 +458,7 @@ function securityProfile({ dataset, snapshots, rawInputs }) {
   };
 }
 
-function bindingErrors(dataset, snapshots, requiredRepositories) {
+function bindingErrors(dataset, snapshots, validationEvidence, requiredRepositories) {
   const repositories = new Map(
     dataset.repositories.map((repository) => [
       canonicalRepositoryId(repository.canonicalRepositoryId),
@@ -377,13 +468,29 @@ function bindingErrors(dataset, snapshots, requiredRepositories) {
   const snapshotMap = new Map(
     snapshots.map((snapshot) => [canonicalRepositoryId(snapshot.repository), snapshot])
   );
+  const validationMap = new Map(
+    validationEvidence.map((value) => [canonicalRepositoryId(value.repository), value])
+  );
   return [
     ...unknownSnapshotErrors(repositories, snapshotMap),
+    ...unknownValidationEvidenceErrors(repositories, validationMap),
     ...dataset.repositories.flatMap((repository) =>
-      repositoryBindingErrors(dataset, repository, snapshotMap, requiredRepositories)
+      repositoryBindingErrors(
+        dataset,
+        repository,
+        snapshotMap,
+        validationMap,
+        requiredRepositories,
+      )
     ),
     ...requiredSnapshotErrors(snapshotMap, requiredRepositories),
   ];
+}
+
+function unknownValidationEvidenceErrors(repositories, validationMap) {
+  return [...validationMap.keys()].flatMap((repositoryId) =>
+    repositories.has(repositoryId) ? [] : ["Validation evidence has no dataset repository."]
+  );
 }
 
 function unknownSnapshotErrors(repositories, snapshotMap) {
@@ -392,10 +499,23 @@ function unknownSnapshotErrors(repositories, snapshotMap) {
   );
 }
 
-function repositoryBindingErrors(dataset, repository, snapshotMap, requiredRepositories) {
+function repositoryBindingErrors(
+  dataset,
+  repository,
+  snapshotMap,
+  validationMap,
+  requiredRepositories,
+) {
   const repositoryId = canonicalRepositoryId(repository.canonicalRepositoryId);
   const snapshot = snapshotMap.get(repositoryId);
-  if (snapshot) return providerBindingErrors(dataset, repository, snapshot);
+  if (snapshot) {
+    return providerBindingErrors(
+      dataset,
+      repository,
+      snapshot,
+      validationMap.get(repositoryId),
+    );
+  }
   const required = requiredRepositories.includes(repositoryId);
   return [required, providerEvidenceRequiresSnapshot(repository)].some(Boolean)
     ? ["Repository provider evidence lacks a bound snapshot."]
@@ -408,7 +528,7 @@ function requiredSnapshotErrors(snapshotMap, requiredRepositories) {
   );
 }
 
-function providerBindingErrors(dataset, repository, snapshot) {
+function providerBindingErrors(dataset, repository, snapshot, validationEvidence) {
   return [
     ...validateProviderSnapshot(snapshot, {
     repository: repository.canonicalRepositoryId,
@@ -416,13 +536,20 @@ function providerBindingErrors(dataset, repository, snapshot) {
     observedAt: dataset.observedAt,
     }).map(() => "Provider snapshot does not bind the dataset repository."),
     ...PROVIDER_SYSTEMS.flatMap((system) => sourceBindingErrors(repository, snapshot, system)),
-    ...deliveryTraceBindingErrors(repository, snapshot),
-    ...validationEvidenceBindingErrors(repository, snapshot),
+    ...deliveryTraceBindingErrors(dataset, repository, snapshot),
+    ...validationEvidenceBindingErrors(
+      dataset,
+      repository,
+      snapshot,
+      validationEvidence,
+    ),
   ];
 }
 
-function deliveryTraceBindingErrors(repository, snapshot) {
-  const expectedChanges = snapshot.deliveryChanges.map((change) => ({
+function deliveryTraceBindingErrors(dataset, repository, snapshot) {
+  const expectedChanges = snapshot.deliveryChanges
+    .filter((change) => deliveryChangeWithinWindow(change, dataset.window))
+    .map((change) => ({
     ...structuredClone(change),
     releasedAt: null,
   })).sort(compareIds);
@@ -432,13 +559,69 @@ function deliveryTraceBindingErrors(repository, snapshot) {
     : ["Dataset delivery traces do not match the provider snapshot."];
 }
 
-function validationEvidenceBindingErrors(repository, snapshot) {
-  const exactStatusExists = snapshot.deliveryChanges.some(
-    (change) => change.validationStatus !== "unavailable"
+function validationEvidenceBindingErrors(dataset, repository, snapshot, evidence) {
+  const exactStatuses = snapshot.deliveryChanges
+    .filter((change) => deliveryChangeWithinWindow(change, dataset.window))
+    .map((change) => change.validationStatus)
+    .filter((status) => status !== "unavailable");
+  if (exactStatuses.length === 0) return [];
+  if (!availableSource(repository, "tabellio-validation") || evidence === undefined) {
+    return ["Exact validation status lacks validation evidence."];
+  }
+  return [
+    ...validationEvidenceIdentityErrors(repository, evidence),
+    ...validationEvidenceDigestErrors(repository, evidence),
+    ...exactStatuses.flatMap((status) =>
+      status === evidence.result.status
+        ? []
+        : ["Validation status does not match exact validation evidence."]
+    ),
+  ];
+}
+
+function validationEvidenceIdentityErrors(repository, evidence) {
+  const resultRepository = normalizedValidationRepository(evidence.result.repository.id);
+  return [
+    resultRepository === canonicalRepositoryId(repository.canonicalRepositoryId)
+      ? []
+      : ["Validation evidence repository does not match."],
+    evidence.result.revision.headCommit === repository.headCommit
+      ? []
+      : ["Validation evidence head does not match."],
+  ].flat();
+}
+
+function validationEvidenceDigestErrors(repository, evidence) {
+  const source = repository.sources.find((value) =>
+    value?.system === "tabellio-validation"
   );
-  return exactStatusExists && !availableSource(repository, "tabellio-validation")
-    ? ["Exact validation status lacks validation evidence."]
-    : [];
+  const expectedDigest = sha256(canonicalJson({
+    records: [evidence.result],
+    version: evidence.controlVersion,
+  }));
+  return source?.contentDigest === expectedDigest
+    ? []
+    : ["Validation source digest does not match exact validation evidence."];
+}
+
+function normalizedValidationRepository(value) {
+  if (typeof value !== "string") return null;
+  const direct = canonicalRepositoryId(value);
+  if (direct !== null) return direct;
+  return value.toLowerCase().startsWith("github.com/")
+    ? canonicalRepositoryId(value.slice("github.com/".length))
+    : null;
+}
+
+function deliveryChangeWithinWindow(change, window) {
+  const timestamp = [change.mergedAt, change.firstActivityAt, change.storyCreatedAt]
+    .find((value) => value !== null);
+  if (typeof timestamp !== "string") return false;
+  const value = Date.parse(timestamp);
+  return [
+    value >= Date.parse(window.since),
+    value <= Date.parse(window.until),
+  ].every(Boolean);
 }
 
 function sourceBindingErrors(repository, snapshot, system) {
@@ -625,6 +808,7 @@ function captureValidation(action) {
 
 async function safeOutputPath(output, protectedInputs) {
   const outputPath = resolve(output);
+  assertNoLexicalInputAlias(outputPath, protectedInputs);
   const outputState = await pathState(outputPath);
   assertOutputNotSymlink(outputState);
   const outputCandidate = await canonicalCandidatePath(outputPath, outputState);
@@ -634,14 +818,30 @@ async function safeOutputPath(output, protectedInputs) {
   return outputPath;
 }
 
+function assertNoLexicalInputAlias(outputPath, protectedInputs) {
+  if (protectedInputs.some((input) => outputPath === resolve(input))) {
+    throw new Error("Validator output must not alias an input.");
+  }
+}
+
 function assertOutputNotSymlink(outputState) {
   if (outputState?.symbolicLink) throw new Error("Validator output must not be a symbolic link.");
 }
 
 async function assertInputNotAliased(input, outputCandidate, outputState) {
-  const inputState = await pathState(input);
+  const inputState = await unavailableInputState(input);
+  if (inputState === null) return;
   const inputCandidate = await canonicalCandidatePath(input, inputState);
   if ([outputCandidate === inputCandidate, sameFile(outputState, inputState)].some(Boolean)) {
     throw new Error("Validator output must not alias an input.");
+  }
+}
+
+async function unavailableInputState(input) {
+  try {
+    return await pathState(input);
+  } catch (error) {
+    if (["EACCES", "ENOENT", "ENOTDIR"].includes(error?.code)) return null;
+    throw error;
   }
 }

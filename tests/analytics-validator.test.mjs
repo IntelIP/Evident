@@ -10,6 +10,7 @@ import { promisify } from "node:util";
 
 import { createAnalyticsDataset } from "../scripts/lib/analytics.mjs";
 import { canonicalJson } from "../scripts/lib/context-packet.mjs";
+import { digestObject } from "../scripts/lib/stack-operation.mjs";
 
 const projectRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const validatorPath = join(projectRoot, "scripts", "tabellio-analytics-validator.mjs");
@@ -34,7 +35,7 @@ test("analytics validator schema profile emits passed evidence", async (context)
     modelCalls: 0,
     toolCalls: 0,
   });
-  assert.equal(evidence.artifacts.length, 3);
+  assert.equal(evidence.artifacts.length, 4);
 });
 
 test("analytics validator semantic profile requires exact collected repositories and a linked trace", async (context) => {
@@ -109,6 +110,27 @@ test("analytics validator provider binding rejects mismatched source evidence", 
   await assertDatasetStatus(fixture, dataset, "workflow", "failed");
 });
 
+test("analytics validator filters provider traces to the dataset window", async (context) => {
+  const snapshot = providerSnapshot("IntelIP/Tabellio", "a".repeat(40), {
+    available: true,
+    linked: true,
+  });
+  snapshot.deliveryChanges.push({
+    ...structuredClone(snapshot.deliveryChanges[0]),
+    id: "outside-window",
+    linkEvidence: "INTB-260 to PR binding",
+    planeStoryId: "INTB-260",
+    pullRequestNumber: 34,
+    storyCreatedAt: "2026-06-20T00:00:00.000Z",
+    firstActivityAt: "2026-06-21T00:00:00.000Z",
+    mergedAt: "2026-06-22T00:00:00.000Z",
+  });
+  const fixture = await validatorFixture(context, [snapshot]);
+
+  await runValidator(fixture, "workflow");
+  assert.equal((await evidenceAt(fixture.out)).status, "passed");
+});
+
 test("analytics validator blocks forged delivery metrics instead of trusting imported values", async (context) => {
   const fixture = await validatorFixture(context);
   const dataset = JSON.parse(await readFile(fixture.datasetPath, "utf8"));
@@ -163,6 +185,30 @@ test("analytics validator blocks exact-validation statuses without validation ev
   await assertDatasetStatus(fixture, dataset, "workflow", "blocked");
 });
 
+test("analytics validator binds claimed status to exact validation evidence", async (context) => {
+  const fixture = await validatorFixture(context);
+  const evidence = JSON.parse(await readFile(fixture.validationPaths[0], "utf8"));
+  evidence.result.status = "failed";
+  evidence.result.commands[0].status = "failed";
+  evidence.result.commands[0].exitCode = 1;
+  resignValidationResult(evidence.result);
+  await writeFile(fixture.validationPaths[0], `${JSON.stringify(evidence, null, 2)}\n`);
+
+  const dataset = JSON.parse(await readFile(fixture.datasetPath, "utf8"));
+  dataset.repositories[0].sources.find((source) =>
+    source.system === "tabellio-validation"
+  ).contentDigest = validationEvidenceDigest(evidence);
+  await assertDatasetStatus(fixture, dataset, "workflow", "failed");
+});
+
+test("analytics validator requires exact validation evidence input", async (context) => {
+  const fixture = await validatorFixture(context);
+  fixture.validationPaths = [];
+
+  await runValidator(fixture, "workflow");
+  assert.equal((await evidenceAt(fixture.out)).status, "failed");
+});
+
 test("analytics validator evidence summary redacts credential and local path inputs", async (context) => {
   const fixture = await validatorFixture(context);
   for (const privateValue of [
@@ -202,6 +248,24 @@ test("analytics validator output cannot alias or link an input", async (context)
   await symlink(fixture.datasetPath, fixture.out);
   const symbolic = await runValidator(fixture, "schema");
   assert.notEqual(symbolic.exitCode, 0);
+
+  await rm(fixture.out);
+  const missingTarget = join(fixture.root, "missing-target.json");
+  await symlink(missingTarget, fixture.out);
+  const dangling = await runValidator(fixture, "schema");
+  assert.notEqual(dangling.exitCode, 0);
+  await assert.rejects(readFile(missingTarget));
+});
+
+test("analytics validator emits blocked evidence for inaccessible input paths", async (context) => {
+  const fixture = await validatorFixture(context);
+  const regularFile = join(fixture.root, "not-a-directory");
+  await writeFile(regularFile, "regular file");
+  fixture.datasetPath = join(regularFile, "dataset.json");
+
+  const execution = await runValidator(fixture, "schema");
+  assert.equal(execution.exitCode, 0);
+  assert.equal((await evidenceAt(fixture.out)).status, "blocked");
 });
 
 test("analytics validator evidence mode preserves failed output", async (context) => {
@@ -253,10 +317,15 @@ async function validatorFixture(context, snapshots = null) {
     providerSnapshot("IntelIP/Tabellio", "a".repeat(40), { available: true, linked: true }),
     providerSnapshot("IntelIP/Condere", "b".repeat(40), { available: false }),
   ];
-  const dataset = datasetFromSnapshots(values);
+  const validationEvidence = values.flatMap(validationEvidenceForSnapshot);
+  const evidenceByRepository = new Map(
+    validationEvidence.map((value) => [value.repository.toLowerCase(), value])
+  );
+  const dataset = datasetFromSnapshots(values, evidenceByRepository);
   const datasetPath = join(root, "dataset.json");
   const originalDatasetPath = join(root, "original-dataset.json");
   const sourcePaths = [];
+  const validationPaths = [];
   await writeFile(datasetPath, `${JSON.stringify(dataset, null, 2)}\n`);
   await writeFile(originalDatasetPath, `${JSON.stringify(dataset, null, 2)}\n`);
   for (const [index, snapshot] of values.entries()) {
@@ -264,29 +333,37 @@ async function validatorFixture(context, snapshots = null) {
     await writeFile(sourcePath, `${JSON.stringify(snapshot, null, 2)}\n`);
     sourcePaths.push(sourcePath);
   }
+  for (const [index, evidence] of validationEvidence.entries()) {
+    const validationPath = join(root, `validation-${index + 1}.json`);
+    await writeFile(validationPath, `${JSON.stringify(evidence, null, 2)}\n`);
+    validationPaths.push(validationPath);
+  }
   return {
     root,
     datasetPath,
     originalDatasetPath,
     sourcePaths,
+    validationPaths,
     out: join(root, "evidence.json"),
     requiredRepositories: values.map((snapshot) => snapshot.repository),
     exitMode: "evidence",
   };
 }
 
-function datasetFromSnapshots(snapshots) {
+function datasetFromSnapshots(snapshots, evidenceByRepository) {
   return createAnalyticsDataset({
     id: "INTB-261-p2",
     observedAt: OBSERVED_AT,
     window: WINDOW,
-    repositories: snapshots.map((snapshot, index) =>
-      repositoryFromSnapshot(snapshot, `repository-${index + 1}`)
-    ),
+    repositories: snapshots.map((snapshot, index) => repositoryFromSnapshot(
+      snapshot,
+      `repository-${index + 1}`,
+      evidenceByRepository.get(snapshot.repository.toLowerCase()),
+    )),
   });
 }
 
-function repositoryFromSnapshot(snapshot, id) {
+function repositoryFromSnapshot(snapshot, id, validationEvidence) {
   const providerSources = Object.entries(snapshot.sources).map(([system, source]) =>
     source.status === "available"
       ? availableDatasetSource(id, system, snapshot.capturedAt, source.version, canonicalJson(source))
@@ -312,7 +389,10 @@ function repositoryFromSnapshot(snapshot, id) {
       "tabellio-validation",
       OBSERVED_AT,
       snapshot.headCommit,
-      canonicalJson({ status: deliveryChanges[0].validationStatus }),
+      canonicalJson({
+        records: [validationEvidence.result],
+        version: validationEvidence.controlVersion,
+      }),
     ));
   }
   return {
@@ -325,6 +405,81 @@ function repositoryFromSnapshot(snapshot, id) {
     metrics: {},
     deliveryChanges,
   };
+}
+
+function validationEvidenceForSnapshot(snapshot) {
+  const status = snapshot.deliveryChanges
+    .map((change) => change.validationStatus)
+    .find((value) => value !== "unavailable");
+  if (status === undefined) return [];
+  return [{
+    schemaVersion: "tabellio-analytics-validation-evidence/v0.1",
+    repository: snapshot.repository,
+    controlVersion: "d".repeat(snapshot.headCommit.length),
+    result: validationResult(snapshot.repository, snapshot.headCommit, status),
+  }];
+}
+
+function validationResult(repository, headCommit, status) {
+  const commandStatus = status === "passed" ? "passed" : "failed";
+  const result = {
+    schemaVersion: "tabellio-validation-result/v0.1",
+    runId: `validation-${status}`,
+    repository: { id: `github.com/${repository}` },
+    revision: {
+      baseCommit: "c".repeat(headCommit.length),
+      mergeBase: "c".repeat(headCommit.length),
+      headCommit,
+    },
+    suite: {
+      id: "analytics-test",
+      manifestPath: "tabellio.validation.json",
+      manifestDigest: "e".repeat(64),
+    },
+    runner: { id: "test", runtime: "node-test" },
+    status,
+    checkpoints: ["checkpoint-001"],
+    commands: [{
+      id: "analytics",
+      argv: ["node", "--test"],
+      cwd: ".",
+      required: true,
+      status: commandStatus,
+      exitCode: commandStatus === "passed" ? 0 : 1,
+      signal: null,
+      durationMs: 1,
+      stdout: emptyOutput(),
+      stderr: emptyOutput(),
+      startedAt: "2026-07-20T00:00:00.000Z",
+      completedAt: "2026-07-20T00:01:00.000Z",
+      error: null,
+    }],
+    startedAt: "2026-07-20T00:00:00.000Z",
+    completedAt: "2026-07-20T00:01:00.000Z",
+  };
+  resignValidationResult(result);
+  return result;
+}
+
+function emptyOutput() {
+  return {
+    bytes: 0,
+    digest: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    tail: "",
+    truncated: false,
+  };
+}
+
+function resignValidationResult(result) {
+  delete result.integrity;
+  result.integrity = { algorithm: "sha256", digest: digestObject(result) };
+}
+
+function validationEvidenceDigest(evidence) {
+  return sha256(canonicalJson({
+    records: [evidence.result],
+    version: evidence.controlVersion,
+  }));
 }
 
 function availableDatasetSource(id, system, observedAt, sourceVersion, content) {
@@ -397,6 +552,9 @@ async function runValidator(fixture, profile) {
 
 function validatorArgs(fixture, profile) {
   const sourceArgs = fixture.sourcePaths.flatMap((path) => ["--source", path]);
+  const validationArgs = fixture.validationPaths.flatMap(
+    (path) => ["--validation-evidence", path]
+  );
   const repositoryArgs = fixture.requiredRepositories.flatMap(
     (repository) => ["--required-repository", repository]
   );
@@ -410,6 +568,7 @@ function validatorArgs(fixture, profile) {
     "--dataset", fixture.datasetPath,
     "--out", fixture.out,
     ...sourceArgs,
+    ...validationArgs,
     ...repositoryArgs,
     ...exitModeArgs,
   ];
