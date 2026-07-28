@@ -30,12 +30,12 @@
     {
       "id": "delivery-claims-static",
       "type": "static",
-      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "delivery-claims-static"],
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "delivery-claims-static", "--validator-id", "delivery-claims-static", "--out", ".artifacts/tabellio/delivery-claims-static.json"],
       "cwd": ".",
       "timeoutMs": 300000,
       "required": true,
-      "evidence": null,
-      "policy": {"metricThresholds": [], "maxCostUsd": null, "requireCostTelemetry": false}
+      "evidence": {"path": ".artifacts/tabellio/delivery-claims-static.json"},
+      "policy": {"metricThresholds": [{"metric": "delivery_claim_static_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
     },
     {
       "id": "delivery-claims-schema",

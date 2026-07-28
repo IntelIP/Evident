@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
@@ -20,6 +21,7 @@ function join(overrides = {}) {
   return joinDeliveryEvidence({
     providerSnapshot: provider(),
     planeSnapshot: plane(),
+    buildkiteAuthority: { organization: "intelip", pipeline: "tabellio" },
     buildkiteSnapshots: [buildkite()],
     releaseSnapshot: releases(),
     ...overrides,
@@ -31,6 +33,10 @@ function deployedSnapshot() {
     deploymentReceipts: [deployment()],
     deploymentEnvironment: "production",
   });
+}
+
+function digest(value) {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
 test("delivery join binds exact Plane, CI, release, and deployment evidence", () => {
@@ -113,6 +119,12 @@ test("delivery join uses one designated Buildkite pipeline", () => {
     }),
     /one designated Buildkite pipeline/,
   );
+  assert.throws(
+    () => join({
+      buildkiteSnapshots: [{ ...buildkite(), pipeline: "auxiliary" }],
+    }),
+    /authority mismatch/,
+  );
 });
 
 test("delivery join preserves terminal CI and blocked deployment states", () => {
@@ -136,6 +148,52 @@ test("delivery join preserves terminal CI and blocked deployment states", () => 
   });
   assert.equal(failed.deliveryRecords[0].deployment.status, "failed");
   assert.equal(failed.deliveryRecords[0].deployment.deployedAt, null);
+});
+
+test("delivery join preserves blocked provider sources as blocked records", () => {
+  const providerSnapshot = provider();
+  providerSnapshot.sources.plane = {
+    status: "blocked",
+    version: null,
+    reason: "Plane unavailable.",
+    workspace: "intelip",
+  };
+  providerSnapshot.sources.github = {
+    status: "blocked",
+    version: null,
+    reason: "GitHub unavailable.",
+  };
+  Object.assign(providerSnapshot.deliveryChanges[0], {
+    linkBasis: "unlinked",
+    planeStoryId: null,
+    pullRequestNumber: null,
+    storyCreatedAt: null,
+    firstActivityAt: null,
+    mergedAt: null,
+  });
+  const planeSnapshot = {
+    ...plane(),
+    status: "blocked",
+    reason: "Plane unavailable.",
+    projects: [],
+    states: [],
+    workItems: [],
+  };
+  const releaseSnapshot = {
+    ...releases(),
+    status: "blocked",
+    reason: "GitHub unavailable.",
+    releases: [],
+  };
+  const snapshot = join({
+    providerSnapshot,
+    planeSnapshot,
+    releaseSnapshot,
+  });
+  assert.equal(snapshot.sources.plane.status, "blocked");
+  assert.equal(snapshot.deliveryRecords[0].plane.status, "blocked");
+  assert.equal(snapshot.sources.githubRelease.status, "blocked");
+  assert.equal(snapshot.deliveryRecords[0].release.status, "blocked");
 });
 
 test("delivery join restricts runtime proof to the target environment", () => {
@@ -334,6 +392,82 @@ test("delivery snapshot binds CI, release, and deployment decisions to claims", 
     assert.throws(
       () => validateDeliveryEvidenceSnapshot(snapshot),
       /not bound/,
+    );
+  }
+});
+
+test("delivery snapshot rejects imported cross-pipeline CI", () => {
+  const snapshot = join();
+  snapshot.ciAuthority.pipeline = "auxiliary";
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(snapshot),
+    /designated Buildkite pipeline|designated authority/,
+  );
+});
+
+test("delivery snapshot binds shipped releases to record commit and merge time", () => {
+  const unrelated = join();
+  const unrelatedRecord = unrelated.deliveryRecords[0];
+  unrelatedRecord.release.commit = "b".repeat(40);
+  unrelatedRecord.release.sourceClaimDigest = digest({
+    id: unrelatedRecord.release.releaseId,
+    tagName: unrelatedRecord.release.tagName,
+    publishedAt: unrelatedRecord.release.publishedAt,
+    commit: unrelatedRecord.release.commit,
+    commitStatus: "resolved",
+  });
+  unrelated.sources.githubRelease.observations[0].claimDigests = [
+    unrelatedRecord.release.sourceClaimDigest,
+  ];
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(unrelated),
+    /commit is not bound/,
+  );
+
+  const preMerge = join();
+  const preMergeRecord = preMerge.deliveryRecords[0];
+  preMergeRecord.release.publishedAt = "2026-07-25T11:59:59.000Z";
+  preMergeRecord.release.sourceClaimDigest = digest({
+    id: preMergeRecord.release.releaseId,
+    tagName: preMergeRecord.release.tagName,
+    publishedAt: preMergeRecord.release.publishedAt,
+    commit: preMergeRecord.release.commit,
+    commitStatus: "resolved",
+  });
+  preMerge.sources.githubRelease.observations[0].claimDigests = [
+    preMergeRecord.release.sourceClaimDigest,
+  ];
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(preMerge),
+    /predates the delivery record merge/,
+  );
+});
+
+test("delivery snapshot preserves blocked sources and portable receipt IDs", () => {
+  const downgradedPlane = join();
+  downgradedPlane.sources.plane = {
+    status: "blocked",
+    reason: "Plane unavailable.",
+    observations: [],
+  };
+  downgradedPlane.deliveryRecords[0].plane.status = "unlinked";
+  downgradedPlane.deliveryRecords[0].plane.sourceClaimDigest = null;
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(downgradedPlane),
+    /must remain blocked/,
+  );
+
+  for (const receiptId of [
+    "/Users/private/receipt.json",
+    "file:receipt",
+    "receipt\nforged",
+    "ghp_abcdefghijklmnopqrstuvwxyz1234567890",
+  ]) {
+    const snapshot = deployedSnapshot();
+    snapshot.deliveryRecords[0].deployment.receiptId = receiptId;
+    assert.throws(
+      () => validateDeliveryEvidenceSnapshot(snapshot),
+      /oneOf contract|prohibited contract|required pattern|exact receipt fields/,
     );
   }
 });

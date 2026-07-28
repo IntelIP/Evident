@@ -4,11 +4,20 @@
   "title": "Tabellio delivery evidence snapshot v0.1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "repository", "capturedAt", "sources", "wipByProject", "deliveryRecords"],
+  "required": ["schemaVersion", "repository", "capturedAt", "ciAuthority", "sources", "wipByProject", "deliveryRecords"],
   "properties": {
     "schemaVersion": { "const": "tabellio-delivery-evidence-snapshot/v0.1" },
     "repository": { "$ref": "#/$defs/repositoryIdentifier" },
     "capturedAt": { "type": "string", "format": "date-time" },
+    "ciAuthority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["organization", "pipeline"],
+      "properties": {
+        "organization": { "type": "string", "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,62}[A-Za-z0-9])?$" },
+        "pipeline": { "type": "string", "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,126}[A-Za-z0-9])?$" }
+      }
+    },
     "sources": {
       "type": "object",
       "additionalProperties": false,
@@ -137,13 +146,14 @@
     "record": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "linkBasis", "pullRequestNumber", "headCommit", "mergeCommit", "sourceClaimDigest", "plane", "ci", "release", "deployment"],
+      "required": ["id", "linkBasis", "pullRequestNumber", "headCommit", "mergeCommit", "mergedAt", "sourceClaimDigest", "plane", "ci", "release", "deployment"],
       "properties": {
         "id": { "$ref": "#/$defs/portableIdentifier" },
         "linkBasis": { "enum": ["explicit", "manual-reconciliation", "unlinked"] },
         "pullRequestNumber": { "type": ["integer", "null"], "minimum": 1 },
         "headCommit": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
         "mergeCommit": { "type": ["string", "null"], "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
+        "mergedAt": { "type": ["string", "null"], "format": "date-time" },
         "sourceClaimDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "plane": { "$ref": "#/$defs/plane" },
         "ci": { "$ref": "#/$defs/ci" },
@@ -206,7 +216,17 @@
       "required": ["status", "receiptId", "environment", "provider", "commit", "deployedAt", "observedAt", "sourceClaimDigest"],
       "properties": {
         "status": { "enum": ["passed", "failed", "blocked", "unavailable"] },
-        "receiptId": { "type": ["string", "null"], "maxLength": 128 },
+        "receiptId": {
+          "oneOf": [
+            {
+              "allOf": [
+                { "$ref": "#/$defs/portableIdentifier" },
+                { "maxLength": 128 }
+              ]
+            },
+            { "type": "null" }
+          ]
+        },
         "environment": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" },
         "provider": { "type": ["string", "null"], "enum": ["cloud-run", "vercel", null] },
         "commit": { "type": ["string", "null"], "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },

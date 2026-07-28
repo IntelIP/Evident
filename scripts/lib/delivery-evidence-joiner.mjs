@@ -20,10 +20,12 @@ const SCHEMA = JSON.parse(readFileSync(
 const DELIVERY_RECORD_ID = /^[^\r\n|#`][^\r\n|#`]{0,127}$/;
 const SAFE_REASON = /^[^\r\n]{1,200}$/;
 const ENVIRONMENT = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+const BUILDKITE_SLUG = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,126}[A-Za-z0-9])?$/;
 
 export function joinDeliveryEvidence({
   providerSnapshot,
   planeSnapshot,
+  buildkiteAuthority,
   buildkiteSnapshots = [],
   releaseSnapshot,
   deploymentReceipts = [],
@@ -40,6 +42,7 @@ export function joinDeliveryEvidence({
   validateJoinSnapshots({
     providerSnapshot,
     planeSnapshot,
+    buildkiteAuthority,
     buildkiteSnapshots,
     releaseSnapshot,
     deploymentReceipts,
@@ -48,6 +51,7 @@ export function joinDeliveryEvidence({
   assertJoinBindings({
     providerSnapshot,
     planeSnapshot,
+    buildkiteAuthority,
     buildkiteSnapshots,
     releaseSnapshot,
     deploymentReceipts,
@@ -70,6 +74,7 @@ export function joinDeliveryEvidence({
     schemaVersion: SCHEMA_VERSION,
     repository: providerSnapshot.repository,
     capturedAt,
+    ciAuthority: buildkiteAuthority,
     sources: {
       provider: availableSource([
         observation(
@@ -144,20 +149,13 @@ function assertProviderSnapshot(providerSnapshot, capturedAt) {
     observedAt: capturedAt,
   });
   if (errors.length) throw new Error(`Invalid provider snapshot: ${errors.join("; ")}`);
-  ensure(
-    providerSnapshot.sources.plane.status === "available",
-    "Delivery evidence requires available Plane provider source.",
-  );
-  ensure(
-    providerSnapshot.sources.github.status === "available",
-    "Delivery evidence requires available GitHub provider source.",
-  );
 }
 
 function assertJoinBindings(input) {
   const {
     providerSnapshot,
     planeSnapshot,
+    buildkiteAuthority,
     buildkiteSnapshots,
     releaseSnapshot,
     deploymentReceipts,
@@ -167,6 +165,20 @@ function assertJoinBindings(input) {
   ensure(
     buildkiteSnapshots.length <= 1,
     "Delivery evidence requires one designated Buildkite pipeline snapshot.",
+  );
+  ensure(
+    buildkiteAuthority
+      && BUILDKITE_SLUG.test(buildkiteAuthority.organization ?? "")
+      && BUILDKITE_SLUG.test(buildkiteAuthority.pipeline ?? ""),
+    "Delivery evidence requires a valid designated Buildkite authority.",
+  );
+  ensure(
+    buildkiteSnapshots.every(
+      (snapshot) =>
+        snapshot.organization === buildkiteAuthority.organization
+        && snapshot.pipeline === buildkiteAuthority.pipeline,
+    ),
+    "Buildkite snapshot authority mismatch.",
   );
   ensure(
     sameRepository(releaseSnapshot.repository, providerSnapshot.repository),
@@ -191,6 +203,16 @@ function assertJoinBindings(input) {
   ensure(
     providerSnapshot.sources.plane.workspace === planeSnapshot.workspace,
     "Provider and Plane snapshot workspace mismatch.",
+  );
+  ensure(
+    (providerSnapshot.sources.plane.status === "available")
+      === (planeSnapshot.status === "available"),
+    "Provider and Plane source availability mismatch.",
+  );
+  ensure(
+    (providerSnapshot.sources.github.status === "available")
+      === (releaseSnapshot.status === "available"),
+    "Provider and GitHub Release source availability mismatch.",
   );
   if (deploymentEnvironment !== null) {
     ensure(
@@ -253,6 +275,7 @@ function recordFor(change, context) {
     pullRequestNumber: change.pullRequestNumber,
     headCommit: change.headCommit,
     mergeCommit: change.mergeCommit || null,
+    mergedAt: change.mergedAt || null,
     sourceClaimDigest: digestClaim(providerChangeClaim(change)),
     plane: planeEvidenceFor(change, context),
     ci: ciEvidenceFor(build, context.buildkiteSnapshots),
@@ -530,6 +553,7 @@ function providerChangeClaim(change) {
     pullRequestNumber: change.pullRequestNumber,
     headCommit: change.headCommit,
     mergeCommit: change.mergeCommit || null,
+    mergedAt: change.mergedAt || null,
     planeStoryId: change.planeStoryId,
   };
 }
@@ -653,8 +677,9 @@ function assertWipRows(rows) {
 function assertRecordEvidence(record, snapshot) {
   assertProviderRecordEvidence(record, snapshot.sources.provider);
   assertPlaneEvidence(record.plane, snapshot.sources.plane, snapshot.capturedAt);
-  assertCiEvidence(record, snapshot.sources.buildkite, snapshot.capturedAt);
+  assertCiEvidence(record, snapshot, snapshot.capturedAt);
   assertReleaseEvidence(
+    record,
     record.release,
     snapshot.sources.githubRelease,
     snapshot.capturedAt,
@@ -673,6 +698,7 @@ function assertProviderRecordEvidence(record, source) {
     pullRequestNumber: record.pullRequestNumber,
     headCommit: record.headCommit,
     mergeCommit: record.mergeCommit,
+    mergedAt: record.mergedAt,
     planeStoryId: record.plane.key,
   });
   assertBoundClaim(
@@ -684,6 +710,7 @@ function assertProviderRecordEvidence(record, source) {
 }
 
 function assertPlaneEvidence(plane, source, capturedAt) {
+  assertBlockedSourcePreserved(source, plane.status, "Plane");
   if (plane.status !== "linked") return;
   ensure(
     hasLinkedPlaneFields(plane),
@@ -720,8 +747,10 @@ function hasLinkedPlaneFields(plane) {
   ].every(Boolean);
 }
 
-function assertCiEvidence(record, source, capturedAt) {
+function assertCiEvidence(record, snapshot, capturedAt) {
+  const source = snapshot.sources.buildkite;
   const ci = record.ci;
+  assertBlockedSourcePreserved(source, ci.status, "Buildkite");
   if (!["passed", "failed"].includes(ci.status)) return;
   ensure(
     hasDecisiveCiFields(ci),
@@ -730,6 +759,21 @@ function assertCiEvidence(record, source, capturedAt) {
   ensure(
     source.status === "available",
     "Decisive CI evidence requires an available Buildkite source observation.",
+  );
+  ensure(
+    ci.pipeline === snapshot.ciAuthority.pipeline,
+    "CI evidence is not from the designated Buildkite pipeline.",
+  );
+  ensure(
+    source.observations.some(
+      (item) =>
+        item.id
+        === boundedObservationId(
+          "buildkite",
+          `${snapshot.ciAuthority.organization}/${snapshot.ciAuthority.pipeline}`,
+        ),
+    ),
+    "Buildkite source observation does not match the designated authority.",
   );
   const expected = digestClaim({
     pipeline: ci.pipeline,
@@ -756,7 +800,8 @@ function hasDecisiveCiFields(ci) {
   ].every(Boolean);
 }
 
-function assertReleaseEvidence(release, source, capturedAt) {
+function assertReleaseEvidence(record, release, source, capturedAt) {
+  assertBlockedSourcePreserved(source, release.status, "GitHub Release");
   if (release.status !== "shipped") return;
   ensure(
     hasShippedReleaseFields(release),
@@ -765,6 +810,15 @@ function assertReleaseEvidence(release, source, capturedAt) {
   ensure(
     source.status === "available",
     "Shipped release evidence requires an available GitHub Release source observation.",
+  );
+  ensure(
+    changeCommits(record).includes(release.commit),
+    "Release evidence commit is not bound to the delivery record.",
+  );
+  ensure(
+    isJsonDateTime(record.mergedAt)
+      && Date.parse(release.publishedAt) >= Date.parse(record.mergedAt),
+    "Release evidence predates the delivery record merge.",
   );
   const expected = digestClaim(releaseClaim({
     id: release.releaseId,
@@ -794,6 +848,11 @@ function hasShippedReleaseFields(release) {
 
 function assertDeploymentEvidence(record, snapshot) {
   const deployment = record.deployment;
+  assertBlockedSourcePreserved(
+    snapshot.sources.deployment,
+    deployment.status,
+    "Deployment",
+  );
   if (!["passed", "failed"].includes(deployment.status)) return;
   ensure(
     hasDecisiveDeploymentFields(deployment),
@@ -835,7 +894,8 @@ function assertDeploymentEvidence(record, snapshot) {
 
 function hasDecisiveDeploymentFields(deployment) {
   const required = [
-    deployment.receiptId,
+    isPortableIdentifier(deployment.receiptId)
+      && deployment.receiptId.length <= 128,
     deployment.environment,
     deployment.provider,
     deployment.commit,
@@ -848,6 +908,13 @@ function hasDecisiveDeploymentFields(deployment) {
       || isJsonDateTime(deployment.deployedAt);
   }
   return isJsonDateTime(deployment.deployedAt);
+}
+
+function assertBlockedSourcePreserved(source, status, label) {
+  ensure(
+    source.status !== "blocked" || status === "blocked",
+    `Blocked ${label} source must remain blocked in every delivery record.`,
+  );
 }
 
 function assertBoundClaim(actual, expected, source, message) {

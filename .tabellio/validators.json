@@ -243,8 +243,8 @@
     },
     "delivery-claims-static": {
       "commands": [["npm", "run", "check"]],
-      "metrics": [],
-      "cost": {"telemetry": "not_applicable", "usd": null, "modelCalls": null, "toolCalls": null},
+      "metrics": [{"name": "delivery_claim_static_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
       "summary": "Delivery claim joiner and repository checks"
     },
     "delivery-claims-schema": {
