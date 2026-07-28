@@ -126,6 +126,7 @@ test("Plane collector rejects contradictory pagination totals", async () => {
     { ...page([project(PROJECT_A, "INTB")]), count: 2 },
     { ...page([project(PROJECT_A, "INTB")]), count: 0 },
     { ...page([project(PROJECT_A, "INTB")], "next"), total_pages: 1 },
+    { ...page([project(PROJECT_A, "INTB")], "next"), total_pages: 0 },
   ]) {
     const snapshot = await collectPlaneWorkItemSnapshot({
       workspace: "intelip",

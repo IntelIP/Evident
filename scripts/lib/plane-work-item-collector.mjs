@@ -146,7 +146,7 @@ function assertTotalResults(total, collected, hasNext) {
 
 function assertTotalPages(total, pageNumber, hasNext) {
   if (total === null) return;
-  if (!hasNext || total === 0) return;
+  if (!hasNext) return;
   ensure(pageNumber < total, "Plane pagination totals are contradictory.");
 }
 
