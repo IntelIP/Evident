@@ -1,11 +1,12 @@
 import { boundedMap } from "./bounded-map.mjs";
 import { contract } from "./contract-checks.mjs";
-import { isSafeProviderText } from "./portable-evidence.mjs";
+import { isSafeProviderVersion } from "./portable-evidence.mjs";
 
 const VERSION = "tabellio-plane-work-items/v0.1";
 const WORKSPACE = /^[a-z0-9](?:[a-z0-9-]{0,98}[a-z0-9])?$/;
 const UUID = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/;
-const PROJECT_IDENTIFIER = /^[A-Z][A-Z0-9]{0,31}$/;
+const PROJECT_IDENTIFIER = /^[A-Z](?:[A-Z0-9]|-(?=[A-Z0-9])){0,31}$/;
+const PROVIDER_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 const STATE_GROUPS = new Set([
   "backlog",
   "unstarted",
@@ -19,37 +20,38 @@ const STATE_REQUEST_CONCURRENCY = 8;
 
 export async function collectPlaneWorkItemSnapshot({
   workspace,
-  capturedAt,
+  capturedAt = null,
+  clock = () => new Date().toISOString(),
   request,
 }) {
-  assertCollectorOptions({ workspace, capturedAt, request });
+  assertCollectorOptions({ workspace, capturedAt, clock, request });
+  let observedAt = capturedAt;
   try {
-    const [projectRows, itemRows] = await Promise.all([
-      collectAll(`/api/v1/workspaces/${workspace}/projects/?per_page=100`, request),
-      collectAll(
-        `/api/v1/workspaces/${workspace}/work-items/?per_page=100&fields=id,project,state,sequence_id,created_at,updated_at,target_date`,
-        request,
-      ),
-    ]);
+    const projectRows = await collectAll(
+      `/api/v1/workspaces/${workspace}/projects/?per_page=100`,
+      request,
+    );
     const projects = projectRows.map(normalizeProject);
-    const statePages = await boundedMap(
+    const projectEvidence = await boundedMap(
       projects,
       STATE_REQUEST_CONCURRENCY,
-      (project) => collectProjectStates({ workspace, project, request }),
+      (project) => collectProjectEvidence({ workspace, project, request }),
     );
-    const workItems = itemRows.map(normalizeWorkItem);
+    observedAt ??= clock();
+    assertDateTime(observedAt, "Plane collector capturedAt");
     return validatePlaneWorkItemSnapshot({
       schemaVersion: VERSION,
       workspace,
-      capturedAt,
+      capturedAt: observedAt,
       status: "available",
       reason: null,
       projects,
-      states: statePages.flat(),
-      workItems,
+      states: projectEvidence.flatMap((entry) => entry.states),
+      workItems: projectEvidence.flatMap((entry) => entry.workItems),
     });
   } catch {
-    return validatePlaneWorkItemSnapshot(blockedSnapshot({ workspace, capturedAt }));
+    observedAt ??= safeClock(clock);
+    return validatePlaneWorkItemSnapshot(blockedSnapshot({ workspace, capturedAt: observedAt }));
   }
 }
 
@@ -64,10 +66,19 @@ export function validatePlaneWorkItemSnapshot(snapshot) {
   return snapshot;
 }
 
-function assertCollectorOptions({ workspace, capturedAt, request }) {
+function assertCollectorOptions({ workspace, capturedAt, clock, request }) {
   ensure(WORKSPACE.test(workspace ?? ""), "Plane collector requires a safe workspace.");
-  assertDateTime(capturedAt, "Plane collector capturedAt");
+  if (capturedAt !== null) assertDateTime(capturedAt, "Plane collector capturedAt");
+  ensure(typeof clock === "function", "Plane collector requires a clock function.");
   ensure(typeof request === "function", "Plane collector requires a request function.");
+}
+
+async function collectProjectEvidence({ workspace, project, request }) {
+  const [states, workItems] = await Promise.all([
+    collectProjectStates({ workspace, project, request }),
+    collectProjectWorkItems({ workspace, project, request }),
+  ]);
+  return { states, workItems };
 }
 
 async function collectProjectStates({ workspace, project, request }) {
@@ -76,6 +87,14 @@ async function collectProjectStates({ workspace, project, request }) {
     request,
   );
   return rows.map((state) => normalizeState(state, project.id));
+}
+
+async function collectProjectWorkItems({ workspace, project, request }) {
+  const rows = await collectAll(
+    `/api/v1/workspaces/${workspace}/projects/${project.id}/work-items/?per_page=100&fields=id,state,sequence_id,created_at,updated_at,target_date`,
+    request,
+  );
+  return rows.map((item) => normalizeWorkItem(item, project.id));
 }
 
 async function collectAll(path, request) {
@@ -87,12 +106,48 @@ async function collectAll(path, request) {
     const pageResult = normalizePage(page);
     output.push(...pageResult.results);
     ensure(output.length <= MAX_ITEMS, "Plane collection item limit exceeded.");
+    assertPaginationTotals(page, pageNumber, output.length, pageResult.hasNext);
     if (!pageResult.hasNext) return output;
     ensure(!cursors.has(pageResult.cursor), "Plane pagination cursor is repeated.");
     cursors.add(pageResult.cursor);
     next = withCursor(path, pageResult.cursor);
   }
   throw new Error("Plane collection page limit exceeded.");
+}
+
+function assertPaginationTotals(page, pageNumber, collectedCount, hasNext) {
+  const totalResults = optionalCount(page.total_results, "total_results");
+  const totalPages = optionalCount(page.total_pages, "total_pages");
+  const count = optionalCount(page.count, "count");
+  assertTotalResults(totalResults, collectedCount, hasNext);
+  assertTotalPages(totalPages, pageNumber, hasNext);
+  assertTerminalCount(count, collectedCount, hasNext);
+}
+
+function assertTotalResults(total, collected, hasNext) {
+  if (total === null) return;
+  const matches = hasNext ? collected < total : collected === total;
+  ensure(matches, "Plane pagination totals are contradictory.");
+}
+
+function assertTotalPages(total, pageNumber, hasNext) {
+  if (total === null) return;
+  const matches = hasNext ? pageNumber < total : pageNumber === total;
+  ensure(matches, "Plane pagination totals are contradictory.");
+}
+
+function assertTerminalCount(count, collected, hasNext) {
+  if (count === null || hasNext) return;
+  ensure(count <= collected, "Plane pagination totals are contradictory.");
+}
+
+function optionalCount(value, label) {
+  if (value === undefined || value === null) return null;
+  ensure(
+    Number.isSafeInteger(value) && value >= 0,
+    `Plane pagination ${label} is invalid.`,
+  );
+  return value;
 }
 
 function normalizePage(page) {
@@ -135,33 +190,38 @@ function normalizeState(state, projectId) {
   return { id, projectId, group };
 }
 
-function normalizeWorkItem(item) {
+function normalizeWorkItem(item, projectId) {
   const row = Object(item);
   const id = normalizedUuid(row.id);
-  const projectId = normalizedUuid(row.project);
-  const stateId = normalizedUuid(row.state);
+  const normalizedProjectId = normalizedUuid(projectId);
+  const stateId = normalizedUuid(referenceId(row.state));
   ensure(id !== null, "Plane work-item response has unsupported fields.");
-  ensure(projectId !== null, "Plane work-item response has unsupported fields.");
+  ensure(normalizedProjectId !== null, "Plane work-item response has unsupported fields.");
   ensure(stateId !== null, "Plane work-item response has unsupported fields.");
   ensure(
     Number.isSafeInteger(row.sequence_id) && row.sequence_id > 0,
     "Plane work-item response has unsupported fields.",
   );
-  assertDateTime(row.created_at, "Plane work-item createdAt");
-  assertDateTime(row.updated_at, "Plane work-item updatedAt");
+  const createdAt = canonicalDateTime(row.created_at, "Plane work-item createdAt");
+  const updatedAt = canonicalDateTime(row.updated_at, "Plane work-item updatedAt");
   ensure(
     row.target_date === null || isDate(row.target_date),
     "Plane work-item response has unsupported fields.",
   );
   return {
     id,
-    projectId,
+    projectId: normalizedProjectId,
     stateId,
     sequenceNumber: row.sequence_id,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    createdAt,
+    updatedAt,
     targetDate: row.target_date,
   };
+}
+
+function referenceId(value) {
+  if (typeof value === "string") return value;
+  return Object(value).id;
 }
 
 function normalizedUuid(value) {
@@ -199,7 +259,7 @@ function assertStatusShape(snapshot) {
     ensure(snapshot.reason === null, "Available Plane snapshot cannot have a reason.");
     return;
   }
-  ensure(isSafeProviderText(snapshot.reason), "Blocked Plane snapshot requires a safe reason.");
+  ensure(isSafeProviderVersion(snapshot.reason), "Blocked Plane snapshot requires a safe reason.");
   ensure(snapshot.projects.length === 0, "Blocked Plane snapshot cannot contain evidence.");
   ensure(snapshot.states.length === 0, "Blocked Plane snapshot cannot contain evidence.");
   ensure(snapshot.workItems.length === 0, "Blocked Plane snapshot cannot contain evidence.");
@@ -312,6 +372,16 @@ function assertDateTime(value, label) {
   ensure(isDateTime(value), `${label} is invalid.`);
 }
 
+function canonicalDateTime(value, label) {
+  ensure(
+    typeof value === "string" && PROVIDER_DATE_TIME.test(value),
+    `${label} is invalid.`,
+  );
+  const parsed = Date.parse(value);
+  ensure(Number.isFinite(parsed), `${label} is invalid.`);
+  return new Date(parsed).toISOString();
+}
+
 function isDateTime(value) {
   if (typeof value !== "string") return false;
   const parsed = Date.parse(value);
@@ -328,4 +398,10 @@ function isDate(value) {
 
 function ensure(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function safeClock(clock) {
+  const value = clock();
+  assertDateTime(value, "Plane collector capturedAt");
+  return value;
 }

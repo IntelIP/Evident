@@ -4,12 +4,27 @@ import {
   realpath,
   stat,
 } from "node:fs/promises";
-import { basename, dirname, resolve } from "node:path";
+import { basename, dirname, parse, relative, resolve, sep } from "node:path";
 
 export async function pathState(path) {
   const entry = await optionalEntry(path);
   if (entry === null) return null;
   return resolvedState(path, entry);
+}
+
+export async function assertNoSymlinkPath(path, label = "Output") {
+  const absolute = resolve(path);
+  const { root } = parse(absolute);
+  const segments = relative(root, absolute).split(sep).filter(Boolean);
+  let candidate = root;
+  for (const segment of segments) {
+    candidate = resolve(candidate, segment);
+    const entry = await optionalEntry(candidate);
+    if (entry === null) return;
+    if (entry.isSymbolicLink()) {
+      throw new Error(`${label} must not use a symbolic-link path.`);
+    }
+  }
 }
 
 async function optionalEntry(path) {

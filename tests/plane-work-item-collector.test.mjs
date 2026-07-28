@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -10,6 +10,7 @@ import {
   collectPlaneWorkItemSnapshot,
   validatePlaneWorkItemSnapshot,
 } from "../scripts/lib/plane-work-item-collector.mjs";
+import { assertNoSymlinkPath } from "../scripts/lib/output-safety.mjs";
 
 const execFileAsync = promisify(execFile);
 const CAPTURED_AT = "2026-07-25T12:00:00.000Z";
@@ -23,8 +24,12 @@ const ITEM_B = "66666666-6666-6666-6666-666666666666";
 test("Plane collector normalizes complete project, state, and work-item evidence", async () => {
   const calls = [];
   const routes = new Map([
-    ["/projects/?", page([project(PROJECT_A, "INTB")])],
-    ["/work-items/?", page([workItem()])],
+    ["/projects/?", page([project(PROJECT_A, "INTB-CORE")])],
+    ["/work-items/?", page([workItem({
+      stateValue: { id: STATE_A, group: "started" },
+      createdAt: "2026-07-25T09:00:00Z",
+      updatedAt: "2026-07-25T11:00:00.123456Z",
+    })])],
   ]);
   const snapshot = await collectPlaneWorkItemSnapshot({
     workspace: "intelip",
@@ -35,10 +40,13 @@ test("Plane collector normalizes complete project, state, and work-item evidence
     },
   });
   assert.equal(snapshot.status, "available");
-  assert.deepEqual(snapshot.projects, [{ id: PROJECT_A, identifier: "INTB" }]);
+  assert.deepEqual(snapshot.projects, [{ id: PROJECT_A, identifier: "INTB-CORE" }]);
   assert.equal(snapshot.states[0].projectId, PROJECT_A);
   assert.equal(snapshot.workItems[0].sequenceNumber, 261);
+  assert.equal(snapshot.workItems[0].createdAt, "2026-07-25T09:00:00.000Z");
+  assert.equal(snapshot.workItems[0].updatedAt, "2026-07-25T11:00:00.123Z");
   assert(calls.some((path) => path.includes(`/projects/${PROJECT_A}/states/`)));
+  assert(calls.some((path) => path.includes(`/projects/${PROJECT_A}/work-items/`)));
 });
 
 test("Plane collector paginates every inventory with distinct cursors", async () => {
@@ -112,6 +120,42 @@ test("Plane collector blocks repeated, missing, and unbounded cursor metadata", 
   console.log("plane_page_limit=100");
 });
 
+test("Plane collector rejects contradictory pagination totals", async () => {
+  for (const response of [
+    { ...page([project(PROJECT_A, "INTB")]), total_results: 2 },
+    { ...page([project(PROJECT_A, "INTB")]), total_pages: 2 },
+    { ...page([project(PROJECT_A, "INTB")]), count: 2 },
+  ]) {
+    const snapshot = await collectPlaneWorkItemSnapshot({
+      workspace: "intelip",
+      capturedAt: CAPTURED_AT,
+      request: async () => response,
+    });
+    assert.equal(snapshot.status, "blocked");
+  }
+});
+
+test("Plane collector captures observation time after provider reads", async () => {
+  let reads = 0;
+  const routes = new Map([
+    ["/projects/?", page([project(PROJECT_A, "INTB")])],
+    ["/work-items/?", page([workItem()])],
+  ]);
+  const snapshot = await collectPlaneWorkItemSnapshot({
+    workspace: "intelip",
+    clock: () => {
+      assert.equal(reads, 3);
+      return CAPTURED_AT;
+    },
+    request: async (path) => {
+      reads += 1;
+      return responseFor(path, routes, page([state(STATE_A)]));
+    },
+  });
+  assert.equal(snapshot.status, "available");
+  assert.equal(snapshot.capturedAt, CAPTURED_AT);
+});
+
 test("Plane collector blocks every malformed provider row", async () => {
   const malformedRows = [
     { target: "projects", value: { id: "bad", identifier: "INTB" } },
@@ -177,10 +221,45 @@ test("Plane schema matches status and project identifier contracts", async () =>
     "schemas/plane-work-item-snapshot.v0.1.schema.json",
     "utf8",
   ));
-  assert.equal(schema.$defs.project.properties.identifier.pattern, "^[A-Z][A-Z0-9]{0,31}$");
+  assert.equal(
+    schema.$defs.project.properties.identifier.pattern,
+    "^[A-Z](?:[A-Z0-9]|-(?=[A-Z0-9])){0,31}$",
+  );
   assert.equal(schema.allOf[0].then.properties.reason.type, "null");
   assert.equal(schema.allOf[1].then.properties.projects.maxItems, 0);
-  assert(schema.$defs.safeText.allOf.length >= 8);
+  assert(schema.$defs.safeText.allOf.length >= 10);
+});
+
+test("Plane snapshot reason matches the schema-safe 200 character boundary", () => {
+  const base = {
+    ...availableSnapshot(),
+    status: "blocked",
+    projects: [],
+    states: [],
+    workItems: [],
+  };
+  assert.throws(
+    () => validatePlaneWorkItemSnapshot({ ...base, reason: "a".repeat(201) }),
+    /safe reason/,
+  );
+  for (const reason of ["sk-proj_12345678", "~/secret"]) {
+    assert.throws(
+      () => validatePlaneWorkItemSnapshot({ ...base, reason }),
+      /safe reason/,
+    );
+  }
+});
+
+test("Plane output path rejects symlinked ancestors", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tabellio-plane-output-"));
+  const actual = join(root, "actual");
+  const alias = join(root, "alias");
+  await mkdir(actual);
+  await symlink(actual, alias);
+  await assert.rejects(
+    () => assertNoSymlinkPath(join(alias, "snapshot.json"), "--out"),
+    /symbolic-link path/,
+  );
 });
 
 test("Plane CLI requires runtime credentials without exposing values", async () => {
@@ -234,15 +313,18 @@ function workItem({
   id = ITEM_A,
   project = PROJECT_A,
   stateId = STATE_A,
+  stateValue = stateId,
   sequence = 261,
+  createdAt = "2026-07-25T09:00:00.000Z",
+  updatedAt = "2026-07-25T11:00:00.000Z",
 } = {}) {
   return {
     id,
     project,
-    state: stateId,
+    state: stateValue,
     sequence_id: sequence,
-    created_at: "2026-07-25T09:00:00.000Z",
-    updated_at: "2026-07-25T11:00:00.000Z",
+    created_at: createdAt,
+    updated_at: updatedAt,
     target_date: "2026-07-31",
   };
 }
@@ -266,13 +348,14 @@ function paginationResponses() {
   return new Map([
     ["/projects/?per_page=100&cursor=", page([project(PROJECT_B, "OPS")])],
     ["/projects/?", page([project(PROJECT_A, "INTB")], "projects-2")],
-    ["cursor=items-2", page([workItem({
+    [`${PROJECT_A}/work-items/?per_page=100&fields=id,state,sequence_id,created_at,updated_at,target_date&cursor=items-2`, page([])],
+    [`${PROJECT_A}/work-items/`, page([workItem()], "items-2")],
+    [`${PROJECT_B}/work-items/`, page([workItem({
       id: ITEM_B,
       project: PROJECT_B,
       stateId: STATE_B,
       sequence: 8,
     })])],
-    ["/work-items/?per_page=100&fields=", page([workItem()], "items-2")],
   ]);
 }
 

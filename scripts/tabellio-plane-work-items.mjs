@@ -4,7 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 import { parseCommandOptions, reportCliError, requireOptions } from "./lib/cli-options.mjs";
-import { pathState } from "./lib/output-safety.mjs";
+import { assertNoSymlinkPath, pathState } from "./lib/output-safety.mjs";
 import { collectPlaneWorkItemSnapshot } from "./lib/plane-work-item-collector.mjs";
 
 main().catch(reportCliError);
@@ -17,7 +17,6 @@ async function main() {
   await assertSafeOutput(out);
   const snapshot = await collectPlaneWorkItemSnapshot({
     workspace: options.workspace,
-    capturedAt: new Date().toISOString(),
     request: (path) => planeRequest(path, token),
   });
   await mkdir(dirname(out), { recursive: true });
@@ -45,6 +44,7 @@ function requirePlaneToken() {
 }
 
 async function assertSafeOutput(out) {
+  await assertNoSymlinkPath(out, "--out");
   const outState = await pathState(out);
   if (outState?.symbolicLink) throw new Error("--out must not be a symbolic link.");
 }
