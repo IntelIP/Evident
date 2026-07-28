@@ -743,6 +743,10 @@ test("analytics schema requires source observations and canonical metric states"
     providerSchema.properties.sources.required,
     ["plane", "github", "github-actions", "buildkite"],
   );
+  assert(
+    providerSchema.properties.sources.properties.plane.allOf[1].required
+      .includes("workspace"),
+  );
   const deliverySchema = JSON.parse(await readFile(
     new URL("../schemas/delivery-evidence-snapshot.v0.1.schema.json", import.meta.url),
     "utf8",
@@ -884,6 +888,7 @@ function providerSnapshot(headCommit) {
       { status: "available", version: "2026-07-25T00:00:00.000Z" },
     ]),
   );
+  sources.plane.workspace = "intelip";
   return {
     schemaVersion: "tabellio-analytics-provider-snapshot/v0.1",
     repository: "IntelIP/Example",

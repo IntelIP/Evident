@@ -554,6 +554,7 @@ function providerSnapshot(repository, headCommit, { available, linked = false })
         : { status: "unavailable", reason: "Provider evidence is unavailable." },
     ])
   );
+  sources.plane.workspace = "intelip";
   return {
     schemaVersion: "tabellio-analytics-provider-snapshot/v0.1",
     repository,
