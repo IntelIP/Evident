@@ -69,6 +69,21 @@ test("analytics core preserves unavailable evidence instead of manufacturing zer
   assert.notEqual(metrics.deliveryChangeCount.value, 0);
 });
 
+test("analytics core preserves opaque provider versions that resemble years", () => {
+  const repository = repositoryFixture();
+  repository.sources.find((source) => source.system === "github").sourceVersion = "build-3000";
+  const dataset = createAnalyticsDataset({
+    id: "INTB-261-p1b",
+    observedAt: OBSERVED_AT,
+    window: {
+      since: "2026-07-01T00:00:00.000Z",
+      until: "2026-07-26T00:00:00.000Z",
+    },
+    repositories: [repository],
+  });
+  assert.equal(validateAnalyticsDataset(dataset), dataset);
+});
+
 test("analytics core rejects stale, unsafe, and contradictory imported evidence", () => {
   const cases = [
     ["Git head mismatch", (dataset) => {
@@ -769,9 +784,12 @@ function source(system, sourceVersion) {
 function assertCredentialSafeRepositorySchema(schema) {
   for (const unsafe of [
     "ghp_0123456789abcdef/repository",
+    "owner-ghp_0123456789abcdef/repository",
     "github_pat_0123456789abcdef/repository",
+    "owner-github_pat_0123456789abcdef/repository",
     "sk-proj_0123456789abcdef/repository",
-    "AKIA0123456789ABCDEF/repository",
+    "owner-sk-proj_0123456789abcdef/repository",
+    "owner-AKIA0123456789ABCDEF/repository",
   ]) {
     assert.ok(
       schema.allOf.some((rule) => new RegExp(rule.not.pattern).test(unsafe)),

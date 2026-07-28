@@ -1023,9 +1023,15 @@ function validateSourcePayload(source) {
 }
 
 function versionNotAfterObservation(source) {
-  const versionTimestamp = parseableTimestamp(source.sourceVersion);
+  const versionTimestamp = parseableProviderTimestamp(source.sourceVersion);
   return versionTimestamp === null
     || versionTimestamp <= Date.parse(source.observedAt);
+}
+
+function parseableProviderTimestamp(value) {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)
+    ? parseableTimestamp(value)
+    : null;
 }
 
 function parseableTimestamp(value) {
