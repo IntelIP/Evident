@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "tabellio-validation/v0.2",
+  "id": "intb-261-p3-buildkite-collector",
+  "failFast": false,
+  "requireEntireCheckpoint": true,
+  "acceptance": {
+    "id": "INTB-261-P3",
+    "source": "INTB-261 and docs/intb-261-p3-execution-contract.md",
+    "risk": "high",
+    "outcomes": [
+      "Buildkite inventory is complete, bounded, and repository-bound.",
+      "Build, job, and artifact evidence remains temporally coherent.",
+      "Buildkite validates the exact pre-squash checkpoint on merged heads."
+    ],
+    "invariants": [
+      "Provider pagination and detail concurrency stay inside committed limits.",
+      "Malformed or unavailable provider evidence becomes blocked.",
+      "The capture time is sampled after collection.",
+      "All validators report complete zero-cost telemetry."
+    ],
+    "forbiddenOutcomes": [
+      "A truncated provider page is reported as complete.",
+      "A pipeline for another repository supports a delivery claim.",
+      "Provider errors, credentials, paths, or response bodies enter evidence.",
+      "Merged checkpoint identity is inferred from a commit subject."
+    ],
+    "requiredValidatorTypes": [
+      "static",
+      "schema",
+      "semantic",
+      "workflow",
+      "operational",
+      "security"
+    ]
+  },
+  "validators": [
+    {
+      "id": "buildkite-collector-static",
+      "type": "static",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "buildkite-collector-static"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": null,
+      "policy": {"metricThresholds": [], "maxCostUsd": null, "requireCostTelemetry": false}
+    },
+    {
+      "id": "buildkite-collector-schema",
+      "type": "schema",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "buildkite-collector-schema", "--validator-id", "buildkite-collector-schema", "--out", ".artifacts/tabellio/buildkite-collector-schema.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/buildkite-collector-schema.json"},
+      "policy": {"metricThresholds": [{"metric": "buildkite_collector_schema_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "buildkite-collector-semantic",
+      "type": "semantic",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "buildkite-collector-semantic", "--validator-id", "buildkite-collector-semantic", "--out", ".artifacts/tabellio/buildkite-collector-semantic.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/buildkite-collector-semantic.json"},
+      "policy": {"metricThresholds": [{"metric": "buildkite_collector_semantic_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "buildkite-collector-workflow",
+      "type": "workflow",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "buildkite-collector-workflow", "--validator-id", "buildkite-collector-workflow", "--out", ".artifacts/tabellio/buildkite-collector-workflow.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/buildkite-collector-workflow.json"},
+      "policy": {"metricThresholds": [{"metric": "buildkite_collector_workflow_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "buildkite-collector-operational",
+      "type": "operational",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "buildkite-collector-operational", "--validator-id", "buildkite-collector-operational", "--out", ".artifacts/tabellio/buildkite-collector-operational.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/buildkite-collector-operational.json"},
+      "policy": {"metricThresholds": [{"metric": "buildkite_detail_max_concurrency", "operator": "lte", "value": 4}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "buildkite-collector-security",
+      "type": "security",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "buildkite-collector-security", "--validator-id", "buildkite-collector-security", "--out", ".artifacts/tabellio/buildkite-collector-security.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/buildkite-collector-security.json"},
+      "policy": {"metricThresholds": [{"metric": "buildkite_collector_security_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    }
+  ]
+}

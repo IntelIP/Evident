@@ -31,15 +31,30 @@ test("Buildkite adds bounded pull-request quality gates without CI cutover", asy
   assert.match(pipeline, /build\.branch == pipeline\.default_branch/);
 
   assert.doesNotMatch(productValidation, /git show -s --format=%s/);
-  assert.match(productValidation, /BUILDKITE_COMMIT:-HEAD/);
-  assert.match(productValidation, /explicit preflight build/);
-  assert.match(productValidation, /TABELLIO_BUILD_CONTEXT:-provider/);
-  assert.match(productValidation, /TABELLIO_BASE_BRANCH:-main/);
-  assert.match(productValidation, /set -euo pipefail/);
-  assert.match(productValidation, /exit 2/);
-  assert.match(productValidation, /test "\$\(git rev-parse HEAD\^\{commit\}\)"/);
-  assert.match(productValidation, /git bundle create .*validation-ref\.bundle/);
-  assert.match(productValidation, /git bundle verify .*validation-ref\.bundle/);
+  assertMatches(productValidation, [
+    /BUILDKITE_COMMIT:-HEAD/,
+    /default-branch build/,
+    /TABELLIO_BUILD_CONTEXT:-provider/,
+    /TABELLIO_BASE_BRANCH:-main/,
+    /set -euo pipefail/,
+    /exit 2/,
+    /test "\$\(git rev-parse HEAD\^\{commit\}\)"/,
+    /git bundle create .*validation-ref\.bundle/,
+    /git bundle verify .*validation-ref\.bundle/,
+    /commits\/\$\{candidate\}\/pulls/,
+    /scripts\/resolve-merged-checkpoint\.mjs/,
+    /Merged checkpoint resolution failed/,
+    /Merged checkpoint fetch failed/,
+    /fetched_checkpoint_head/,
+    /resolved_checkpoint_head/,
+    /--checkpoint-head/,
+    /github_header_file/,
+    /umask 077/,
+  ]);
+  assert.doesNotMatch(
+    productValidation,
+    /github_headers\+=\(-H "Authorization: Bearer \$\{BUILDKITE_GITHUB_TOKEN\}"/,
+  );
 
   assert.match(fallow, /fallow@2\.89\.0/);
   assert.match(fallow, /--gate new-only/);
@@ -57,6 +72,10 @@ test("Buildkite adds bounded pull-request quality gates without CI cutover", asy
   assert.equal(gitToolchain.match(/sudo apt-get "\$\{apt_options\[@\]\}"/g)?.length, 2);
   assert.doesNotMatch(gitToolchain, /^\s*sudo apt-get update\s*$/m);
 });
+
+function assertMatches(value, patterns) {
+  patterns.forEach((pattern) => assert.match(value, pattern));
+}
 
 test("GitHub merged-head validation remains during Buildkite migration", async () => {
   const workflow = await repositoryFile(".github/workflows/product-validation.yml");
