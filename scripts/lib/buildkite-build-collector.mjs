@@ -21,6 +21,15 @@ const BUILD_STATES = new Set([
   "waiting",
   "waiting_failed",
 ]);
+const UNFINISHED_BUILD_STATES = new Set([
+  "blocked",
+  "canceling",
+  "creating",
+  "failing",
+  "running",
+  "scheduled",
+  "waiting",
+]);
 const OBSERVATION_DAYS = 30;
 const PAGE_SIZE = 100;
 const MAX_BUILDS = 500;
@@ -139,6 +148,11 @@ async function collectCursorPages({ path, request, maximum, label }) {
     const body = responseBody(await request(next));
     contract.object(body, `${label} response`);
     ensure(Array.isArray(body.items), `${label} response is invalid.`);
+    contract.object(body.links, `${label} pagination links`);
+    ensure(
+      Object.hasOwn(body.links, "next"),
+      `${label} pagination links are incomplete.`,
+    );
     values.push(...body.items);
     ensure(values.length <= maximum, `${label} exceeds its bounded limit.`);
     next = cursorNextPath(body.links?.next, label);
@@ -257,6 +271,11 @@ function assertNormalizedBuild(build, index) {
   assertDateTime(build.createdAt, `Buildkite build ${index} creation time`);
   if (build.finishedAt !== null) {
     assertDateTime(build.finishedAt, `Buildkite build ${index} completion time`);
+  } else {
+    ensure(
+      UNFINISHED_BUILD_STATES.has(build.state),
+      "Buildkite terminal build requires a completion time.",
+    );
   }
   assertBoundedCount(build.jobCount, MAX_JOBS, `Buildkite build ${index} jobCount`);
   assertBoundedCount(

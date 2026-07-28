@@ -108,7 +108,7 @@ test("Buildkite collector paginates builds, jobs, and artifacts", async () => {
 });
 
 test("Buildkite collector preserves unfinished and waiting builds", async () => {
-  for (const state of ["waiting", "waiting_failed", "running"]) {
+  for (const state of ["waiting", "running"]) {
     const snapshot = await collectBuildkiteBuildSnapshot({
       ...collectorOptions(),
       request: fixtureRequest({
@@ -118,6 +118,31 @@ test("Buildkite collector preserves unfinished and waiting builds", async () => 
     assert.equal(snapshot.status, "available");
     assert.equal(snapshot.builds[0].state, state);
     assert.equal(snapshot.builds[0].finishedAt, null);
+  }
+});
+
+test("Buildkite collector rejects unfinished terminal builds", async () => {
+  for (const state of ["passed", "failed", "canceled", "not_run", "skipped", "waiting_failed"]) {
+    const snapshot = await collectBuildkiteBuildSnapshot({
+      ...collectorOptions(),
+      request: fixtureRequest({
+        builds: [{ ...build(4), state, finished_at: null }],
+      }),
+    });
+    assert.equal(snapshot.status, "blocked");
+  }
+});
+
+test("Buildkite collector rejects incomplete cursor metadata", async () => {
+  for (const jobLinks of ["missing", {}, { next: 7 }]) {
+    const snapshot = await collectBuildkiteBuildSnapshot({
+      ...collectorOptions(),
+      request: fixtureRequest({
+        jobs: Array.from({ length: 100 }, (_, index) => ({ id: `job-${index}` })),
+        jobLinks,
+      }),
+    });
+    assert.equal(snapshot.status, "blocked");
   }
 });
 
@@ -355,6 +380,7 @@ function fixtureRequest({
   artifacts = [{ id: "artifact-1" }, { id: "artifact-2" }],
   omitEmbeddedJobs = false,
   detailCommit = COMMIT,
+  jobLinks = "generated",
 } = {}) {
   const config = {
     repository,
@@ -367,6 +393,7 @@ function fixtureRequest({
     omitEmbeddedJobs,
     embeddedJobs,
     detailCommit,
+    jobLinks,
   };
   return async (path) => {
     calls.push(path);
@@ -393,7 +420,7 @@ function fixtureResponse(path, config) {
     },
     {
       matches: /\/jobs\?/.test(path),
-      response: () => cursorEnvelope(path, config.jobs),
+      response: () => cursorEnvelope(path, config.jobs, config.jobLinks),
     },
     {
       matches: /\/artifacts\?.*&page=\d+$/.test(path),
@@ -415,14 +442,22 @@ function detailResponse(path, config) {
   return detail;
 }
 
-function cursorEnvelope(path, values) {
+function cursorEnvelope(path, values, jobLinks) {
   const url = new URL(path, "https://api.buildkite.com");
   const start = Number(url.searchParams.get("cursor") ?? 0);
   const items = values.slice(start, start + 100);
-  const next = start + items.length < values.length
-    ? `https://api.buildkite.com${url.pathname}?include_retried_jobs=true&per_page=100&cursor=${start + items.length}`
-    : null;
-  return { items, links: { next } };
+  return { items, ...cursorLinks(jobLinks, url.pathname, start, items.length, values.length) };
+}
+
+function cursorLinks(jobLinks, pathname, start, pageLength, totalLength) {
+  if (jobLinks === "missing") return {};
+  if (jobLinks !== "generated") return { links: jobLinks };
+  return { links: { next: nextCursorPath(pathname, start, pageLength, totalLength) } };
+}
+
+function nextCursorPath(pathname, start, pageLength, totalLength) {
+  if (start + pageLength >= totalLength) return null;
+  return `https://api.buildkite.com${pathname}?include_retried_jobs=true&per_page=100&cursor=${start + pageLength}`;
 }
 
 function pageEnvelope(path, values) {
