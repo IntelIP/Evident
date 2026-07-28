@@ -204,6 +204,42 @@
       "metrics": [{"name": "plane_collector_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
       "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
       "summary": "Plane credential, provider, and pagination boundaries"
+    },
+    "deployment-receipt-static": {
+      "commands": [["npm", "run", "check"]],
+      "metrics": [],
+      "cost": {"telemetry": "not_applicable", "usd": null, "modelCalls": null, "toolCalls": null},
+      "summary": "Deployment receipt and repository checks"
+    },
+    "deployment-receipt-schema": {
+      "commands": [["node", "--test", "--test-name-pattern", "schema restricts|exact keys|accepts bounded", "tests/deployment-receipt.test.mjs"]],
+      "metrics": [{"name": "deployment_receipt_schema_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Deployment receipt schema and runtime contract"
+    },
+    "deployment-receipt-semantic": {
+      "commands": [["node", "--test", "--test-name-pattern", "repository-bound|wrong repositories|only repository-bound|blocked collector", "tests/deployment-receipt.test.mjs", "tests/deployment-provider-collector.test.mjs"]],
+      "metrics": [{"name": "deployment_receipt_semantic_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Deployment repository, state, and temporal semantics"
+    },
+    "deployment-receipt-workflow": {
+      "commands": [["node", "--test", "--test-name-pattern", "serving exact revision|writes a provider result|accepts project-id", "tests/deployment-provider-collector.test.mjs", "tests/deployment-cli.test.mjs"]],
+      "metrics": [{"name": "deployment_receipt_workflow_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Cloud Run and Vercel receipt collection workflow"
+    },
+    "deployment-receipt-operational": {
+      "commands": [["node", "--test", "--test-name-pattern", "long resources|capture observation", "tests/deployment-provider-collector.test.mjs"]],
+      "metrics": [{"name": "deployment_receipt_id_length", "unit": "characters", "pattern": "deployment_receipt_id_length=([0-9]+)"}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Bounded receipt identity and post-read observation"
+    },
+    "deployment-receipt-security": {
+      "commands": [["node", "--test", "--test-name-pattern", "credentials and paths|symlinked|non-production|short commits", "tests/deployment-receipt.test.mjs", "tests/deployment-provider-collector.test.mjs", "tests/deployment-cli.test.mjs"]],
+      "metrics": [{"name": "deployment_receipt_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Deployment credential, path, environment, and commit boundaries"
     }
   }
 }

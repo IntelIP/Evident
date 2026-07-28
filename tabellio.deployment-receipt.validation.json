@@ -1,0 +1,91 @@
+{
+  "schemaVersion": "tabellio-validation/v0.2",
+  "id": "intb-261-p6-deployment-receipts",
+  "failFast": false,
+  "requireEntireCheckpoint": true,
+  "acceptance": {
+    "id": "INTB-261-P6",
+    "source": "INTB-261 and docs/intb-261-p6-execution-contract.md",
+    "risk": "high",
+    "outcomes": [
+      "Deployment receipts are portable, bounded, and repository-bound.",
+      "Cloud Run and Vercel collectors mint proof only from exact production evidence.",
+      "Blocked provider observations remain explicit without leaking private data."
+    ],
+    "invariants": [
+      "Provider resource identity and source repository are preserved.",
+      "Every receipt string rejects credentials and local paths.",
+      "Collector CLIs parse documented options and never perform writes.",
+      "All validators report complete zero-cost telemetry."
+    ],
+    "forbiddenOutcomes": [
+      "A cross-repository deployment is accepted.",
+      "A preview, partial-traffic, or short-commit deployment is accepted.",
+      "A credential-bearing or local provenance pointer is serialized.",
+      "A deployment or provider mutation occurs during validation."
+    ],
+    "requiredValidatorTypes": ["static", "schema", "semantic", "workflow", "operational", "security"]
+  },
+  "validators": [
+    {
+      "id": "deployment-receipt-static",
+      "type": "static",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "deployment-receipt-static"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": null,
+      "policy": {"metricThresholds": [], "maxCostUsd": null, "requireCostTelemetry": false}
+    },
+    {
+      "id": "deployment-receipt-schema",
+      "type": "schema",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "deployment-receipt-schema", "--validator-id", "deployment-receipt-schema", "--out", ".artifacts/tabellio/deployment-receipt-schema.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/deployment-receipt-schema.json"},
+      "policy": {"metricThresholds": [{"metric": "deployment_receipt_schema_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "deployment-receipt-semantic",
+      "type": "semantic",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "deployment-receipt-semantic", "--validator-id", "deployment-receipt-semantic", "--out", ".artifacts/tabellio/deployment-receipt-semantic.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/deployment-receipt-semantic.json"},
+      "policy": {"metricThresholds": [{"metric": "deployment_receipt_semantic_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "deployment-receipt-workflow",
+      "type": "workflow",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "deployment-receipt-workflow", "--validator-id", "deployment-receipt-workflow", "--out", ".artifacts/tabellio/deployment-receipt-workflow.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/deployment-receipt-workflow.json"},
+      "policy": {"metricThresholds": [{"metric": "deployment_receipt_workflow_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "deployment-receipt-operational",
+      "type": "operational",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "deployment-receipt-operational", "--validator-id", "deployment-receipt-operational", "--out", ".artifacts/tabellio/deployment-receipt-operational.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/deployment-receipt-operational.json"},
+      "policy": {"metricThresholds": [{"metric": "deployment_receipt_id_length", "operator": "lte", "value": 128}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "deployment-receipt-security",
+      "type": "security",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "deployment-receipt-security", "--validator-id", "deployment-receipt-security", "--out", ".artifacts/tabellio/deployment-receipt-security.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/deployment-receipt-security.json"},
+      "policy": {"metricThresholds": [{"metric": "deployment_receipt_security_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    }
+  ]
+}
