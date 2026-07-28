@@ -280,6 +280,14 @@ function assertDeploymentBinding({
   deploymentBlockedReason,
   deploymentEnvironment,
 }) {
+  if (deploymentBlockedReason !== null) {
+    ensure(
+      typeof deploymentBlockedReason === "string"
+        && SAFE_REASON.test(deploymentBlockedReason)
+        && isSafeProviderText(deploymentBlockedReason),
+      "Deployment blocked reason is invalid.",
+    );
+  }
   if (deploymentEnvironment !== null) {
     ensure(
       ENVIRONMENT.test(deploymentEnvironment),
@@ -287,7 +295,7 @@ function assertDeploymentBinding({
     );
   }
   ensure(
-    !(deploymentReceipts.length || deploymentBlockedReason)
+    !(deploymentReceipts.length || deploymentBlockedReason !== null)
       || deploymentEnvironment !== null,
     "Deployment evidence requires a designated target environment.",
   );
@@ -576,7 +584,7 @@ function deploymentSource(
   if (receipts.length) {
     return availableSource(receipts.map(deploymentObservation));
   }
-  if (blockedReason) {
+  if (blockedReason !== null) {
     const block = {
       schemaVersion: DEPLOYMENT_BLOCK_VERSION,
       repository,
@@ -600,12 +608,12 @@ function deploymentSource(
 }
 
 function deploymentUnavailableReason(blockedReason, environment) {
-  if (blockedReason) return blockedReason;
+  if (blockedReason !== null) return blockedReason;
   return `No ${environment || "target"} deployment receipts collected.`;
 }
 
 function deploymentUnavailableStatus(blockedReason) {
-  return blockedReason ? "blocked" : "unavailable";
+  return blockedReason !== null ? "blocked" : "unavailable";
 }
 
 function deploymentObservation(receipt) {
@@ -1011,6 +1019,12 @@ function assertWipRows(rows) {
 }
 
 function assertDerivedEvidence(snapshot) {
+  ensure(
+    snapshot.sources.provider.status === "available"
+      && snapshot.sources.provider.reason === null
+      && snapshot.sources.provider.observations.length === 1,
+    "Provider source must remain available with one validated observation.",
+  );
   const providerSnapshot =
     snapshot.sources.provider.observations[0].evidence;
   const planeSnapshot = sourceSnapshotOrBlocked(

@@ -309,6 +309,18 @@ test("delivery snapshot rejects deployment unavailable to blocked relabeling", (
   );
 });
 
+test("delivery snapshot rejects provider source status relabeling without records", () => {
+  const providerSnapshot = provider();
+  providerSnapshot.deliveryChanges = [];
+  const snapshot = join({ providerSnapshot });
+  snapshot.sources.provider.status = "blocked";
+  snapshot.sources.provider.reason = "Provider blocked.";
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(snapshot),
+    /Provider source must remain available/,
+  );
+});
+
 test("delivery join preserves blocked provider sources as blocked records", () => {
   const providerSnapshot = provider();
   providerSnapshot.sources.plane = {
@@ -865,6 +877,18 @@ test("delivery join rejects partial blocked deployment collection", () => {
     }),
     /cannot include decisive receipts/,
   );
+});
+
+test("delivery join rejects malformed blocked deployment reasons", () => {
+  for (const deploymentBlockedReason of ["", false, 0]) {
+    assert.throws(
+      () => join({
+        deploymentBlockedReason,
+        deploymentEnvironment: "production",
+      }),
+      /Deployment blocked reason is invalid/,
+    );
+  }
 });
 
 test("delivery snapshot rejects ambiguous authoritative observations", () => {
