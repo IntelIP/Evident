@@ -8,6 +8,7 @@ import { isJsonDateTime, validateJsonSchema } from "./json-schema-validator.mjs"
 import { validatePlaneWorkItemSnapshot } from "./plane-work-item-collector.mjs";
 import {
   isPortableIdentifier,
+  isSafeProviderText,
   validateProviderSnapshot,
 } from "./portable-evidence.mjs";
 
@@ -584,7 +585,9 @@ function deploymentClaim(receipt) {
 function assertUniquePortableRecords(snapshot) {
   ensure(
     snapshot.deliveryRecords.every(
-      (record) => DELIVERY_RECORD_ID.test(record.id ?? ""),
+      (record) =>
+        DELIVERY_RECORD_ID.test(record.id ?? "")
+        && isSafeProviderText(record.id),
     ),
     "Delivery evidence record IDs must be portable single-line identifiers.",
   );
@@ -603,7 +606,8 @@ function assertUniquePortableRecords(snapshot) {
 function assertSafeSources(snapshot) {
   for (const [name, source] of Object.entries(snapshot.sources)) {
     ensure(
-      source.reason === null || SAFE_REASON.test(source.reason),
+      source.reason === null
+        || (SAFE_REASON.test(source.reason) && isSafeProviderText(source.reason)),
       "Delivery evidence source reasons must be portable single-line text.",
     );
     assertSourceState(name, source, snapshot.capturedAt);
@@ -611,6 +615,10 @@ function assertSafeSources(snapshot) {
 }
 
 function assertSourceState(name, source, capturedAt) {
+  ensure(
+    source.observations.every((item) => isPortableIdentifier(item.id)),
+    `${name} source observation IDs must be portable identifiers.`,
+  );
   if (source.status === "available") {
     ensure(
       source.reason === null && source.observations.length > 0,

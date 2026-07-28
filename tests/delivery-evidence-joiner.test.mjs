@@ -229,13 +229,32 @@ test("delivery snapshot rejects duplicate records, projects, and contradictory W
 });
 
 test("delivery snapshot rejects unsafe source text and future evidence", () => {
-  const unsafe = join();
-  unsafe.sources.plane.status = "blocked";
-  unsafe.sources.plane.reason = "missing\n\n## Forged decision";
-  unsafe.sources.plane.observations = [];
+  for (const reason of [
+    "missing\n\n## Forged decision",
+    "ghp_abcdefghijklmnopqrstuvwxyz1234567890",
+    "/Users/private/evidence.json",
+  ]) {
+    const unsafe = join();
+    unsafe.sources.plane.status = "blocked";
+    unsafe.sources.plane.reason = reason;
+    unsafe.sources.plane.observations = [];
+    assert.throws(
+      () => validateDeliveryEvidenceSnapshot(unsafe),
+      /portable single-line/,
+    );
+  }
+  const unsafeRecord = join();
+  unsafeRecord.deliveryRecords[0].id = "/Users/private/change";
   assert.throws(
-    () => validateDeliveryEvidenceSnapshot(unsafe),
-    /portable single-line/,
+    () => validateDeliveryEvidenceSnapshot(unsafeRecord),
+    /portable single-line identifiers/,
+  );
+  const unsafeObservation = join();
+  unsafeObservation.sources.plane.observations[0].id =
+    "ghp_abcdefghijklmnopqrstuvwxyz1234567890";
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(unsafeObservation),
+    /observation IDs must be portable/,
   );
   const future = join();
   future.sources.plane.observations[0].version =
