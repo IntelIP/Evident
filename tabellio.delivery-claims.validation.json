@@ -1,0 +1,91 @@
+{
+  "schemaVersion": "tabellio-validation/v0.2",
+  "id": "intb-261-p7-delivery-claims",
+  "failFast": false,
+  "requireEntireCheckpoint": true,
+  "acceptance": {
+    "id": "INTB-261-P7",
+    "source": "INTB-261 and docs/intb-261-p7-execution-contract.md",
+    "risk": "high",
+    "outcomes": [
+      "Delivery decisions remain bound to exact provider evidence.",
+      "Squash merge, chronology, and authority boundaries are preserved.",
+      "Imported snapshots fail closed when claims are forged or incomplete."
+    ],
+    "invariants": [
+      "Plane, CI, release, and deployment evidence retain exact authority.",
+      "Successful and failed decisions carry verifiable claim digests.",
+      "Blocked and unavailable evidence remain distinct.",
+      "All validators report complete zero-cost telemetry."
+    ],
+    "forbiddenOutcomes": [
+      "Cross-repository or cross-workspace evidence is joined.",
+      "A pre-merge release or wrong-environment deployment is counted.",
+      "A status can be changed without invalidating its claim digest.",
+      "Provider writes or paid calls occur during validation."
+    ],
+    "requiredValidatorTypes": ["static", "schema", "semantic", "workflow", "operational", "security"]
+  },
+  "validators": [
+    {
+      "id": "delivery-claims-static",
+      "type": "static",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "delivery-claims-static"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": null,
+      "policy": {"metricThresholds": [], "maxCostUsd": null, "requireCostTelemetry": false}
+    },
+    {
+      "id": "delivery-claims-schema",
+      "type": "schema",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "delivery-claims-schema", "--validator-id", "delivery-claims-schema", "--out", ".artifacts/tabellio/delivery-claims-schema.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/delivery-claims-schema.json"},
+      "policy": {"metricThresholds": [{"metric": "delivery_claim_schema_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "delivery-claims-semantic",
+      "type": "semantic",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "delivery-claims-semantic", "--validator-id", "delivery-claims-semantic", "--out", ".artifacts/tabellio/delivery-claims-semantic.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/delivery-claims-semantic.json"},
+      "policy": {"metricThresholds": [{"metric": "delivery_claim_semantic_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "delivery-claims-workflow",
+      "type": "workflow",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "delivery-claims-workflow", "--validator-id", "delivery-claims-workflow", "--out", ".artifacts/tabellio/delivery-claims-workflow.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/delivery-claims-workflow.json"},
+      "policy": {"metricThresholds": [{"metric": "delivery_claim_workflow_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "delivery-claims-operational",
+      "type": "operational",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "delivery-claims-operational", "--validator-id", "delivery-claims-operational", "--out", ".artifacts/tabellio/delivery-claims-operational.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/delivery-claims-operational.json"},
+      "policy": {"metricThresholds": [{"metric": "delivery_claim_binding_count", "operator": "eq", "value": 5}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "delivery-claims-security",
+      "type": "security",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "delivery-claims-security", "--validator-id", "delivery-claims-security", "--out", ".artifacts/tabellio/delivery-claims-security.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/delivery-claims-security.json"},
+      "policy": {"metricThresholds": [{"metric": "delivery_claim_security_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    }
+  ]
+}

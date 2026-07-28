@@ -16,7 +16,7 @@ const CHANGE_FIELDS = new Set([
   "validationStatus",
   "hostedStatus",
 ]);
-const SOURCE_FIELDS = new Set(["status", "version", "reason"]);
+const SOURCE_FIELDS = new Set(["status", "version", "reason", "workspace"]);
 const CREDENTIAL_PATTERNS = [
   /(?:^|[^a-z0-9])gh[pousr]_[a-z0-9_]{8,}/i,
   /(?:^|[^a-z0-9])github_pat_[a-z0-9_]{8,}/i,
@@ -93,6 +93,7 @@ export function validateEvidenceSource(source, { observedAt } = {}) {
   if (source.status === "available" && Object.hasOwn(source, "reason")) {
     errors.push("available source cannot carry a reason");
   }
+  errors.push(...validateSourceWorkspace(source));
   const versionTimestamp = parseProviderVersionTimestamp(source.version);
   if (versionTimestamp !== null && isDateTime(observedAt) && versionTimestamp > Date.parse(observedAt)) {
     errors.push("source version is later than observation");
@@ -156,6 +157,13 @@ export function validateProviderSnapshot(snapshot, { repository, headCommit, obs
     });
   }
   return unique(errors);
+}
+
+function validateSourceWorkspace(source) {
+  if (!Object.hasOwn(source, "workspace")) return [];
+  return isPortableIdentifier(source.workspace)
+    ? []
+    : ["source workspace is unsafe"];
 }
 
 function validateDeliveryChange(change, { sources, headCommit, capturedAt }) {

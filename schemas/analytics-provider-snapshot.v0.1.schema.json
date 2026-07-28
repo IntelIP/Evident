@@ -93,7 +93,8 @@
             { "type": "null" }
           ]
         },
-        "reason": { "$ref": "#/$defs/safeText" }
+        "reason": { "$ref": "#/$defs/safeText" },
+        "workspace": { "$ref": "#/$defs/portableIdentifier" }
       },
       "allOf": [
         {

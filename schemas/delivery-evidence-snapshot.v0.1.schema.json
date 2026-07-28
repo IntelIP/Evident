@@ -21,14 +21,8 @@
         "deployment": { "$ref": "#/$defs/source" }
       }
     },
-    "wipByProject": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/wip" }
-    },
-    "deliveryRecords": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/record" }
-    }
+    "wipByProject": { "type": "array", "items": { "$ref": "#/$defs/wip" } },
+    "deliveryRecords": { "type": "array", "items": { "$ref": "#/$defs/record" } }
   },
   "$defs": {
     "repositoryIdentifier": {
@@ -93,10 +87,7 @@
             { "type": "null" }
           ]
         },
-        "observations": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/observation" }
-        }
+        "observations": { "type": "array", "items": { "$ref": "#/$defs/observation" } }
       },
       "allOf": [
         {
@@ -146,13 +137,14 @@
     "record": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "linkBasis", "pullRequestNumber", "headCommit", "mergeCommit", "plane", "ci", "release", "deployment"],
+      "required": ["id", "linkBasis", "pullRequestNumber", "headCommit", "mergeCommit", "sourceClaimDigest", "plane", "ci", "release", "deployment"],
       "properties": {
         "id": { "$ref": "#/$defs/portableIdentifier" },
         "linkBasis": { "enum": ["explicit", "manual-reconciliation", "unlinked"] },
         "pullRequestNumber": { "type": ["integer", "null"], "minimum": 1 },
         "headCommit": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
         "mergeCommit": { "type": ["string", "null"], "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
+        "sourceClaimDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "plane": { "$ref": "#/$defs/plane" },
         "ci": { "$ref": "#/$defs/ci" },
         "release": { "$ref": "#/$defs/release" },
@@ -162,23 +154,27 @@
     "plane": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "key", "stateGroup", "updatedAt"],
+      "required": ["status", "workspace", "key", "createdAt", "stateGroup", "updatedAt", "sourceClaimDigest"],
       "properties": {
         "status": { "enum": ["linked", "unlinked", "blocked"] },
+        "workspace": { "$ref": "#/$defs/portableIdentifier" },
         "key": { "type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9]{0,31}-[1-9][0-9]*$" },
-        "stateGroup": { "enum": ["backlog", "unstarted", "started", "completed", "cancelled", null] },
-        "updatedAt": { "type": ["string", "null"], "format": "date-time" }
+        "createdAt": { "type": ["string", "null"], "format": "date-time" },
+        "stateGroup": { "type": ["string", "null"], "enum": ["backlog", "unstarted", "started", "completed", "cancelled", null] },
+        "updatedAt": { "type": ["string", "null"], "format": "date-time" },
+        "sourceClaimDigest": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" }
       }
     },
     "ci": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "pipeline", "buildNumber", "finishedAt"],
+      "required": ["status", "pipeline", "buildNumber", "finishedAt", "sourceClaimDigest"],
       "properties": {
         "status": { "enum": ["passed", "failed", "in_progress", "unavailable", "blocked"] },
         "pipeline": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9][-A-Za-z0-9_]{0,127}$" },
         "buildNumber": { "type": ["integer", "null"], "minimum": 1 },
-        "finishedAt": { "type": ["string", "null"], "format": "date-time" }
+        "finishedAt": { "type": ["string", "null"], "format": "date-time" },
+        "sourceClaimDigest": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" }
       }
     },
     "release": {
@@ -207,12 +203,16 @@
     "deployment": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "environment", "provider", "deployedAt"],
+      "required": ["status", "receiptId", "environment", "provider", "commit", "deployedAt", "observedAt", "sourceClaimDigest"],
       "properties": {
         "status": { "enum": ["passed", "failed", "blocked", "unavailable"] },
+        "receiptId": { "type": ["string", "null"], "maxLength": 128 },
         "environment": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" },
-        "provider": { "type": ["string", "null"], "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" },
-        "deployedAt": { "type": ["string", "null"], "format": "date-time" }
+        "provider": { "type": ["string", "null"], "enum": ["cloud-run", "vercel", null] },
+        "commit": { "type": ["string", "null"], "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
+        "deployedAt": { "type": ["string", "null"], "format": "date-time" },
+        "observedAt": { "type": ["string", "null"], "format": "date-time" },
+        "sourceClaimDigest": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" }
       }
     }
   }
