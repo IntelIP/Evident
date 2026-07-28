@@ -47,9 +47,11 @@ async function collectCommand(options) {
   const configPath = resolve(options.config);
   const config = JSON.parse(await readFile(configPath, "utf8"));
   if (!Array.isArray(config.repositories)) throw new Error("Config repositories must be an array.");
-  const providerInputs = await Promise.all(config.repositories.map(providerSnapshotPaths));
-  const protectedInputs = [configPath, ...providerInputs.flat()];
   const repositoryRoots = await Promise.all(config.repositories.map(repositoryRootPath));
+  const providerInputs = config.repositories.flatMap((repository, index) =>
+    providerSnapshotPaths(repository, repositoryRoots[index])
+  );
+  const protectedInputs = [configPath, ...providerInputs];
   const outputPath = await assertSafeOutput(options.out, protectedInputs, repositoryRoots);
   const dataset = await collectAnalyticsDataset({
     id: options.id,
@@ -78,9 +80,8 @@ async function checkCommand(options) {
   }, null, 2)}\n`);
 }
 
-async function providerSnapshotPaths(repository) {
+function providerSnapshotPaths(repository, repositoryRoot) {
   if (typeof repository?.providerSnapshot !== "string") return [];
-  const repositoryRoot = await realpath(resolve(repository.path));
   return [resolve(repositoryRoot, repository.providerSnapshot)];
 }
 

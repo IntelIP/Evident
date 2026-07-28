@@ -392,9 +392,10 @@ function containsFutureTimestamp(value, observedAt) {
 }
 
 function fieldIsFutureTimestamp(key, value, observedAt) {
+  const timestamp = parseableTimestamp(value);
   return (key.endsWith("At") || key === "at")
-    && isDateTime(value)
-    && Date.parse(value) > Date.parse(observedAt);
+    && timestamp !== null
+    && timestamp > Date.parse(observedAt);
 }
 
 function nestedFieldIsFuture(value, observedAt) {
@@ -611,7 +612,7 @@ function validateRepository(repository, observedAt, window) {
   errors.push(...validateSources(repository.sources, observedAt));
   errors.push(...validateRevision(repository, observedAt));
   errors.push(...validateGitSourceFormatBinding(repository));
-  errors.push(...validateValidationSourceBinding(repository));
+  errors.push(...validateExactHeadControlSources(repository));
   errors.push(...validateDeliveryChanges(
     repository.deliveryChanges,
     observedAt,
@@ -623,15 +624,24 @@ function validateRepository(repository, observedAt, window) {
   return errors;
 }
 
-function validateValidationSourceBinding(repository) {
-  const validationSource = repositorySources(repository).find((source) =>
-    source?.system === "tabellio-validation"
+function validateExactHeadControlSources(repository) {
+  return [
+    ["tabellio-validation", "Validation"],
+    ["tabellio-review", "Review"],
+  ].flatMap(([system, label]) =>
+    validateExactHeadControlSource(repository, system, label)
   );
-  if (validationSource?.status !== "available") return [];
+}
+
+function validateExactHeadControlSource(repository, system, label) {
+  const controlSource = repositorySources(repository).find((source) =>
+    source?.system === system
+  );
+  if (controlSource?.status !== "available") return [];
   return ruleErrors([
     [
-      validationSource.sourceVersion === repository.headCommit,
-      "Validation source version does not match headCommit.",
+      controlSource.sourceVersion === repository.headCommit,
+      `${label} source version does not match headCommit.`,
     ],
   ]);
 }
@@ -1013,8 +1023,15 @@ function validateSourcePayload(source) {
 }
 
 function versionNotAfterObservation(source) {
-  return !isDateTime(source.sourceVersion)
-    || Date.parse(source.sourceVersion) <= Date.parse(source.observedAt);
+  const versionTimestamp = parseableTimestamp(source.sourceVersion);
+  return versionTimestamp === null
+    || versionTimestamp <= Date.parse(source.observedAt);
+}
+
+function parseableTimestamp(value) {
+  if (typeof value !== "string") return null;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
 }
 
 function validGitSourceVersion(source) {

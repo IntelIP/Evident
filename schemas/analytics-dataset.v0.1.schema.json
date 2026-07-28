@@ -48,6 +48,16 @@
     "integrity": { "$ref": "#/$defs/integrity" }
   },
   "$defs": {
+    "repositoryIdentifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+      "allOf": [
+        { "not": { "pattern": "^[gG][hH][pPoOuUsSrR]_[A-Za-z0-9_]{8,}/" } },
+        { "not": { "pattern": "^[gG][iI][tT][hH][uU][bB]_[pP][aA][tT]_[A-Za-z0-9_]{8,}/" } },
+        { "not": { "pattern": "^[sS][kK]-(?:[lL][iI][vV][eE]|[pP][rR][oO][jJ])[_-][A-Za-z0-9_-]{8,}/" } },
+        { "not": { "pattern": "^AKIA[0-9A-Z]{16}/" } }
+      ]
+    },
     "portableIdentifier": {
       "type": "string",
       "minLength": 1,
@@ -340,10 +350,7 @@
       ],
       "properties": {
         "id": { "$ref": "#/$defs/portableIdentifier" },
-        "canonicalRepositoryId": {
-          "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
-        },
+        "canonicalRepositoryId": { "$ref": "#/$defs/repositoryIdentifier" },
         "headCommit": {
           "oneOf": [
             { "$ref": "#/$defs/commit" },

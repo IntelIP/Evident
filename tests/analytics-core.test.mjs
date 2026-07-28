@@ -79,7 +79,7 @@ test("analytics core rejects stale, unsafe, and contradictory imported evidence"
     }, /safe reason/],
     ["future provider version", (dataset) => {
       dataset.repositories[0].sources.find((source) => source.system === "github").sourceVersion =
-        "2099-01-01T00:00:00.000Z";
+        "2099-01-01T00:00:00Z";
     }, /later than its observation/],
     ["forged metric", (dataset) => {
       dataset.repositories[0].metrics.deliveryChangeCount.value = 99;
@@ -123,6 +123,9 @@ test("analytics core rejects stale, unsafe, and contradictory imported evidence"
         source.system === "tabellio-validation"
       ).sourceVersion = "b".repeat(40);
     }, /Validation source version does not match headCommit/],
+    ["stale review source", (dataset) => {
+      dataset.repositories[0].sources.push(source("tabellio-review", "b".repeat(40)));
+    }, /Review source version does not match headCommit/],
     ["missing provider version", (dataset) => {
       dataset.repositories[0].sources.find((source) =>
         source.system === "github"
@@ -450,6 +453,22 @@ test("analytics collector blocks unsafe and future-dated control records", async
   assertBlockedControlSource(source);
 });
 
+test("analytics collector blocks parseable non-canonical future control timestamps", async (context) => {
+  const fixture = await githubRepositoryFixture(context);
+  const result = validationResult(
+    fixture.head,
+    "github.com/IntelIP/Example",
+    "passed",
+    "future-control",
+  );
+  result.completedAt = "2099-01-01T00:00:00Z";
+  const { integrity: _integrity, ...unsigned } = result;
+  result.integrity.digest = digestObject(unsigned);
+  await writeValidationControl(fixture, result);
+  const source = await collectedValidationSource(fixture.repository);
+  assertBlockedControlSource(source);
+});
+
 test("analytics collector rejects structurally incomplete control records", async (context) => {
   const fixture = await gitRepositoryFixture(context);
   const head = await git(fixture.repository, ["rev-parse", "HEAD"]);
@@ -490,11 +509,19 @@ test("analytics CLI rejects config, provider, symlink, and repository output ali
   await mkdir(repositorySubdirectory);
   const subdirectoryConfigPath = join(fixture.root, "subdirectory-config.json");
   await writeFile(subdirectoryConfigPath, `${JSON.stringify({
-    repositories: [{ id: "fixture", path: repositorySubdirectory }],
+    repositories: [{
+      id: "fixture",
+      path: repositorySubdirectory,
+      providerSnapshot: "../provider.json",
+    }],
   }, null, 2)}\n`);
   await assertCliFailure(
     analyticsCollectArgs(subdirectoryConfigPath, join(fixture.repository, "analytics-from-subdir.json")),
     /outside collected repositories/,
+  );
+  await assertCliFailure(
+    analyticsCollectArgs(subdirectoryConfigPath, providerPath),
+    /must not alias an input/,
   );
   assert.equal(await readFile(configPath, "utf8"), originalConfig);
 
@@ -563,6 +590,7 @@ test("analytics schema requires source observations and canonical metric states"
   assert.ok(schema.$defs.source.required.includes("observedAt"));
   assert.deepEqual(schema.$defs.metric.properties.status.enum, ["measured", "unavailable"]);
   assert.equal(schema.$defs.commit.pattern, "^(?:[0-9a-f]{40}|[0-9a-f]{64})$");
+  assertCredentialSafeRepositorySchema(schema.$defs.repositoryIdentifier);
   const portablePatterns = schema.$defs.portableIdentifier.allOf.map((rule) => rule.not.pattern);
   assert.deepEqual(
     portablePatterns.slice(0, 4),
@@ -624,6 +652,7 @@ test("analytics schema requires source observations and canonical metric states"
     "tabellio-analytics-provider-snapshot/v0.1",
   );
   assert.ok(providerSchema.required.includes("headCommit"));
+  assertCredentialSafeRepositorySchema(providerSchema.$defs.repositoryIdentifier);
   assert.deepEqual(
     providerSchema.properties.sources.required,
     ["plane", "github", "github-actions", "buildkite"],
@@ -632,6 +661,7 @@ test("analytics schema requires source observations and canonical metric states"
     new URL("../schemas/delivery-evidence-snapshot.v0.1.schema.json", import.meta.url),
     "utf8",
   ));
+  assertCredentialSafeRepositorySchema(deliverySchema.$defs.repositoryIdentifier);
   assert.ok(deliverySchema.$defs.source.required.includes("observations"));
   assert.equal(deliverySchema.$defs.source.allOf[0].then.properties.observations.minItems, 1);
   assert.equal(
@@ -734,6 +764,20 @@ function source(system, sourceVersion) {
     contentDigest: "d".repeat(64),
     reason: null,
   };
+}
+
+function assertCredentialSafeRepositorySchema(schema) {
+  for (const unsafe of [
+    "ghp_0123456789abcdef/repository",
+    "github_pat_0123456789abcdef/repository",
+    "sk-proj_0123456789abcdef/repository",
+    "AKIA0123456789ABCDEF/repository",
+  ]) {
+    assert.ok(
+      schema.allOf.some((rule) => new RegExp(rule.not.pattern).test(unsafe)),
+      `repository schema should reject ${JSON.stringify(unsafe)}`,
+    );
+  }
 }
 
 function providerSnapshot(headCommit) {
