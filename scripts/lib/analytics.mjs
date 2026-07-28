@@ -787,9 +787,7 @@ function validateDeliveryChanges(changes, observedAt, headCommit, window) {
   const errors = changes.flatMap((change, index) =>
     prefix(`deliveryChanges[${index}]`, [
       ...validateDeliveryChange(change, observedAt, headCommit),
-      ...ruleErrors([
-        [deliveryChangeWithinWindow(change, window), "is outside the dataset observation window."],
-      ]),
+      ...validateDeliveryWindow(change, window),
     ])
   );
   errors.push(...duplicateValueErrors(
@@ -805,6 +803,13 @@ function validateDeliveryChanges(changes, observedAt, headCommit, window) {
     (index) => `deliveryChanges[${index}] duplicates Plane and pull-request relationship.`,
   ));
   return errors;
+}
+
+function validateDeliveryWindow(change, window) {
+  if (!hasDeliveryWindowBounds(window)) return [];
+  return ruleErrors([
+    [deliveryChangeWithinWindow(change, window), "is outside the dataset observation window."],
+  ]);
 }
 
 function deliveryRelationshipKey(change) {

@@ -120,6 +120,12 @@ test("analytics core rejects stale, unsafe, and contradictory imported evidence"
         source.system === "github"
       ).sourceVersion = null;
     }, /provider source version is unsafe/],
+    ["missing observation window", (dataset) => {
+      delete dataset.window;
+    }, /Dataset observation window is invalid/],
+    ["null observation window", (dataset) => {
+      dataset.window = null;
+    }, /Dataset observation window is invalid/],
   ];
 
   for (const [name, mutate, expected] of cases) {
