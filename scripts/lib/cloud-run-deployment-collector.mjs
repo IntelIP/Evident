@@ -79,10 +79,11 @@ function servingRevision(payload) {
   const revisionName = revision?.metadata?.name;
   const traffic = payload?.service?.status?.traffic;
   ensure(Array.isArray(traffic), "Cloud Run service traffic is invalid.");
-  const serving = traffic.some((entry) =>
-    entry?.percent === 100 && entry?.revisionName === revisionName
+  const serving = traffic.filter((entry) => entry?.percent === 100);
+  ensure(
+    serving.length === 1 && serving[0]?.revisionName === revisionName,
+    "Cloud Run service has no single serving revision.",
   );
-  ensure(serving, "Cloud Run service has no single serving revision.");
   return revision;
 }
 

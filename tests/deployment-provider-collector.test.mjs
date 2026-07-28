@@ -22,6 +22,12 @@ test("Cloud Run collector blocks short commits, partial traffic, and wrong repos
     cloudRunPayload({ commitSha: "a0bc228" }),
     cloudRunPayload({ percent: 50 }),
     cloudRunPayload({ repository: "IntelIP/Other" }),
+    cloudRunPayload({
+      traffic: [
+        { percent: 100, revisionName: "agentos-00012" },
+        { percent: 100, revisionName: "agentos-00011" },
+      ],
+    }),
   ]) {
     const result = await cloudRunReceipt(payload);
     assert.equal(result.status, "blocked");
@@ -91,9 +97,10 @@ function cloudRunPayload({
   repository = "IntelIP/Condere",
   percent = 100,
   revisionName = "agentos-00012",
+  traffic = [{ percent, revisionName }],
 } = {}) {
   return {
-    service: { status: { traffic: [{ percent, revisionName }] } },
+    service: { status: { traffic } },
     revision: {
       metadata: {
         name: revisionName,
