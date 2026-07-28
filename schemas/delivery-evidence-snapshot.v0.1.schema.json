@@ -172,7 +172,7 @@
       "additionalProperties": false,
       "required": ["status", "workspace", "key", "createdAt", "stateGroup", "updatedAt", "sourceClaimDigest"],
       "properties": {
-        "status": { "enum": ["linked", "unlinked", "blocked"] },
+        "status": { "enum": ["linked", "unlinked", "blocked", "unavailable"] },
         "workspace": { "$ref": "#/$defs/portableIdentifier" },
         "key": { "type": ["string", "null"], "pattern": "^[A-Z](?:[A-Z0-9]|-(?=[A-Z0-9])){0,31}-[1-9][0-9]*$" },
         "createdAt": { "type": ["string", "null"], "format": "date-time" },
@@ -198,7 +198,7 @@
       "additionalProperties": false,
       "required": ["status", "releaseId", "tagName", "publishedAt", "commit", "sourceClaimDigest"],
       "properties": {
-        "status": { "enum": ["shipped", "unreleased", "blocked"] },
+        "status": { "enum": ["shipped", "unreleased", "blocked", "unavailable"] },
         "releaseId": {
           "oneOf": [
             { "$ref": "#/$defs/safeReleaseText" },

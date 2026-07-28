@@ -798,4 +798,47 @@ test("delivery join preserves unavailable Plane and GitHub authority", () => {
   });
   assert.equal(snapshot.sources.plane.status, "unavailable");
   assert.equal(snapshot.sources.githubRelease.status, "unavailable");
+  assert.equal(snapshot.deliveryRecords[0].plane.status, "unavailable");
+  assert.equal(snapshot.deliveryRecords[0].release.status, "unavailable");
+});
+
+test("delivery snapshot binds authority states and unique deployment receipts", () => {
+  const blockedProvider = provider();
+  blockedProvider.sources.plane = {
+    status: "blocked",
+    reason: "Plane unavailable.",
+    workspace: "intelip",
+  };
+  Object.assign(blockedProvider.deliveryChanges[0], {
+    linkBasis: "unlinked",
+    linkEvidence: null,
+    planeStoryId: null,
+    pullRequestNumber: null,
+    storyCreatedAt: null,
+  });
+  const blockedPlane = {
+    ...plane(),
+    status: "blocked",
+    reason: "Plane unavailable.",
+    projects: [],
+    states: [],
+    workItems: [],
+  };
+  const authority = join({
+    providerSnapshot: blockedProvider,
+    planeSnapshot: blockedPlane,
+  });
+  authority.sources.plane.status = "unavailable";
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(authority),
+    /does not match provider authority evidence|must remain unavailable/,
+  );
+
+  assert.throws(
+    () => join({
+      deploymentReceipts: [deployment(), deployment()],
+      deploymentEnvironment: "production",
+    }),
+    /observation IDs must be unique/,
+  );
 });

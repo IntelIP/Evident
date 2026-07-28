@@ -319,6 +319,11 @@ function recordContext(input) {
     itemByKey,
     stateById,
     planeSnapshot,
+    planeSourceStatus: input.planeSourceStatus
+      ?? authorityEvidenceStatus(
+        providerSnapshot.sources.plane.status,
+        planeSnapshot.status,
+      ),
     buildkiteSnapshots,
     buildkiteSourceStatus: input.buildkiteSourceStatus
       ?? buildkiteEvidenceStatus(
@@ -326,6 +331,11 @@ function recordContext(input) {
         providerSnapshot.sources.buildkite.status,
       ),
     releaseSnapshot,
+    releaseSourceStatus: input.releaseSourceStatus
+      ?? authorityEvidenceStatus(
+        providerSnapshot.sources.github.status,
+        releaseSnapshot.status,
+      ),
     deploymentReceipts: targetReceipts,
     deploymentBlockedReason,
     deploymentEnvironment,
@@ -356,7 +366,7 @@ function recordFor(change, context) {
       build,
       context.buildkiteSourceStatus,
     ),
-    release: releaseEvidenceFor(release, context.releaseSnapshot),
+    release: releaseEvidenceFor(release, context.releaseSourceStatus),
     deployment: deploymentEvidenceFor(receipt, context),
   };
 }
@@ -381,7 +391,7 @@ function planeEvidenceFor(change, context) {
     );
   }
   return {
-    status: missingPlaneStatus(context.planeSnapshot),
+    status: missingPlaneStatus(context.planeSourceStatus),
     workspace: context.planeSnapshot.workspace,
     key: change.planeStoryId,
     createdAt: null,
@@ -411,8 +421,8 @@ function linkedPlaneEvidence(change, item, stateById, workspace) {
   };
 }
 
-function missingPlaneStatus(snapshot) {
-  return snapshot.status === "available" ? "unlinked" : "blocked";
+function missingPlaneStatus(sourceStatus) {
+  return sourceStatus === "available" ? "unlinked" : sourceStatus;
 }
 
 function ciEvidenceFor(build, sourceStatus) {
@@ -435,10 +445,10 @@ function ciEvidenceFor(build, sourceStatus) {
   };
 }
 
-function releaseEvidenceFor(release, snapshot) {
+function releaseEvidenceFor(release, sourceStatus) {
   if (!release) {
     return {
-      status: snapshot.status === "blocked" ? "blocked" : "unreleased",
+      status: sourceStatus === "available" ? "unreleased" : sourceStatus,
       releaseId: null,
       tagName: null,
       publishedAt: null,
@@ -626,6 +636,10 @@ function authoritySourceState(
     "Provider authority evidence unavailable.",
     authorityStatus,
   );
+}
+
+function authorityEvidenceStatus(authorityStatus, collectorStatus) {
+  return authorityStatus === "available" ? collectorStatus : authorityStatus;
 }
 
 function observation(id, version, value, claims = []) {
@@ -870,6 +884,11 @@ function sameDigestSet(actual, expected) {
 
 function assertSourceState(name, source, capturedAt) {
   ensure(
+    new Set(source.observations.map((item) => item.id)).size
+      === source.observations.length,
+    `${name} source observation IDs must be unique.`,
+  );
+  ensure(
     source.observations.every((item) => isPortableIdentifier(item.id)),
     `${name} source observation IDs must be portable identifiers.`,
   );
@@ -919,12 +938,20 @@ function assertDerivedEvidence(snapshot) {
     snapshot.sources.buildkite.observations.map((item) => item.evidence);
   const deploymentReceipts =
     snapshot.sources.deployment.observations.map((item) => item.evidence);
+  assertDerivedAuthorityStates(
+    snapshot,
+    providerSnapshot,
+    planeSnapshot,
+    releaseSnapshot,
+  );
   const context = recordContext({
     providerSnapshot,
     planeSnapshot,
+    planeSourceStatus: snapshot.sources.plane.status,
     buildkiteSnapshots,
     buildkiteSourceStatus: snapshot.sources.buildkite.status,
     releaseSnapshot,
+    releaseSourceStatus: snapshot.sources.githubRelease.status,
     targetReceipts: deploymentReceipts,
     deploymentBlockedReason:
       snapshot.sources.deployment.status === "blocked"
@@ -945,6 +972,36 @@ function assertDerivedEvidence(snapshot) {
       wipByProject(planeSnapshot, planeSnapshot.capturedAt),
     ),
     "Delivery WIP rows do not match the validated Plane evidence.",
+  );
+}
+
+function assertDerivedAuthorityStates(
+  snapshot,
+  providerSnapshot,
+  planeSnapshot,
+  releaseSnapshot,
+) {
+  const expectedPlane = authoritySourceState(
+    providerSnapshot.sources.plane.status,
+    planeSnapshot.status,
+    planeSnapshot,
+    "",
+  );
+  const expectedRelease = authoritySourceState(
+    providerSnapshot.sources.github.status,
+    releaseSnapshot.status,
+    releaseSnapshot,
+    "",
+  );
+  ensure(
+    snapshot.sources.plane.status === expectedPlane.status
+      && snapshot.sources.plane.reason === expectedPlane.reason,
+    "Plane source state does not match provider authority evidence.",
+  );
+  ensure(
+    snapshot.sources.githubRelease.status === expectedRelease.status
+      && snapshot.sources.githubRelease.reason === expectedRelease.reason,
+    "GitHub Release source state does not match provider authority evidence.",
   );
 }
 
@@ -1239,6 +1296,10 @@ function assertBlockedSourcePreserved(source, status, label) {
   ensure(
     source.status !== "blocked" || status === "blocked",
     `Blocked ${label} source must remain blocked in every delivery record.`,
+  );
+  ensure(
+    source.status !== "unavailable" || status === "unavailable",
+    `Unavailable ${label} source must remain unavailable in every delivery record.`,
   );
 }
 
