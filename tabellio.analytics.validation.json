@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "tabellio-validation/v0.2",
+  "id": "intb-261-p1b-analytics-core",
+  "failFast": false,
+  "requireEntireCheckpoint": true,
+  "acceptance": {
+    "id": "INTB-261-P1b",
+    "source": "INTB-261 and docs/intb-261-p1b-execution-contract.md",
+    "risk": "high",
+    "outcomes": [
+      "Portable provider and Git evidence produces a deterministic analytics dataset.",
+      "Unavailable or malformed evidence remains unavailable or blocked.",
+      "Delivery metrics are recomputed from exact repository-bound trace rows."
+    ],
+    "invariants": [
+      "Identifiers, reasons, versions, and exported evidence contain no credentials or local paths.",
+      "Git sources, control refs, provider snapshots, and delivery rows bind the exact repository and commit.",
+      "Observation windows, source versions, control records, and delivery timestamps are temporally coherent.",
+      "Analytics outputs cannot alias inputs, symbolic links, hard links, or collected repositories."
+    ],
+    "forbiddenOutcomes": [
+      "Missing evidence becomes zero, passed, measured, shipped, or deployed.",
+      "Imported metrics override recomputed delivery values.",
+      "Raw control paths, repository paths, provider paths, or credentials appear in exported datasets.",
+      "Validation performs provider writes, deployments, releases, billing, or production-data access."
+    ],
+    "requiredValidatorTypes": ["static", "schema", "semantic", "workflow", "security"]
+  },
+  "validators": [
+    {
+      "id": "analytics-static",
+      "type": "static",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "analytics-static"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": null,
+      "policy": {
+        "metricThresholds": [],
+        "maxCostUsd": null,
+        "requireCostTelemetry": false
+      }
+    },
+    {
+      "id": "analytics-schema",
+      "type": "schema",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "analytics-schema", "--validator-id", "analytics-schema", "--out", ".artifacts/tabellio/analytics-schema.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": { "path": ".artifacts/tabellio/analytics-schema.json" },
+      "policy": {
+        "metricThresholds": [
+          { "metric": "analytics_schema_pass", "operator": "eq", "value": 1 }
+        ],
+        "maxCostUsd": 0,
+        "requireCostTelemetry": true
+      }
+    },
+    {
+      "id": "analytics-semantic",
+      "type": "semantic",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "analytics-semantic", "--validator-id", "analytics-semantic", "--out", ".artifacts/tabellio/analytics-semantic.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": { "path": ".artifacts/tabellio/analytics-semantic.json" },
+      "policy": {
+        "metricThresholds": [
+          { "metric": "analytics_semantics_pass", "operator": "eq", "value": 1 }
+        ],
+        "maxCostUsd": 0,
+        "requireCostTelemetry": true
+      }
+    },
+    {
+      "id": "analytics-workflow",
+      "type": "workflow",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "analytics-workflow", "--validator-id", "analytics-workflow", "--out", ".artifacts/tabellio/analytics-workflow.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": { "path": ".artifacts/tabellio/analytics-workflow.json" },
+      "policy": {
+        "metricThresholds": [
+          { "metric": "analytics_workflow_pass", "operator": "eq", "value": 1 }
+        ],
+        "maxCostUsd": 0,
+        "requireCostTelemetry": true
+      }
+    },
+    {
+      "id": "analytics-security",
+      "type": "security",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "analytics-security", "--validator-id", "analytics-security", "--out", ".artifacts/tabellio/analytics-security.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": { "path": ".artifacts/tabellio/analytics-security.json" },
+      "policy": {
+        "metricThresholds": [
+          { "metric": "analytics_security_pass", "operator": "eq", "value": 1 }
+        ],
+        "maxCostUsd": 0,
+        "requireCostTelemetry": true
+      }
+    }
+  ]
+}

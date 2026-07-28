@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intelip.co/tabellio/schemas/analytics-dataset.v0.1.schema.json",
+  "title": "Tabellio analytics dataset v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "observedAt",
+    "window",
+    "metricDefinitions",
+    "repositories",
+    "integrity"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "tabellio-analytics-dataset/v0.1" },
+    "id": { "$ref": "#/$defs/portableIdentifier" },
+    "observedAt": { "type": "string", "format": "date-time" },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["since", "until"],
+      "properties": {
+        "since": { "type": "string", "format": "date-time" },
+        "until": { "type": "string", "format": "date-time" }
+      }
+    },
+    "metricDefinitions": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": { "$ref": "#/$defs/metricDefinition" }
+    },
+    "repositories": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/repository" }
+    },
+    "integrity": { "$ref": "#/$defs/integrity" }
+  },
+  "$defs": {
+    "portableIdentifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$"
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "digest"],
+      "properties": {
+        "algorithm": { "const": "sha256" },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "metricDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "unit"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9]*$" },
+        "unit": { "enum": ["count", "ratio", "hours"] }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "system",
+        "status",
+        "observedAt",
+        "sourceVersion",
+        "contentDigest",
+        "reason"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/portableIdentifier" },
+        "system": { "$ref": "#/$defs/portableIdentifier" },
+        "status": { "enum": ["available", "unavailable", "blocked"] },
+        "observedAt": { "type": "string", "format": "date-time" },
+        "sourceVersion": { "type": ["string", "null"], "maxLength": 200 },
+        "contentDigest": {
+          "oneOf": [
+            { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            { "type": "null" }
+          ]
+        },
+        "reason": { "type": ["string", "null"], "minLength": 1, "maxLength": 500 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "available" } } },
+          "then": {
+            "properties": {
+              "sourceVersion": { "type": "string", "minLength": 1 },
+              "contentDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "reason": { "type": "null" }
+            }
+          },
+          "else": {
+            "properties": {
+              "sourceVersion": { "type": "null" },
+              "contentDigest": { "type": "null" },
+              "reason": { "type": "string", "minLength": 1, "maxLength": 500 }
+            }
+          }
+        }
+      ]
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "value", "unit", "reason", "numerator", "denominator"],
+      "properties": {
+        "status": { "enum": ["measured", "unavailable"] },
+        "value": { "type": ["number", "null"] },
+        "unit": { "enum": ["count", "ratio", "hours"] },
+        "reason": { "type": ["string", "null"], "minLength": 1, "maxLength": 500 },
+        "numerator": { "type": ["number", "null"] },
+        "denominator": { "type": ["number", "null"] }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deliveryChangeCount",
+        "taskToPrTraceability",
+        "leadTimeHours",
+        "cycleTimeHours",
+        "ciDisagreementRate",
+        "releaseLagHours"
+      ],
+      "properties": {
+        "deliveryChangeCount": { "$ref": "#/$defs/metric" },
+        "taskToPrTraceability": { "$ref": "#/$defs/metric" },
+        "leadTimeHours": { "$ref": "#/$defs/metric" },
+        "cycleTimeHours": { "$ref": "#/$defs/metric" },
+        "ciDisagreementRate": { "$ref": "#/$defs/metric" },
+        "releaseLagHours": { "$ref": "#/$defs/metric" }
+      }
+    },
+    "deliveryChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "linkBasis",
+        "linkEvidence",
+        "planeStoryId",
+        "pullRequestNumber",
+        "storyCreatedAt",
+        "firstActivityAt",
+        "mergedAt",
+        "releasedAt",
+        "headCommit",
+        "validationStatus",
+        "hostedStatus"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/portableIdentifier" },
+        "linkBasis": { "enum": ["explicit", "manual-reconciliation", "unlinked"] },
+        "linkEvidence": { "type": ["string", "null"], "minLength": 1, "maxLength": 500 },
+        "planeStoryId": {
+          "oneOf": [
+            { "$ref": "#/$defs/portableIdentifier" },
+            { "type": "null" }
+          ]
+        },
+        "pullRequestNumber": { "type": ["integer", "null"], "minimum": 1 },
+        "storyCreatedAt": { "type": ["string", "null"], "format": "date-time" },
+        "firstActivityAt": { "type": ["string", "null"], "format": "date-time" },
+        "mergedAt": { "type": ["string", "null"], "format": "date-time" },
+        "releasedAt": { "type": ["string", "null"], "format": "date-time" },
+        "headCommit": { "$ref": "#/$defs/commit" },
+        "validationStatus": { "enum": ["passed", "failed", "blocked", "unavailable"] },
+        "hostedStatus": { "enum": ["passed", "failed", "blocked", "unavailable"] }
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "canonicalRepositoryId",
+        "headCommit",
+        "headCommittedAt",
+        "branch",
+        "sources",
+        "metrics",
+        "deliveryChanges"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/portableIdentifier" },
+        "canonicalRepositoryId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+        },
+        "headCommit": {
+          "oneOf": [
+            { "$ref": "#/$defs/commit" },
+            { "type": "null" }
+          ]
+        },
+        "headCommittedAt": { "type": ["string", "null"], "format": "date-time" },
+        "branch": {
+          "oneOf": [
+            { "$ref": "#/$defs/portableIdentifier" },
+            { "type": "null" }
+          ]
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/source" }
+        },
+        "metrics": { "$ref": "#/$defs/metrics" },
+        "deliveryChanges": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/deliveryChange" }
+        }
+      }
+    }
+  }
+}
