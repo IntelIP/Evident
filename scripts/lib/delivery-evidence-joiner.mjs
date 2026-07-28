@@ -488,10 +488,15 @@ function releaseFor(change, snapshot) {
 }
 
 function releaseMatches(change, candidate) {
-  return candidate.commitStatus === "resolved"
-    && releaseCommitMatches(change, candidate)
+  return releaseIdentityMatches(change, candidate)
     && releaseTimestampMatches(change, candidate)
     && releaseFollowsMerge(change, candidate);
+}
+
+function releaseIdentityMatches(change, candidate) {
+  return Boolean(change.mergeCommit)
+    && candidate.commitStatus === "resolved"
+    && releaseCommitMatches(change, candidate);
 }
 
 function releaseCommitMatches(change, candidate) {
@@ -806,8 +811,9 @@ function releaseEvidenceContract(evidence, snapshot) {
 function deploymentEvidenceContract(evidence, snapshot) {
   validateDeploymentReceipt(evidence);
   ensure(
-    sameRepository(evidence.repository, snapshot.repository),
-    "Deployment source evidence repository mismatch.",
+    sameRepository(evidence.repository, snapshot.repository)
+      && evidence.environment === snapshot.deploymentEnvironment,
+    "Deployment source evidence authority mismatch.",
   );
   return {
     id: boundedObservationId(`deployment:${evidence.provider}`, evidence.id),
@@ -1076,6 +1082,10 @@ function assertReleaseEvidence(record, release, source, capturedAt) {
     "Shipped release evidence requires an available GitHub Release source observation.",
   );
   ensure(
+    record.mergeCommit !== null,
+    "Shipped release evidence requires a landed merge commit.",
+  );
+  ensure(
     releaseCommitMatchesRecord(record, release.commit),
     "Release evidence commit is not bound to the delivery record.",
   );
@@ -1130,6 +1140,10 @@ function assertDeploymentEvidence(record, snapshot) {
   ensure(
     snapshot.sources.deployment.status === "available",
     "Decisive deployment evidence requires an available deployment source observation.",
+  );
+  ensure(
+    deployment.environment === snapshot.deploymentEnvironment,
+    "Deployment evidence is not from the designated environment.",
   );
   ensure(
     changeCommits(record).includes(deployment.commit),

@@ -142,7 +142,7 @@
       "additionalProperties": false,
       "required": ["project", "activeItemCount", "aging3dCount", "overLimit"],
       "properties": {
-        "project": { "type": "string", "pattern": "^[A-Z][A-Z0-9]{0,31}$" },
+        "project": { "type": "string", "pattern": "^[A-Z](?:[A-Z0-9]|-(?=[A-Z0-9])){0,31}$" },
         "activeItemCount": { "type": "integer", "minimum": 0 },
         "aging3dCount": { "type": "integer", "minimum": 0 },
         "overLimit": { "type": "boolean" }
@@ -174,7 +174,7 @@
       "properties": {
         "status": { "enum": ["linked", "unlinked", "blocked"] },
         "workspace": { "$ref": "#/$defs/portableIdentifier" },
-        "key": { "type": ["string", "null"], "pattern": "^[A-Z][A-Z0-9]{0,31}-[1-9][0-9]*$" },
+        "key": { "type": ["string", "null"], "pattern": "^[A-Z](?:[A-Z0-9]|-(?=[A-Z0-9])){0,31}-[1-9][0-9]*$" },
         "createdAt": { "type": ["string", "null"], "format": "date-time" },
         "stateGroup": { "type": ["string", "null"], "enum": ["backlog", "unstarted", "started", "completed", "cancelled", null] },
         "updatedAt": { "type": ["string", "null"], "format": "date-time" },

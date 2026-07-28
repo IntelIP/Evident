@@ -33,7 +33,7 @@ export function provider() {
       mergedAt: at,
       releasedAt: null,
       headCommit: commit,
-      mergeCommit: null,
+      mergeCommit: commit,
       releaseCommit: null,
       validationStatus: "passed",
       hostedStatus: "passed",

@@ -278,6 +278,7 @@ test("delivery join preserves blocked provider sources as blocked records", () =
     storyCreatedAt: null,
     firstActivityAt: null,
     mergedAt: null,
+    mergeCommit: null,
   });
   const planeSnapshot = {
     ...plane(),
@@ -401,6 +402,7 @@ test("delivery join selects earliest post-merge release", () => {
 test("delivery join never ships an unmerged change", () => {
   const providerSnapshot = provider();
   providerSnapshot.deliveryChanges[0].mergedAt = null;
+  providerSnapshot.deliveryChanges[0].mergeCommit = null;
   const snapshot = join({ providerSnapshot });
   assert.equal(snapshot.deliveryRecords[0].release.status, "unreleased");
 });
@@ -703,4 +705,31 @@ test("delivery join requires immutable Plane creation identity", () => {
     join({ planeSnapshot }).deliveryRecords[0].plane.status,
     "unlinked",
   );
+});
+
+test("delivery join accepts collector-valid hyphenated Plane project keys", () => {
+  const providerSnapshot = provider();
+  providerSnapshot.deliveryChanges[0].planeStoryId = "INT-B-260";
+  const planeSnapshot = plane();
+  planeSnapshot.projects[0].identifier = "INT-B";
+  const snapshot = join({ providerSnapshot, planeSnapshot });
+  assert.equal(snapshot.wipByProject[0].project, "INT-B");
+  assert.equal(snapshot.deliveryRecords[0].plane.key, "INT-B-260");
+});
+
+test("delivery snapshot rejects environment relabeling and shipment without merge identity", () => {
+  const environment = join({
+    deploymentReceipts: [deployment({ environment: "staging" })],
+    deploymentEnvironment: "staging",
+  });
+  environment.deploymentEnvironment = "production";
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(environment),
+    /Deployment source evidence authority mismatch/,
+  );
+
+  const providerSnapshot = provider();
+  providerSnapshot.deliveryChanges[0].mergeCommit = null;
+  const shipment = join({ providerSnapshot });
+  assert.equal(shipment.deliveryRecords[0].release.status, "unreleased");
 });
