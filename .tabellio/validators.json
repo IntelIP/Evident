@@ -98,7 +98,7 @@
       "summary": "Analytics validator privacy boundaries"
     },
     "buildkite-collector-static": {
-      "commands": [["node", "--test", "tests/buildkite-build-collector.test.mjs", "tests/buildkite-high-gates.test.mjs"]],
+      "commands": [["node", "--test", "tests/buildkite-build-collector.test.mjs", "tests/buildkite-high-gates.test.mjs", "tests/validation-adapter.test.mjs"]],
       "metrics": [],
       "cost": {"telemetry": "not_applicable", "usd": null, "modelCalls": null, "toolCalls": null},
       "summary": "Buildkite collector and merged-checkpoint focused tests"
