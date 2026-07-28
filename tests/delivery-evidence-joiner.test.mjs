@@ -733,3 +733,69 @@ test("delivery snapshot rejects environment relabeling and shipment without merg
   const shipment = join({ providerSnapshot });
   assert.equal(shipment.deliveryRecords[0].release.status, "unreleased");
 });
+
+test("delivery join rejects partial blocked deployment collection", () => {
+  assert.throws(
+    () => join({
+      deploymentReceipts: [deployment()],
+      deploymentBlockedReason: "Deployment collection incomplete.",
+      deploymentEnvironment: "production",
+    }),
+    /cannot include decisive receipts/,
+  );
+});
+
+test("delivery snapshot rejects ambiguous authoritative observations", () => {
+  const snapshot = join();
+  snapshot.sources.plane.observations.push(
+    structuredClone(snapshot.sources.plane.observations[0]),
+  );
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(snapshot),
+    /at most one authoritative observation/,
+  );
+});
+
+test("delivery join preserves unavailable Plane and GitHub authority", () => {
+  const providerSnapshot = provider();
+  providerSnapshot.sources.plane = {
+    status: "unavailable",
+    reason: "Plane is not configured.",
+    workspace: "intelip",
+  };
+  providerSnapshot.sources.github = {
+    status: "unavailable",
+    reason: "GitHub evidence is unavailable.",
+  };
+  Object.assign(providerSnapshot.deliveryChanges[0], {
+    linkBasis: "unlinked",
+    linkEvidence: null,
+    planeStoryId: null,
+    pullRequestNumber: null,
+    storyCreatedAt: null,
+    firstActivityAt: null,
+    mergedAt: null,
+    mergeCommit: null,
+  });
+  const planeSnapshot = {
+    ...plane(),
+    status: "blocked",
+    reason: "Plane collector unavailable.",
+    projects: [],
+    states: [],
+    workItems: [],
+  };
+  const releaseSnapshot = {
+    ...releases(),
+    status: "blocked",
+    reason: "GitHub collector unavailable.",
+    releases: [],
+  };
+  const snapshot = join({
+    providerSnapshot,
+    planeSnapshot,
+    releaseSnapshot,
+  });
+  assert.equal(snapshot.sources.plane.status, "unavailable");
+  assert.equal(snapshot.sources.githubRelease.status, "unavailable");
+});

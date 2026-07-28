@@ -97,7 +97,8 @@ export function joinDeliveryEvidence({
           providerSnapshot.deliveryChanges.map(providerChangeClaim),
         ),
       ]),
-      plane: sourceState(
+      plane: authoritySourceState(
+        providerSnapshot.sources.plane.status,
         planeSnapshot.status,
         planeSnapshot,
         boundedObservationId("plane", planeSnapshot.workspace),
@@ -107,7 +108,8 @@ export function joinDeliveryEvidence({
         buildkiteSnapshots,
         providerSnapshot.sources.buildkite.status,
       ),
-      githubRelease: sourceState(
+      githubRelease: authoritySourceState(
+        providerSnapshot.sources.github.status,
         releaseSnapshot.status,
         releaseSnapshot,
         boundedObservationId("github-release", releaseSnapshot.repository),
@@ -279,6 +281,17 @@ function assertDeploymentBinding({
     !(deploymentReceipts.length || deploymentBlockedReason)
       || deploymentEnvironment !== null,
     "Deployment evidence requires a designated target environment.",
+  );
+  assertDeploymentCollectionConsistency(
+    deploymentReceipts,
+    deploymentBlockedReason,
+  );
+}
+
+function assertDeploymentCollectionConsistency(receipts, blockedReason) {
+  ensure(
+    blockedReason === null || receipts.length === 0,
+    "Blocked deployment collection cannot include decisive receipts.",
   );
 }
 
@@ -599,6 +612,22 @@ function sourceState(status, snapshot, identity, claims = []) {
     : unavailableSource("Collector unavailable.", "blocked");
 }
 
+function authoritySourceState(
+  authorityStatus,
+  collectorStatus,
+  snapshot,
+  identity,
+  claims = [],
+) {
+  if (authorityStatus === "available") {
+    return sourceState(collectorStatus, snapshot, identity, claims);
+  }
+  return unavailableSource(
+    "Provider authority evidence unavailable.",
+    authorityStatus,
+  );
+}
+
 function observation(id, version, value, claims = []) {
   return {
     id,
@@ -708,6 +737,7 @@ function assertUniquePortableRecords(snapshot) {
 }
 
 function assertSafeSources(snapshot) {
+  assertAuthoritativeObservationCardinality(snapshot.sources);
   for (const [name, source] of Object.entries(snapshot.sources)) {
     ensure(
       source.reason === null
@@ -717,6 +747,15 @@ function assertSafeSources(snapshot) {
     assertSourceState(name, source, snapshot.capturedAt);
     source.observations.forEach(
       (item) => assertObservationEvidence(name, item, snapshot),
+    );
+  }
+}
+
+function assertAuthoritativeObservationCardinality(sources) {
+  for (const name of ["provider", "plane", "buildkite", "githubRelease"]) {
+    ensure(
+      sources[name].observations.length <= 1,
+      `${name} source must contain at most one authoritative observation.`,
     );
   }
 }
