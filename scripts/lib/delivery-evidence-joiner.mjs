@@ -84,47 +84,48 @@ export function joinDeliveryEvidence({
     deploymentBlockedReason,
     deploymentEnvironment,
   });
+  const sources = {
+    provider: availableSource([
+      observation(
+        boundedObservationId("provider", providerSnapshot.repository),
+        providerSnapshot.capturedAt,
+        providerSnapshot,
+        providerSnapshot.deliveryChanges.map(providerChangeClaim),
+      ),
+    ]),
+    plane: authoritySourceState(
+      providerSnapshot.sources.plane.status,
+      planeSnapshot.status,
+      planeSnapshot,
+      boundedObservationId("plane", planeSnapshot.workspace),
+      planeClaims(planeSnapshot),
+    ),
+    buildkite: aggregateBuildkite(
+      buildkiteSnapshots,
+      providerSnapshot.sources.buildkite.status,
+    ),
+    githubRelease: authoritySourceState(
+      providerSnapshot.sources.github.status,
+      releaseSnapshot.status,
+      releaseSnapshot,
+      boundedObservationId("github-release", releaseSnapshot.repository),
+      releaseSnapshot.releases.map(releaseClaim),
+    ),
+    deployment: deploymentSource(
+      targetReceipts,
+      deploymentBlockedReason,
+      deploymentEnvironment,
+      providerSnapshot.repository,
+      capturedAt,
+    ),
+  };
   return validateDeliveryEvidenceSnapshot({
     schemaVersion: SCHEMA_VERSION,
     repository: providerSnapshot.repository,
-    capturedAt,
+    capturedAt: latestSourceObservation(sources),
     ciAuthority: buildkiteAuthority,
     deploymentEnvironment,
-    sources: {
-      provider: availableSource([
-        observation(
-          boundedObservationId("provider", providerSnapshot.repository),
-          providerSnapshot.capturedAt,
-          providerSnapshot,
-          providerSnapshot.deliveryChanges.map(providerChangeClaim),
-        ),
-      ]),
-      plane: authoritySourceState(
-        providerSnapshot.sources.plane.status,
-        planeSnapshot.status,
-        planeSnapshot,
-        boundedObservationId("plane", planeSnapshot.workspace),
-        planeClaims(planeSnapshot),
-      ),
-      buildkite: aggregateBuildkite(
-        buildkiteSnapshots,
-        providerSnapshot.sources.buildkite.status,
-      ),
-      githubRelease: authoritySourceState(
-        providerSnapshot.sources.github.status,
-        releaseSnapshot.status,
-        releaseSnapshot,
-        boundedObservationId("github-release", releaseSnapshot.repository),
-        releaseSnapshot.releases.map(releaseClaim),
-      ),
-      deployment: deploymentSource(
-        targetReceipts,
-        deploymentBlockedReason,
-        deploymentEnvironment,
-        providerSnapshot.repository,
-        capturedAt,
-      ),
-    },
+    sources,
     wipByProject: wipByProject(planeSnapshot, planeSnapshot.capturedAt),
     deliveryRecords: providerSnapshot.deliveryChanges.map(
       (change) => recordFor(change, context),
@@ -140,6 +141,10 @@ export function validateDeliveryEvidenceSnapshot(snapshot) {
   if (!isJsonDateTime(snapshot.capturedAt)) {
     throw new Error("Delivery evidence snapshot capturedAt is invalid.");
   }
+  ensure(
+    snapshot.capturedAt === latestSourceObservation(snapshot.sources),
+    "Delivery evidence capturedAt must match its newest source observation.",
+  );
   assertUniquePortableRecords(snapshot);
   assertSafeSources(snapshot);
   assertWipRows(snapshot.wipByProject);
@@ -376,8 +381,11 @@ function recordFor(change, context) {
 }
 
 function assertReleaseTimestamp(change, release) {
-  if (!release) return;
   if (!change.releasedAt) return;
+  ensure(
+    release !== null,
+    `Delivery change ${change.id} claims a release absent from source evidence.`,
+  );
   ensure(
     release.publishedAt === change.releasedAt,
     `Conflicting GitHub release timestamp for delivery change ${change.id}.`,
@@ -516,7 +524,6 @@ function releaseFor(change, snapshot) {
 
 function releaseMatches(change, candidate) {
   return releaseIdentityMatches(change, candidate)
-    && releaseTimestampMatches(change, candidate)
     && releaseFollowsMerge(change, candidate);
 }
 
@@ -529,11 +536,6 @@ function releaseIdentityMatches(change, candidate) {
 function releaseCommitMatches(change, candidate) {
   if (change.releaseCommit) return candidate.commit === change.releaseCommit;
   return changeCommits(change).includes(candidate.commit);
-}
-
-function releaseTimestampMatches(change, candidate) {
-  if (!change.releasedAt) return true;
-  return candidate.publishedAt === change.releasedAt;
 }
 
 function releaseFollowsMerge(change, candidate) {
@@ -1514,6 +1516,14 @@ function latestTimestamp(values) {
   return valid.sort(
     (left, right) => Date.parse(right) - Date.parse(left),
   )[0];
+}
+
+function latestSourceObservation(sources) {
+  return latestTimestamp(
+    Object.values(sources).flatMap(
+      (source) => source.observations.map((item) => item.version),
+    ),
+  );
 }
 
 function latestBy(values, timestampFor) {

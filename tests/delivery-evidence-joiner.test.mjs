@@ -450,6 +450,43 @@ test("delivery join selects earliest post-merge release", () => {
   );
 });
 
+test("delivery join rejects provider release claims absent from source evidence", () => {
+  const providerSnapshot = provider();
+  providerSnapshot.deliveryChanges[0].releasedAt = fixture.at;
+  providerSnapshot.deliveryChanges[0].releaseCommit = fixture.commit;
+  const releaseSnapshot = releases();
+  releaseSnapshot.releases = [];
+  assert.throws(
+    () => join({ providerSnapshot, releaseSnapshot }),
+    /claims a release absent from source evidence/,
+  );
+});
+
+test("delivery join rejects provider time that skips an earlier eligible release", () => {
+  const providerSnapshot = provider();
+  Object.assign(providerSnapshot.deliveryChanges[0], {
+    storyCreatedAt: "2026-07-25T11:59:57.000Z",
+    firstActivityAt: "2026-07-25T11:59:57.000Z",
+    mergedAt: "2026-07-25T11:59:58.000Z",
+    releasedAt: fixture.at,
+    releaseCommit: fixture.commit,
+  });
+  const planeSnapshot = plane();
+  planeSnapshot.workItems[0].createdAt =
+    providerSnapshot.deliveryChanges[0].storyCreatedAt;
+  const releaseSnapshot = releases();
+  releaseSnapshot.releases.unshift({
+    ...releaseSnapshot.releases[0],
+    id: "earlier",
+    tagName: "v0.4.9",
+    publishedAt: "2026-07-25T11:59:59.000Z",
+  });
+  assert.throws(
+    () => join({ providerSnapshot, planeSnapshot, releaseSnapshot }),
+    /Conflicting GitHub release timestamp/,
+  );
+});
+
 test("delivery join never ships an unmerged change", () => {
   const providerSnapshot = provider();
   providerSnapshot.deliveryChanges[0].mergedAt = null;
@@ -547,7 +584,7 @@ test("delivery snapshot rejects unsafe source text and future evidence", () => {
     "2026-07-25T12:00:00.001Z";
   assert.throws(
     () => validateDeliveryEvidenceSnapshot(future),
-    /cannot be newer/,
+    /cannot be newer|capturedAt must match/,
   );
 });
 
@@ -772,6 +809,15 @@ test("delivery snapshot rejects future record events", () => {
       /cannot be newer|not bound/,
     );
   }
+});
+
+test("delivery snapshot rejects capturedAt freshness relabeling", () => {
+  const snapshot = join({ buildkiteSnapshots: [] });
+  snapshot.capturedAt = "2099-01-01T00:00:00.000Z";
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(snapshot),
+    /capturedAt must match its newest source observation/,
+  );
 });
 
 test("delivery join requires immutable Plane creation identity", () => {
