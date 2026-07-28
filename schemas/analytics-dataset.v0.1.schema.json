@@ -52,6 +52,29 @@
         { "not": { "pattern": "\\.\\." } }
       ]
     },
+    "safeText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "allOf": [
+        { "not": { "pattern": "[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\\\|]" } },
+        { "not": { "pattern": "file:" } },
+        { "not": { "pattern": "(?:^|[\\s=:(\\[\\]'\"`])/(?!/)\\S*" } },
+        { "not": { "pattern": "(?:^|[\\s=:(])~(?:/|$)" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9._-])[A-Za-z]:/(?:\\S*)" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][hH][pPoOuUsSrR]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][iI][tT][hH][uU][bB]_[pP][aA][tT]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[sS][kK]-(?:[lL][iI][vV][eE]|[pP][rR][oO][jJ])[_-][A-Za-z0-9_-]{8,}" } },
+        { "not": { "pattern": "\\bAKIA[0-9A-Z]{16}\\b" } },
+        { "not": { "pattern": "://[^/\\s@]+@" } }
+      ]
+    },
+    "safeVersion": {
+      "allOf": [
+        { "$ref": "#/$defs/safeText" },
+        { "maxLength": 200 }
+      ]
+    },
     "commit": {
       "type": "string",
       "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
@@ -91,21 +114,31 @@
         "system": { "$ref": "#/$defs/portableIdentifier" },
         "status": { "enum": ["available", "unavailable", "blocked"] },
         "observedAt": { "type": "string", "format": "date-time" },
-        "sourceVersion": { "type": ["string", "null"], "maxLength": 200 },
+        "sourceVersion": {
+          "oneOf": [
+            { "$ref": "#/$defs/safeVersion" },
+            { "type": "null" }
+          ]
+        },
         "contentDigest": {
           "oneOf": [
             { "type": "string", "pattern": "^[0-9a-f]{64}$" },
             { "type": "null" }
           ]
         },
-        "reason": { "type": ["string", "null"], "minLength": 1, "maxLength": 500 }
+        "reason": {
+          "oneOf": [
+            { "$ref": "#/$defs/safeText" },
+            { "type": "null" }
+          ]
+        }
       },
       "allOf": [
         {
           "if": { "properties": { "status": { "const": "available" } } },
           "then": {
             "properties": {
-              "sourceVersion": { "type": "string", "minLength": 1 },
+              "sourceVersion": { "$ref": "#/$defs/safeVersion" },
               "contentDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
               "reason": { "type": "null" }
             }
@@ -114,7 +147,7 @@
             "properties": {
               "sourceVersion": { "type": "null" },
               "contentDigest": { "type": "null" },
-              "reason": { "type": "string", "minLength": 1, "maxLength": 500 }
+              "reason": { "$ref": "#/$defs/safeText" }
             }
           }
         }
@@ -128,7 +161,12 @@
         "status": { "enum": ["measured", "unavailable"] },
         "value": { "type": ["number", "null"] },
         "unit": { "enum": ["count", "ratio", "hours"] },
-        "reason": { "type": ["string", "null"], "minLength": 1, "maxLength": 500 },
+        "reason": {
+          "oneOf": [
+            { "$ref": "#/$defs/safeText" },
+            { "type": "null" }
+          ]
+        },
         "numerator": { "type": ["number", "null"] },
         "denominator": { "type": ["number", "null"] }
       },
@@ -166,7 +204,7 @@
           "else": {
             "properties": {
               "value": { "type": "null" },
-              "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+              "reason": { "$ref": "#/$defs/safeText" },
               "numerator": { "type": "null" },
               "denominator": { "type": "null" }
             }
@@ -214,7 +252,12 @@
       "properties": {
         "id": { "$ref": "#/$defs/portableIdentifier" },
         "linkBasis": { "enum": ["explicit", "manual-reconciliation", "unlinked"] },
-        "linkEvidence": { "type": ["string", "null"], "minLength": 1, "maxLength": 500 },
+        "linkEvidence": {
+          "oneOf": [
+            { "$ref": "#/$defs/safeText" },
+            { "type": "null" }
+          ]
+        },
         "planeStoryId": {
           "oneOf": [
             { "$ref": "#/$defs/portableIdentifier" },

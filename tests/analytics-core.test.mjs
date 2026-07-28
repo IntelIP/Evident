@@ -115,6 +115,11 @@ test("analytics core rejects stale, unsafe, and contradictory imported evidence"
         source.system === "tabellio-validation"
       ).sourceVersion = "b".repeat(40);
     }, /Validation source version does not match headCommit/],
+    ["missing provider version", (dataset) => {
+      dataset.repositories[0].sources.find((source) =>
+        source.system === "github"
+      ).sourceVersion = null;
+    }, /provider source version is unsafe/],
   ];
 
   for (const [name, mutate, expected] of cases) {
@@ -122,6 +127,60 @@ test("analytics core rejects stale, unsafe, and contradictory imported evidence"
     mutate(dataset);
     assert.throws(() => validateAnalyticsDataset(dataset), expected, name);
   }
+});
+
+test("analytics errors redact rejected field names", () => {
+  const dataset = createDatasetFixture();
+  dataset.repositories[0].sources[0].ghp_0123456789abcdef = "private";
+  assert.throws(
+    () => validateAnalyticsDataset(dataset),
+    (error) => {
+      assert.match(error.message, /contains a field that is not allowed/);
+      assert.doesNotMatch(error.message, /ghp_0123456789abcdef/);
+      return true;
+    },
+  );
+});
+
+test("analytics core rejects duplicate delivery relationships", () => {
+  const dataset = createDatasetFixture();
+  const duplicate = structuredClone(dataset.repositories[0].deliveryChanges[0]);
+  duplicate.id = "change-2";
+  dataset.repositories[0].deliveryChanges.push(duplicate);
+  assert.throws(
+    () => validateAnalyticsDataset(dataset),
+    /duplicates Plane and pull-request relationship/,
+  );
+});
+
+test("analytics core filters collection and rejects imported rows outside the window", () => {
+  const repository = repositoryFixture();
+  const oldChange = structuredClone(repository.deliveryChanges[0]);
+  Object.assign(oldChange, {
+    id: "change-old",
+    planeStoryId: "INTB-200",
+    pullRequestNumber: 20,
+    storyCreatedAt: "2026-01-20T00:00:00.000Z",
+    firstActivityAt: "2026-01-21T00:00:00.000Z",
+    mergedAt: "2026-01-22T00:00:00.000Z",
+    releasedAt: "2026-01-23T00:00:00.000Z",
+  });
+  repository.deliveryChanges.push(oldChange);
+
+  const dataset = createAnalyticsDataset({
+    id: "INTB-261-p1b",
+    observedAt: OBSERVED_AT,
+    window: {
+      since: "2026-07-01T00:00:00.000Z",
+      until: "2026-07-26T00:00:00.000Z",
+    },
+    repositories: [repository],
+  });
+  assert.deepEqual(dataset.repositories[0].deliveryChanges.map((change) => change.id), ["change-1"]);
+  assert.equal(dataset.repositories[0].metrics.deliveryChangeCount.value, 1);
+
+  dataset.repositories[0].deliveryChanges.push(oldChange);
+  assert.throws(() => validateAnalyticsDataset(dataset), /outside the dataset observation window/);
 });
 
 test("analytics core keeps a source-backed zero count measured", () => {
@@ -210,7 +269,7 @@ test("analytics collector binds validation claims to the latest exact repository
   const { head } = fixture;
   await writeValidationControl(
     fixture,
-    validationResult(head, "IntelIP/Example", "passed", "exact-pass"),
+    validationResult(head, "github.com/IntelIP/Example", "passed", "exact-pass"),
   );
   const providerPath = join(fixture.root, "provider.json");
   const snapshot = providerSnapshot(head);
@@ -263,6 +322,13 @@ test("analytics collector blocks stale and cross-repository validation controls"
     assert.equal(validationSource.status, "blocked", value.name);
     assert.deepEqual(dataset.repositories[0].deliveryChanges, [], value.name);
   }
+});
+
+test("analytics collector sanitizes unsafe local repository directory names", async (context) => {
+  const fixture = await gitRepositoryFixture(context, "my repo");
+  const dataset = await collectFixture(fixture.repository);
+  assert.match(dataset.repositories[0].canonicalRepositoryId, /^local\/[0-9a-f]{16}$/);
+  assert.doesNotMatch(JSON.stringify(dataset), /my repo/);
 });
 
 test("analytics collector converts malformed provider input to blocked evidence", async (context) => {
@@ -361,6 +427,23 @@ test("analytics CLI rejects config, provider, symlink, and repository output ali
     analyticsCollectArgs(missingConfigPath, missingProviderPath),
     /must not alias an input/,
   );
+
+  const aliasDirectory = join(fixture.root, "aliases");
+  await mkdir(aliasDirectory);
+  const repositoryAlias = join(aliasDirectory, "repository");
+  await symlink(fixture.repository, repositoryAlias);
+  const relativeConfigPath = join(fixture.root, "relative-config.json");
+  await writeFile(relativeConfigPath, `${JSON.stringify({
+    repositories: [{
+      id: "fixture",
+      path: repositoryAlias,
+      providerSnapshot: "../provider.json",
+    }],
+  }, null, 2)}\n`);
+  await assertCliFailure(
+    analyticsCollectArgs(relativeConfigPath, providerPath),
+    /must not alias an input/,
+  );
 });
 
 test("analytics CLI collects and rechecks a deterministic dataset", async (context) => {
@@ -404,9 +487,22 @@ test("analytics schema requires source observations and canonical metric states"
   assert.equal(metricState.then.properties.value.type, "number");
   assert.equal(metricState.then.properties.reason.type, "null");
   assert.equal(metricState.else.properties.value.type, "null");
-  assert.equal(metricState.else.properties.reason.type, "string");
+  assert.equal(metricState.else.properties.reason.$ref, "#/$defs/safeText");
   assert.equal(metricState.else.properties.numerator.type, "null");
   assert.equal(metricState.else.properties.denominator.type, "null");
+  assert.equal(schema.$defs.source.allOf[0].then.properties.sourceVersion.$ref, "#/$defs/safeVersion");
+  assert.equal(schema.$defs.deliveryChange.properties.linkEvidence.oneOf[0].$ref, "#/$defs/safeText");
+  for (const unsafe of [
+    "token ghp_0123456789abcdef",
+    "https://token@github.com/IntelIP/Tabellio",
+    "/Users/private/provider.json",
+    "safe\u2028unsafe",
+  ]) {
+    assert.ok(
+      schema.$defs.safeText.allOf.some((rule) => new RegExp(rule.not.pattern).test(unsafe)),
+      `schema safeText should reject ${JSON.stringify(unsafe)}`,
+    );
+  }
   const providerSchema = JSON.parse(await readFile(
     new URL("../schemas/analytics-provider-snapshot.v0.1.schema.json", import.meta.url),
     "utf8",
@@ -555,10 +651,10 @@ function assertBlockedControlSource(source) {
   assert.equal(source.reason, "Control evidence is malformed or unsafe.");
 }
 
-async function gitRepositoryFixture(context) {
+async function gitRepositoryFixture(context, repositoryName = "repository") {
   const root = await mkdtemp(join(tmpdir(), "tabellio-analytics-"));
   context.after(() => rm(root, { recursive: true, force: true }));
-  const repository = join(root, "repository");
+  const repository = join(root, repositoryName);
   await git(root, ["init", "-b", "main", repository]);
   await git(repository, ["config", "user.email", "tabellio@example.test"]);
   await git(repository, ["config", "user.name", "Tabellio Test"]);

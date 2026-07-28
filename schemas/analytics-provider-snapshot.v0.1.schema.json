@@ -51,10 +51,22 @@
       "minLength": 1,
       "maxLength": 500,
       "allOf": [
+        { "not": { "pattern": "[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\\\|]" } },
         { "not": { "pattern": "file:" } },
-        { "not": { "pattern": "(?:^|[ =:(\\[\\]'\"`])/(?!/)" } },
-        { "not": { "pattern": "(?:^|[ =:(])~(?:/|$)" } },
-        { "not": { "pattern": "(?:^|[^A-Za-z0-9._-])[A-Za-z]:/" } }
+        { "not": { "pattern": "(?:^|[\\s=:(\\[\\]'\"`])/(?!/)\\S*" } },
+        { "not": { "pattern": "(?:^|[\\s=:(])~(?:/|$)" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9._-])[A-Za-z]:/(?:\\S*)" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][hH][pPoOuUsSrR]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][iI][tT][hH][uU][bB]_[pP][aA][tT]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[sS][kK]-(?:[lL][iI][vV][eE]|[pP][rR][oO][jJ])[_-][A-Za-z0-9_-]{8,}" } },
+        { "not": { "pattern": "\\bAKIA[0-9A-Z]{16}\\b" } },
+        { "not": { "pattern": "://[^/\\s@]+@" } }
+      ]
+    },
+    "safeVersion": {
+      "allOf": [
+        { "$ref": "#/$defs/safeText" },
+        { "maxLength": 200 }
       ]
     },
     "source": {
@@ -65,7 +77,7 @@
         "status": { "enum": ["available", "unavailable", "blocked"] },
         "version": {
           "oneOf": [
-            { "type": "string", "minLength": 1, "maxLength": 200 },
+            { "$ref": "#/$defs/safeVersion" },
             { "type": "null" }
           ]
         },
@@ -79,7 +91,7 @@
           },
           "then": {
             "required": ["version"],
-            "properties": { "version": { "type": "string", "minLength": 1, "maxLength": 200 } },
+            "properties": { "version": { "$ref": "#/$defs/safeVersion" } },
             "not": { "required": ["reason"] }
           },
           "else": {

@@ -28,8 +28,12 @@ function normalizeRepositoryRemote(remote) {
 }
 
 export function localRepositoryId(repoPath) {
-  const name = repoPath.replaceAll("\\", "/").split("/").filter(Boolean).at(-1);
-  return `local/${name ?? "repository"}`;
+  const normalizedPath = repoPath.replaceAll("\\", "/");
+  const name = normalizedPath.split("/").filter(Boolean).at(-1);
+  if (name && /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(name) && ![".", ".."].includes(name)) {
+    return `local/${name}`;
+  }
+  return `local/${createHash("sha256").update(normalizedPath).digest("hex").slice(0, 16)}`;
 }
 
 function hashedRemote(remote) {

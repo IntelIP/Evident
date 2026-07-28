@@ -10,7 +10,6 @@ import {
   isPortableIdentifier,
   isSafeProviderText,
   isSafeProviderVersion,
-  sameRepository,
   validateProviderSnapshot,
 } from "./portable-evidence.mjs";
 import { localRepositoryId } from "./repository-identity.mjs";
@@ -65,10 +64,7 @@ export function createAnalyticsDataset({ id, observedAt, window, repositories })
     observedAt,
     window: structuredClone(window),
     metricDefinitions: structuredClone(DELIVERY_METRIC_DEFINITIONS),
-    repositories: repositories.map((repository) => ({
-      ...structuredClone(repository),
-      metrics: recomputeDeliveryMetrics(repository),
-    })),
+    repositories: repositories.map((repository) => prepareRepository(repository, window)),
   };
   dataset.integrity = {
     algorithm: "sha256",
@@ -97,14 +93,14 @@ export function validateAnalyticsDataset(dataset) {
       "Dataset metric definitions are not canonical.",
     ],
   ]));
-  errors.push(...validateRepositories(dataset.repositories, dataset.observedAt));
+  errors.push(...validateRepositories(dataset.repositories, dataset.observedAt, dataset.window));
   errors.push(...validateIntegrity(dataset));
   if (errors.length > 0) throw new Error(unique(errors).join("\n"));
   return dataset;
 }
 
-export function recomputeDeliveryMetrics(repository) {
-  const changes = Array.isArray(repository?.deliveryChanges) ? repository.deliveryChanges : [];
+export function recomputeDeliveryMetrics(repository, window = null) {
+  const changes = deliveryChangesWithinWindow(repository?.deliveryChanges, window);
   const linked = changes.filter(isLinkedChange);
   return {
     deliveryChangeCount: deliveryChangeCount(repository, changes),
@@ -114,6 +110,37 @@ export function recomputeDeliveryMetrics(repository) {
     ciDisagreementRate: disagreementMetric(repository, changes),
     releaseLagHours: durationMetric(repository, changes, "mergedAt", "releasedAt", ["github"]),
   };
+}
+
+function prepareRepository(repository, window) {
+  const prepared = structuredClone(repository);
+  if (Array.isArray(prepared.deliveryChanges)) {
+    prepared.deliveryChanges = deliveryChangesWithinWindow(prepared.deliveryChanges, window);
+  }
+  prepared.metrics = recomputeDeliveryMetrics(prepared, window);
+  return prepared;
+}
+
+function deliveryChangesWithinWindow(changes, window) {
+  if (!Array.isArray(changes)) return [];
+  if (!hasDeliveryWindowBounds(window)) return changes;
+  return changes.filter((change) => deliveryChangeWithinWindow(change, window));
+}
+
+function hasDeliveryWindowBounds(window) {
+  return isPlainObject(window) && isDateTime(window.since) && isDateTime(window.until);
+}
+
+function deliveryChangeWithinWindow(change, window) {
+  const timestamp = deliveryChangeWindowTimestamp(change);
+  return isDateTime(timestamp)
+    && Date.parse(window.since) <= Date.parse(timestamp)
+    && Date.parse(timestamp) <= Date.parse(window.until);
+}
+
+function deliveryChangeWindowTimestamp(change) {
+  if (!isPlainObject(change)) return null;
+  return change.mergedAt ?? change.firstActivityAt ?? change.storyCreatedAt;
 }
 
 async function collectRepository(input, observedAt) {
@@ -271,15 +298,23 @@ function selectControlEvidence(control, records, candidate, version) {
 }
 
 function latestCandidateValidationResult(records, { canonicalRepositoryId: repository, headCommit }) {
+  const expectedRepository = normalizedAnalyticsRepositoryId(repository);
   return records
     .filter((record) =>
-      sameRepository(record?.repository?.id, repository)
+      normalizedAnalyticsRepositoryId(record?.repository?.id) === expectedRepository
       && validationHeadCommit(record) === headCommit
     )
     .sort((left, right) =>
       Date.parse(right.completedAt) - Date.parse(left.completedAt)
       || right.runId.localeCompare(left.runId)
     )[0] ?? null;
+}
+
+function normalizedAnalyticsRepositoryId(value) {
+  const direct = canonicalRepositoryId(value);
+  if (direct !== null) return direct;
+  const github = parseGitHubRepositoryRemote(`https://${value}`);
+  return canonicalRepositoryId(github?.fullName);
 }
 
 async function readControlRecords(repositoryPath, version, validateRecord, observedAt) {
@@ -528,7 +563,7 @@ function blockedSource({ id, system, observedAt, reason }) {
   };
 }
 
-function validateRepository(repository, observedAt) {
+function validateRepository(repository, observedAt, window) {
   if (!isPlainObject(repository)) return ["must be an object."];
   const errors = [];
   rejectUnknownFields(
@@ -544,9 +579,14 @@ function validateRepository(repository, observedAt) {
   errors.push(...validateSources(repository.sources, observedAt));
   errors.push(...validateRevision(repository, observedAt));
   errors.push(...validateValidationSourceBinding(repository));
-  errors.push(...validateDeliveryChanges(repository.deliveryChanges, observedAt, repository.headCommit));
+  errors.push(...validateDeliveryChanges(
+    repository.deliveryChanges,
+    observedAt,
+    repository.headCommit,
+    window,
+  ));
   errors.push(...validateDeliverySourceConsistency(repository));
-  errors.push(...validateMetrics(repository));
+  errors.push(...validateMetrics(repository, window));
   return errors;
 }
 
@@ -671,10 +711,10 @@ function validateDeliveryTimes(change, observedAt) {
   return errors;
 }
 
-function validateRepositories(repositories, observedAt) {
+function validateRepositories(repositories, observedAt, window) {
   if (!requiredArray(repositories)) return ["Dataset requires at least one repository."];
   const errors = repositories.flatMap((repository, index) =>
-    prefix(`repositories[${index}]`, validateRepository(repository, observedAt))
+    prefix(`repositories[${index}]`, validateRepository(repository, observedAt, window))
   );
   errors.push(...duplicateValueErrors(
     repositories,
@@ -742,10 +782,15 @@ function validateSources(sources, observedAt) {
   return errors;
 }
 
-function validateDeliveryChanges(changes, observedAt, headCommit) {
+function validateDeliveryChanges(changes, observedAt, headCommit, window) {
   if (!Array.isArray(changes)) return ["deliveryChanges must be an array."];
   const errors = changes.flatMap((change, index) =>
-    prefix(`deliveryChanges[${index}]`, validateDeliveryChange(change, observedAt, headCommit))
+    prefix(`deliveryChanges[${index}]`, [
+      ...validateDeliveryChange(change, observedAt, headCommit),
+      ...ruleErrors([
+        [deliveryChangeWithinWindow(change, window), "is outside the dataset observation window."],
+      ]),
+    ])
   );
   errors.push(...duplicateValueErrors(
     changes,
@@ -753,11 +798,23 @@ function validateDeliveryChanges(changes, observedAt, headCommit) {
     isPortableIdentifier,
     (index) => `deliveryChanges[${index}] duplicates change id.`,
   ));
+  errors.push(...duplicateValueErrors(
+    changes,
+    deliveryRelationshipKey,
+    isNonNull,
+    (index) => `deliveryChanges[${index}] duplicates Plane and pull-request relationship.`,
+  ));
   return errors;
 }
 
-function validateMetrics(repository) {
-  const expected = recomputeDeliveryMetrics(repository);
+function deliveryRelationshipKey(change) {
+  return isLinkedChange(change)
+    ? canonicalJson([change.planeStoryId, change.pullRequestNumber])
+    : null;
+}
+
+function validateMetrics(repository, window) {
+  const expected = recomputeDeliveryMetrics(repository, window);
   return ruleErrors([
     [
       canonicalJson(repository.metrics) === canonicalJson(expected),
@@ -895,7 +952,7 @@ function validGitSourceVersion(source) {
 
 function validProviderSourceVersion(source) {
   return !PROVIDER_SYSTEMS.has(source.system)
-    || isSafeProviderVersion(source.sourceVersion);
+    || (typeof source.sourceVersion === "string" && isSafeProviderVersion(source.sourceVersion));
 }
 
 function validDurationPair(change, startField, endField) {
@@ -1033,7 +1090,7 @@ function duplicateValueErrors(items, select, isValid, message) {
 function rejectUnknownFields(value, allowed, label, errors) {
   const fields = new Set(allowed);
   for (const key of Object.keys(value)) {
-    if (!fields.has(key)) errors.push(`${label} contains field ${key}, which is not allowed.`);
+    if (!fields.has(key)) errors.push(`${label} contains a field that is not allowed.`);
   }
 }
 
