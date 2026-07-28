@@ -260,7 +260,7 @@
       "summary": "Exact CI, release, deployment, and squash-merge claims"
     },
     "delivery-claims-workflow": {
-      "commands": [["node", "--test", "--test-name-pattern", "preserves exact source|terminal CI|unfinished Buildkite|newest Buildkite|blocked provider Buildkite|target environment|immutable Plane", "tests/delivery-evidence-joiner.test.mjs"]],
+      "commands": [["node", "--test", "--test-name-pattern", "preserves exact source|terminal CI|unfinished Buildkite|newest Buildkite|blocked provider Buildkite|blocked collector|target environment|immutable Plane", "tests/delivery-evidence-joiner.test.mjs"]],
       "metrics": [{"name": "delivery_claim_workflow_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
       "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
       "summary": "Joined delivery lifecycle and blocked-state preservation"

@@ -233,6 +233,31 @@ test("delivery join honors blocked provider Buildkite evidence", () => {
   assert.equal(snapshot.deliveryRecords[0].ci.status, "blocked");
 });
 
+test("delivery join preserves blocked collector and unavailable provider Buildkite evidence", () => {
+  const blockedCollector = buildkite();
+  Object.assign(blockedCollector, {
+    status: "blocked",
+    reason: "Buildkite collector unavailable.",
+    builds: [],
+  });
+  const blocked = join({ buildkiteSnapshots: [blockedCollector] });
+  assert.equal(blocked.sources.buildkite.status, "blocked");
+  assert.equal(blocked.deliveryRecords[0].ci.status, "blocked");
+
+  const providerSnapshot = provider();
+  providerSnapshot.sources.buildkite = {
+    status: "unavailable",
+    reason: "Buildkite is not configured.",
+  };
+  providerSnapshot.deliveryChanges[0].hostedStatus = "unavailable";
+  const unavailable = join({
+    providerSnapshot,
+    buildkiteSnapshots: [],
+  });
+  assert.equal(unavailable.sources.buildkite.status, "unavailable");
+  assert.equal(unavailable.deliveryRecords[0].ci.status, "unavailable");
+});
+
 test("delivery join preserves blocked provider sources as blocked records", () => {
   const providerSnapshot = provider();
   providerSnapshot.sources.plane = {

@@ -68,10 +68,15 @@ export function joinDeliveryEvidence({
   const targetReceipts = deploymentReceipts.filter(
     (receipt) => receipt.environment === deploymentEnvironment,
   );
+  const buildkiteSourceStatus = buildkiteEvidenceStatus(
+    buildkiteSnapshots,
+    providerSnapshot.sources.buildkite.status,
+  );
   const context = recordContext({
     providerSnapshot,
     planeSnapshot,
     buildkiteSnapshots,
+    buildkiteSourceStatus,
     releaseSnapshot,
     targetReceipts,
     deploymentBlockedReason,
@@ -302,7 +307,11 @@ function recordContext(input) {
     stateById,
     planeSnapshot,
     buildkiteSnapshots,
-    providerBuildkiteStatus: providerSnapshot.sources.buildkite.status,
+    buildkiteSourceStatus: input.buildkiteSourceStatus
+      ?? buildkiteEvidenceStatus(
+        buildkiteSnapshots,
+        providerSnapshot.sources.buildkite.status,
+      ),
     releaseSnapshot,
     deploymentReceipts: targetReceipts,
     deploymentBlockedReason,
@@ -332,8 +341,7 @@ function recordFor(change, context) {
     plane: planeEvidenceFor(change, context),
     ci: ciEvidenceFor(
       build,
-      context.buildkiteSnapshots,
-      context.providerBuildkiteStatus,
+      context.buildkiteSourceStatus,
     ),
     release: releaseEvidenceFor(release, context.releaseSnapshot),
     deployment: deploymentEvidenceFor(receipt, context),
@@ -394,13 +402,10 @@ function missingPlaneStatus(snapshot) {
   return snapshot.status === "available" ? "unlinked" : "blocked";
 }
 
-function ciEvidenceFor(build, snapshots, providerStatus) {
+function ciEvidenceFor(build, sourceStatus) {
   if (!build) {
     return {
-      status: providerStatus !== "available"
-        || snapshots.some((snapshot) => snapshot.status === "blocked")
-        ? "blocked"
-        : "unavailable",
+      status: sourceStatus === "blocked" ? "blocked" : "unavailable",
       pipeline: null,
       buildNumber: null,
       finishedAt: null,
@@ -549,20 +554,12 @@ function deploymentObservation(receipt) {
 }
 
 function aggregateBuildkite(snapshots, providerStatus) {
-  if (providerStatus !== "available") {
-    return unavailableSource(
-      "Provider Buildkite evidence unavailable.",
-      "blocked",
-    );
+  const status = buildkiteEvidenceStatus(snapshots, providerStatus);
+  if (status === "blocked") {
+    return unavailableSource("Buildkite evidence collection blocked.", "blocked");
   }
-  if (snapshots.length === 0) {
+  if (status === "unavailable") {
     return unavailableSource("No Buildkite snapshots collected.");
-  }
-  if (!snapshots.every((snapshot) => snapshot.status === "available")) {
-    return unavailableSource(
-      "At least one Buildkite collector was unavailable.",
-      "blocked",
-    );
   }
   return availableSource(snapshots.map((snapshot) => observation(
     boundedObservationId(
@@ -576,6 +573,19 @@ function aggregateBuildkite(snapshots, providerStatus) {
       pipeline: snapshot.pipeline,
     })),
   )));
+}
+
+function buildkiteEvidenceStatus(snapshots, providerStatus) {
+  const key = `${providerStatus}:${Object(snapshots[0]).status || "missing"}`;
+  return {
+    "blocked:missing": "blocked",
+    "blocked:blocked": "blocked",
+    "unavailable:missing": "unavailable",
+    "unavailable:blocked": "unavailable",
+    "available:missing": "unavailable",
+    "available:blocked": "blocked",
+    "available:available": "available",
+  }[key];
 }
 
 function sourceState(status, snapshot, identity, claims = []) {
@@ -868,6 +878,7 @@ function assertDerivedEvidence(snapshot) {
     providerSnapshot,
     planeSnapshot,
     buildkiteSnapshots,
+    buildkiteSourceStatus: snapshot.sources.buildkite.status,
     releaseSnapshot,
     targetReceipts: deploymentReceipts,
     deploymentBlockedReason:

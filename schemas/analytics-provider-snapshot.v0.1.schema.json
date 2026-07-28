@@ -15,7 +15,12 @@
       "additionalProperties": false,
       "required": ["plane", "github", "github-actions", "buildkite"],
       "properties": {
-        "plane": { "$ref": "#/$defs/source" },
+        "plane": {
+          "allOf": [
+            { "$ref": "#/$defs/source" },
+            { "required": ["workspace"] }
+          ]
+        },
         "github": { "$ref": "#/$defs/source" },
         "github-actions": { "$ref": "#/$defs/source" },
         "buildkite": { "$ref": "#/$defs/source" }
