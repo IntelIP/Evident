@@ -3,16 +3,14 @@
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import {
-  lstat,
   mkdir,
   readFile,
   realpath,
   rename,
-  stat,
   unlink,
   writeFile,
 } from "node:fs/promises";
-import { basename, dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 
 import {
@@ -24,6 +22,11 @@ import {
   reportCliError,
   requireOptions,
 } from "./lib/cli-options.mjs";
+import {
+  canonicalCandidatePath,
+  pathState,
+  sameFile,
+} from "./lib/output-safety.mjs";
 
 const ALLOWED_OPTIONS = {
   collect: ["config", "id", "observedAt", "since", "until", "out"],
@@ -116,9 +119,9 @@ async function repositoryLocation(repository) {
 async function assertSafeOutput(output, inputs, repositoryRoots) {
   const outputPath = resolve(output);
   const inputPaths = inputs.map((input) => resolve(input));
-  const outputState = await optionalPathState(outputPath);
+  const outputState = await pathState(outputPath);
   assertOutputIsNotSymlink(outputState);
-  const inputStates = await Promise.all(inputPaths.map(optionalPathState));
+  const inputStates = await Promise.all(inputPaths.map(pathState));
   assertOutputDoesNotAliasInput(outputState, inputStates);
   const candidate = await canonicalCandidatePath(outputPath, outputState);
   const inputCandidates = await Promise.all(inputPaths.map((input, index) =>
@@ -149,60 +152,6 @@ function assertOutputOutsideRepositories(output, roots) {
   if (roots.some((root) => pathWithin(output, root))) {
     throw new Error("Analytics output must remain outside collected repositories.");
   }
-}
-
-async function optionalPathState(path) {
-  try {
-    const [entry, resolvedPath, metadata] = await Promise.all([
-      lstat(path),
-      realpath(path),
-      stat(path),
-    ]);
-    return {
-      symbolicLink: entry.isSymbolicLink(),
-      resolvedPath,
-      device: metadata.dev,
-      inode: metadata.ino,
-    };
-  } catch (error) {
-    if (error?.code === "ENOENT") return null;
-    throw error;
-  }
-}
-
-async function canonicalCandidatePath(path, state) {
-  if (state !== null) return state.resolvedPath;
-  const suffix = [];
-  let candidate = path;
-  let resolvedPath = await optionalRealpath(candidate);
-  while (resolvedPath === null) {
-    const parent = dirname(candidate);
-    if (parent === candidate) throw new Error("Analytics output has no resolvable parent.");
-    suffix.unshift(basename(candidate));
-    candidate = parent;
-    resolvedPath = await optionalRealpath(candidate);
-  }
-  return resolve(resolvedPath, ...suffix);
-}
-
-async function optionalRealpath(path) {
-  try {
-    return await realpath(path);
-  } catch (error) {
-    if (error?.code === "ENOENT") return null;
-    throw error;
-  }
-}
-
-function sameFile(left, right) {
-  if (left === null) return false;
-  if (right === null) return false;
-  if (left.resolvedPath === right.resolvedPath) return true;
-  return sameInode(left, right);
-}
-
-function sameInode(left, right) {
-  return left.device === right.device && left.inode === right.inode;
 }
 
 function pathWithin(candidate, root) {

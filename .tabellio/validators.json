@@ -60,6 +60,42 @@
       "metrics": [{"name": "analytics_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
       "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
       "summary": "Analytics credential, path, alias, and temporal boundaries"
+    },
+    "analytics-validator-static": {
+      "commands": [["node", "--test", "tests/analytics-validator.test.mjs"]],
+      "metrics": [],
+      "cost": {"telemetry": "not_applicable", "usd": null, "modelCalls": null, "toolCalls": null},
+      "summary": "Analytics validator focused tests"
+    },
+    "analytics-validator-schema": {
+      "commands": [["node", "--test", "--test-name-pattern", "schema profile|invalid JSON", "tests/analytics-validator.test.mjs"]],
+      "metrics": [{"name": "analytics_validator_schema_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Analytics validator input and evidence schema"
+    },
+    "analytics-validator-semantic": {
+      "commands": [["node", "--test", "--test-name-pattern", "semantic profile|required repository|linked trace|metrics", "tests/analytics-validator.test.mjs"]],
+      "metrics": [{"name": "analytics_validator_semantic_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Analytics validator repository and trace semantics"
+    },
+    "analytics-validator-workflow": {
+      "commands": [["node", "--test", "--test-name-pattern", "provider binding|unavailable provider|validation evidence|output.*alias", "tests/analytics-validator.test.mjs"]],
+      "metrics": [{"name": "analytics_validator_workflow_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Analytics validator provider-binding workflow"
+    },
+    "analytics-validator-operational": {
+      "commands": [["node", "--test", "--test-name-pattern", "operational profile|evidence mode", "tests/analytics-validator.test.mjs"]],
+      "metrics": [{"name": "analytics_projection_25x_duration_ms", "unit": "milliseconds", "pattern": "analytics_projection_25x_duration_ms=([0-9.]+)"}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Analytics validator local projection budget"
+    },
+    "analytics-validator-security": {
+      "commands": [["node", "--test", "--test-name-pattern", "private text|credential|local path|evidence summary", "tests/analytics-validator.test.mjs"]],
+      "metrics": [{"name": "analytics_validator_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Analytics validator privacy boundaries"
     }
   }
 }
