@@ -538,15 +538,22 @@ function releaseFollowsMerge(change, candidate) {
 }
 
 function latestReceiptFor(change, receipts, repository) {
+  if (!change.mergeCommit || !change.mergedAt) return null;
   const commits = changeCommits(change);
   return latestBy(
     receipts.filter(
       (receipt) =>
         commits.includes(receipt.commit)
-        && sameRepository(receipt.repository, repository),
+        && sameRepository(receipt.repository, repository)
+        && receiptFollowsMerge(receipt, change.mergedAt),
     ),
     (receipt) => receipt.observedAt,
   );
+}
+
+function receiptFollowsMerge(receipt, mergedAt) {
+  const eventAt = receipt.deployedAt ?? receipt.observedAt;
+  return Date.parse(eventAt) >= Date.parse(mergedAt);
 }
 
 function changeCommits(change) {
@@ -1245,6 +1252,7 @@ function assertDeploymentEvidence(record, snapshot) {
     changeCommits(record).includes(deployment.commit),
     "Deployment evidence commit is not bound to the delivery record.",
   );
+  assertPassedDeploymentChronology(record, deployment);
   const expected = digestClaim({
     receiptId: deployment.receiptId,
     repository: snapshot.repository,
@@ -1269,6 +1277,16 @@ function assertDeploymentEvidence(record, snapshot) {
     );
   }
   assertEventNotAfterCapture(deployment.observedAt, snapshot.capturedAt, "Deployment");
+}
+
+function assertPassedDeploymentChronology(record, deployment) {
+  if (deployment.status !== "passed") return;
+  ensure(
+    record.mergeCommit !== null
+      && isJsonDateTime(record.mergedAt)
+      && Date.parse(deployment.deployedAt) >= Date.parse(record.mergedAt),
+    "Passed deployment evidence requires landed post-merge proof.",
+  );
 }
 
 function hasDecisiveDeploymentFields(deployment) {

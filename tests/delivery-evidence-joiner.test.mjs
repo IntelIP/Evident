@@ -407,6 +407,31 @@ test("delivery join never ships an unmerged change", () => {
   assert.equal(snapshot.deliveryRecords[0].release.status, "unreleased");
 });
 
+test("delivery join never passes deployment before merge", () => {
+  const providerSnapshot = provider();
+  providerSnapshot.deliveryChanges[0].mergedAt = null;
+  providerSnapshot.deliveryChanges[0].mergeCommit = null;
+  const unmerged = join({
+    providerSnapshot,
+    deploymentReceipts: [deployment()],
+    deploymentEnvironment: "production",
+  });
+  assert.equal(unmerged.deliveryRecords[0].deployment.status, "unavailable");
+
+  const postMerge = provider();
+  postMerge.deliveryChanges[0].mergedAt = "2026-07-25T12:00:00.000Z";
+  const preMergeReceipt = deployment({
+    deployedAt: "2026-07-25T11:59:59.000Z",
+    observedAt: "2026-07-25T12:00:00.000Z",
+  });
+  const premature = join({
+    providerSnapshot: postMerge,
+    deploymentReceipts: [preMergeReceipt],
+    deploymentEnvironment: "production",
+  });
+  assert.equal(premature.deliveryRecords[0].deployment.status, "unavailable");
+});
+
 test("delivery join ages WIP at Plane observation time", () => {
   const planeSnapshot = plane();
   planeSnapshot.capturedAt = "2026-07-22T12:00:00.000Z";
