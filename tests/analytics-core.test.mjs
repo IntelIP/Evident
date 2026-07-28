@@ -755,8 +755,12 @@ test("analytics schema requires source observations and canonical metric states"
   assert.ok(deliverySchema.$defs.source.required.includes("observations"));
   assert.equal(deliverySchema.$defs.source.allOf[0].then.properties.observations.minItems, 1);
   assert.equal(
-    deliverySchema.$defs.source.allOf[0].else.properties.reason.$ref,
+    deliverySchema.$defs.source.allOf[1].then.properties.reason.$ref,
     "#/$defs/safeText",
+  );
+  assert.equal(
+    deliverySchema.$defs.source.allOf[2].then.properties.observations.maxItems,
+    0,
   );
   assert.equal(
     deliverySchema.$defs.observation.properties.id.$ref,

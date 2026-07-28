@@ -142,6 +142,11 @@ test("delivery join preserves terminal CI and blocked deployment states", () => 
     deploymentEnvironment: "production",
   });
   assert.equal(blocked.sources.deployment.status, "blocked");
+  assert.equal(blocked.sources.deployment.observations.length, 1);
+  assert.equal(
+    blocked.sources.deployment.observations[0].evidence.reason,
+    "Provider unavailable.",
+  );
   assert.equal(blocked.deliveryRecords[0].deployment.status, "blocked");
   const failed = join({
     deploymentReceipts: [deployment({ status: "failed", deployedAt: null })],
@@ -256,6 +261,52 @@ test("delivery join preserves blocked collector and unavailable provider Buildki
   });
   assert.equal(unavailable.sources.buildkite.status, "unavailable");
   assert.equal(unavailable.deliveryRecords[0].ci.status, "unavailable");
+});
+
+test("delivery join preserves blocked Plane and release collector evidence", () => {
+  const planeSnapshot = {
+    ...plane(),
+    status: "blocked",
+    reason: "Plane collector unavailable.",
+    projects: [],
+    states: [],
+    workItems: [],
+  };
+  const releaseSnapshot = {
+    ...releases(),
+    status: "blocked",
+    reason: "GitHub collector unavailable.",
+    releases: [],
+  };
+  const snapshot = join({ planeSnapshot, releaseSnapshot });
+  assert.equal(snapshot.sources.plane.status, "blocked");
+  assert.equal(snapshot.sources.plane.observations.length, 1);
+  assert.equal(snapshot.sources.githubRelease.status, "blocked");
+  assert.equal(snapshot.sources.githubRelease.observations.length, 1);
+  assert.equal(snapshot.deliveryRecords[0].plane.status, "blocked");
+  assert.equal(snapshot.deliveryRecords[0].release.status, "blocked");
+});
+
+test("delivery snapshot rejects Buildkite unavailable to blocked relabeling", () => {
+  const snapshot = join({ buildkiteSnapshots: [] });
+  snapshot.sources.buildkite.status = "blocked";
+  snapshot.sources.buildkite.reason = "Buildkite evidence collection blocked.";
+  snapshot.deliveryRecords[0].ci.status = "blocked";
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(snapshot),
+    /Buildkite source state does not match provider and collector evidence/,
+  );
+});
+
+test("delivery snapshot rejects deployment unavailable to blocked relabeling", () => {
+  const snapshot = join({ deploymentEnvironment: "production" });
+  snapshot.sources.deployment.status = "blocked";
+  snapshot.sources.deployment.reason = "Deployment collector unavailable.";
+  snapshot.deliveryRecords[0].deployment.status = "blocked";
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(snapshot),
+    /Deployment source state does not match collection evidence/,
+  );
 });
 
 test("delivery join preserves blocked provider sources as blocked records", () => {

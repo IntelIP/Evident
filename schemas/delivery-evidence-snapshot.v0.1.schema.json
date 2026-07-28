@@ -110,8 +110,19 @@
               "reason": { "type": "null" },
               "observations": { "minItems": 1 }
             }
-          },
-          "else": {
+          }
+        },
+        {
+          "if": { "properties": { "status": { "const": "blocked" } } },
+          "then": {
+            "properties": {
+              "reason": { "$ref": "#/$defs/safeText" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "status": { "const": "unavailable" } } },
+          "then": {
             "properties": {
               "reason": { "$ref": "#/$defs/safeText" },
               "observations": { "maxItems": 0 }
