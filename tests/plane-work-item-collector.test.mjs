@@ -123,8 +123,9 @@ test("Plane collector blocks repeated, missing, and unbounded cursor metadata", 
 test("Plane collector rejects contradictory pagination totals", async () => {
   for (const response of [
     { ...page([project(PROJECT_A, "INTB")]), total_results: 2 },
-    { ...page([project(PROJECT_A, "INTB")]), total_pages: 2 },
     { ...page([project(PROJECT_A, "INTB")]), count: 2 },
+    { ...page([project(PROJECT_A, "INTB")]), count: 0 },
+    { ...page([project(PROJECT_A, "INTB")], "next"), total_pages: 1 },
   ]) {
     const snapshot = await collectPlaneWorkItemSnapshot({
       workspace: "intelip",
@@ -133,6 +134,51 @@ test("Plane collector rejects contradictory pagination totals", async () => {
     });
     assert.equal(snapshot.status, "blocked");
   }
+});
+
+test("Plane collector accepts terminal estimated page totals", async () => {
+  const routes = new Map([
+    ["/projects/?", { ...page([project(PROJECT_A, "INTB")]), total_pages: 2 }],
+    ["/work-items/?", page([workItem()])],
+  ]);
+  const snapshot = await collectPlaneWorkItemSnapshot({
+    workspace: "intelip",
+    capturedAt: CAPTURED_AT,
+    request: async (path) => responseFor(path, routes, page([state(STATE_A)])),
+  });
+  assert.equal(snapshot.status, "available");
+  const empty = await collectPlaneWorkItemSnapshot({
+    workspace: "intelip",
+    capturedAt: CAPTURED_AT,
+    request: async () => ({ ...page([]), total_pages: 0 }),
+  });
+  assert.equal(empty.status, "available");
+  assert.equal(empty.projects.length, 0);
+});
+
+test("Plane collector enforces the aggregate work-item limit across projects", async () => {
+  const projects = Array.from({ length: 101 }, (_, index) =>
+    project(uuid(index + 1), `P${index + 1}`)
+  );
+  let itemRequests = 0;
+  const snapshot = await collectPlaneWorkItemSnapshot({
+    workspace: "intelip",
+    capturedAt: CAPTURED_AT,
+    request: async (path) => {
+      if (path.includes("/projects/?")) return page(projects);
+      const projectIndex = projects.findIndex((entry) => path.includes(entry.id));
+      if (path.includes("/states/")) return page([state(uuid(20_000 + projectIndex))]);
+      itemRequests += 1;
+      return page(Array.from({ length: 100 }, (_, itemIndex) => workItem({
+        id: uuid(30_000 + (projectIndex * 100) + itemIndex),
+        stateId: uuid(20_000 + projectIndex),
+        sequence: itemIndex + 1,
+      })));
+    },
+  });
+  assert.equal(snapshot.status, "blocked");
+  assert(itemRequests <= 101);
+  console.log("plane_work_item_limit=10000");
 });
 
 test("Plane collector captures observation time after provider reads", async () => {
@@ -163,6 +209,7 @@ test("Plane collector blocks every malformed provider row", async () => {
     { target: "states", value: { id: STATE_A, group: "unknown" } },
     { target: "items", value: { ...workItem(), state: null } },
     { target: "items", value: { ...workItem(), updated_at: "not-a-date" } },
+    { target: "items", value: { ...workItem(), updated_at: "2026-02-30T00:00:00Z" } },
     { target: "items", value: { ...workItem(), target_date: "2026-02-30" } },
   ];
   for (const malformed of malformedRows) {
@@ -248,6 +295,10 @@ test("Plane snapshot reason matches the schema-safe 200 character boundary", () 
       /safe reason/,
     );
   }
+  assert.throws(
+    () => validatePlaneWorkItemSnapshot({ ...base, reason: null }),
+    /safe reason/,
+  );
 });
 
 test("Plane output path rejects symlinked ancestors", async () => {
@@ -348,14 +399,16 @@ function paginationResponses() {
   return new Map([
     ["/projects/?per_page=100&cursor=", page([project(PROJECT_B, "OPS")])],
     ["/projects/?", page([project(PROJECT_A, "INTB")], "projects-2")],
-    [`${PROJECT_A}/work-items/?per_page=100&fields=id,state,sequence_id,created_at,updated_at,target_date&cursor=items-2`, page([])],
-    [`${PROJECT_A}/work-items/`, page([workItem()], "items-2")],
-    [`${PROJECT_B}/work-items/`, page([workItem({
+    [`${PROJECT_A}/work-items/?per_page=100&fields=id,state,sequence_id,created_at,updated_at,target_date&cursor=items-2`, {
+      ...page([workItem({
       id: ITEM_B,
-      project: PROJECT_B,
-      stateId: STATE_B,
-      sequence: 8,
-    })])],
+      stateId: STATE_A,
+      sequence: 262,
+    })]),
+      count: 1,
+    }],
+    [`${PROJECT_A}/work-items/`, { ...page([workItem()], "items-2"), count: 1 }],
+    [`${PROJECT_B}/work-items/`, page([])],
   ]);
 }
 

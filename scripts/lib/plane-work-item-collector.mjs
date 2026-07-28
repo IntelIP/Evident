@@ -6,7 +6,7 @@ const VERSION = "tabellio-plane-work-items/v0.1";
 const WORKSPACE = /^[a-z0-9](?:[a-z0-9-]{0,98}[a-z0-9])?$/;
 const UUID = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/;
 const PROJECT_IDENTIFIER = /^[A-Z](?:[A-Z0-9]|-(?=[A-Z0-9])){0,31}$/;
-const PROVIDER_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+const PROVIDER_DATE_TIME = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})$/;
 const STATE_GROUPS = new Set([
   "backlog",
   "unstarted",
@@ -32,10 +32,16 @@ export async function collectPlaneWorkItemSnapshot({
       request,
     );
     const projects = projectRows.map(normalizeProject);
+    const workItemBudget = createBudget(MAX_ITEMS);
     const projectEvidence = await boundedMap(
       projects,
       STATE_REQUEST_CONCURRENCY,
-      (project) => collectProjectEvidence({ workspace, project, request }),
+      (project) => collectProjectEvidence({
+        workspace,
+        project,
+        request,
+        workItemBudget,
+      }),
     );
     observedAt ??= clock();
     assertDateTime(observedAt, "Plane collector capturedAt");
@@ -73,10 +79,10 @@ function assertCollectorOptions({ workspace, capturedAt, clock, request }) {
   ensure(typeof request === "function", "Plane collector requires a request function.");
 }
 
-async function collectProjectEvidence({ workspace, project, request }) {
+async function collectProjectEvidence({ workspace, project, request, workItemBudget }) {
   const [states, workItems] = await Promise.all([
     collectProjectStates({ workspace, project, request }),
-    collectProjectWorkItems({ workspace, project, request }),
+    collectProjectWorkItems({ workspace, project, request, workItemBudget }),
   ]);
   return { states, workItems };
 }
@@ -89,24 +95,32 @@ async function collectProjectStates({ workspace, project, request }) {
   return rows.map((state) => normalizeState(state, project.id));
 }
 
-async function collectProjectWorkItems({ workspace, project, request }) {
+async function collectProjectWorkItems({ workspace, project, request, workItemBudget }) {
   const rows = await collectAll(
     `/api/v1/workspaces/${workspace}/projects/${project.id}/work-items/?per_page=100&fields=id,state,sequence_id,created_at,updated_at,target_date`,
     request,
+    { budget: workItemBudget },
   );
   return rows.map((item) => normalizeWorkItem(item, project.id));
 }
 
-async function collectAll(path, request) {
+async function collectAll(path, request, { budget = null } = {}) {
   const output = [];
   const cursors = new Set();
   let next = path;
   for (let pageNumber = 1; pageNumber <= MAX_PAGES; pageNumber += 1) {
     const page = await request(next);
     const pageResult = normalizePage(page);
+    budget?.consume(pageResult.results.length);
     output.push(...pageResult.results);
     ensure(output.length <= MAX_ITEMS, "Plane collection item limit exceeded.");
-    assertPaginationTotals(page, pageNumber, output.length, pageResult.hasNext);
+    assertPaginationTotals(
+      page,
+      pageNumber,
+      output.length,
+      pageResult.results.length,
+      pageResult.hasNext,
+    );
     if (!pageResult.hasNext) return output;
     ensure(!cursors.has(pageResult.cursor), "Plane pagination cursor is repeated.");
     cursors.add(pageResult.cursor);
@@ -115,13 +129,13 @@ async function collectAll(path, request) {
   throw new Error("Plane collection page limit exceeded.");
 }
 
-function assertPaginationTotals(page, pageNumber, collectedCount, hasNext) {
+function assertPaginationTotals(page, pageNumber, collectedCount, pageCount, hasNext) {
   const totalResults = optionalCount(page.total_results, "total_results");
   const totalPages = optionalCount(page.total_pages, "total_pages");
   const count = optionalCount(page.count, "count");
   assertTotalResults(totalResults, collectedCount, hasNext);
   assertTotalPages(totalPages, pageNumber, hasNext);
-  assertTerminalCount(count, collectedCount, hasNext);
+  assertPageCount(count, pageCount);
 }
 
 function assertTotalResults(total, collected, hasNext) {
@@ -132,13 +146,13 @@ function assertTotalResults(total, collected, hasNext) {
 
 function assertTotalPages(total, pageNumber, hasNext) {
   if (total === null) return;
-  const matches = hasNext ? pageNumber < total : pageNumber === total;
-  ensure(matches, "Plane pagination totals are contradictory.");
+  if (!hasNext || total === 0) return;
+  ensure(pageNumber < total, "Plane pagination totals are contradictory.");
 }
 
-function assertTerminalCount(count, collected, hasNext) {
-  if (count === null || hasNext) return;
-  ensure(count <= collected, "Plane pagination totals are contradictory.");
+function assertPageCount(count, pageCount) {
+  if (count === null) return;
+  ensure(count === pageCount, "Plane pagination totals are contradictory.");
 }
 
 function optionalCount(value, label) {
@@ -148,6 +162,16 @@ function optionalCount(value, label) {
     `Plane pagination ${label} is invalid.`,
   );
   return value;
+}
+
+function createBudget(limit) {
+  let remaining = limit;
+  return {
+    consume(count) {
+      ensure(count <= remaining, "Plane collection item limit exceeded.");
+      remaining -= count;
+    },
+  };
 }
 
 function normalizePage(page) {
@@ -259,7 +283,10 @@ function assertStatusShape(snapshot) {
     ensure(snapshot.reason === null, "Available Plane snapshot cannot have a reason.");
     return;
   }
-  ensure(isSafeProviderVersion(snapshot.reason), "Blocked Plane snapshot requires a safe reason.");
+  ensure(
+    typeof snapshot.reason === "string" && isSafeProviderVersion(snapshot.reason),
+    "Blocked Plane snapshot requires a safe reason.",
+  );
   ensure(snapshot.projects.length === 0, "Blocked Plane snapshot cannot contain evidence.");
   ensure(snapshot.states.length === 0, "Blocked Plane snapshot cannot contain evidence.");
   ensure(snapshot.workItems.length === 0, "Blocked Plane snapshot cannot contain evidence.");
@@ -373,13 +400,34 @@ function assertDateTime(value, label) {
 }
 
 function canonicalDateTime(value, label) {
-  ensure(
-    typeof value === "string" && PROVIDER_DATE_TIME.test(value),
-    `${label} is invalid.`,
-  );
+  const match = typeof value === "string" ? PROVIDER_DATE_TIME.exec(value) : null;
+  ensure(match !== null && hasValidDateTimeParts(match), `${label} is invalid.`);
   const parsed = Date.parse(value);
   ensure(Number.isFinite(parsed), `${label} is invalid.`);
   return new Date(parsed).toISOString();
+}
+
+function hasValidDateTimeParts(match) {
+  const expected = match.slice(1, 7).map(Number);
+  const [year, month, day, hour, minute, second] = expected;
+  if (year <= 0) return false;
+  const wallClock = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  const actual = [
+    wallClock.getUTCFullYear(),
+    wallClock.getUTCMonth() + 1,
+    wallClock.getUTCDate(),
+    wallClock.getUTCHours(),
+    wallClock.getUTCMinutes(),
+    wallClock.getUTCSeconds(),
+  ];
+  return expected.every((value, index) => value === actual[index])
+    && hasValidOffset(match[8]);
+}
+
+function hasValidOffset(value) {
+  if (value === "Z") return true;
+  const [hours, minutes] = value.slice(1).split(":").map(Number);
+  return hours <= 23 && minutes <= 59;
 }
 
 function isDateTime(value) {
