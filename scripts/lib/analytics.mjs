@@ -591,7 +591,7 @@ function validateRepository(repository, observedAt, window) {
 }
 
 function validateValidationSourceBinding(repository) {
-  const validationSource = repository.sources?.find((source) =>
+  const validationSource = repositorySources(repository).find((source) =>
     source?.system === "tabellio-validation"
   );
   if (validationSource?.status !== "available") return [];
@@ -624,7 +624,7 @@ function validateSource(source, observedAt) {
 }
 
 function validateRevision(repository, observedAt) {
-  const gitSource = repository.sources?.find((source) => source?.system === "git");
+  const gitSource = repositorySources(repository).find((source) => source?.system === "git");
   return gitSource?.status === "available"
     ? validateAvailableRevision(repository, observedAt, gitSource)
     : validateUnavailableRevision(repository);
@@ -977,14 +977,22 @@ function hasComparableResults(change) {
 
 function available(repository, systems) {
   return systems.every((system) =>
-    repository?.sources?.some((source) => source?.system === system && source.status === "available")
+    repositorySources(repository).some((source) =>
+      source?.system === system && source.status === "available"
+    )
   );
 }
 
 function availableAny(repository, systems) {
   return systems.some((system) =>
-    repository?.sources?.some((source) => source?.system === system && source.status === "available")
+    repositorySources(repository).some((source) =>
+      source?.system === system && source.status === "available"
+    )
   );
+}
+
+function repositorySources(repository) {
+  return Array.isArray(repository?.sources) ? repository.sources : [];
 }
 
 function measured(unit, value, numerator = null, denominator = null) {

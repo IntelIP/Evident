@@ -126,6 +126,9 @@ test("analytics core rejects stale, unsafe, and contradictory imported evidence"
     ["null observation window", (dataset) => {
       dataset.window = null;
     }, /Dataset observation window is invalid/],
+    ["non-array sources", (dataset) => {
+      dataset.repositories[0].sources = {};
+    }, /sources are required/],
   ];
 
   for (const [name, mutate, expected] of cases) {
@@ -496,6 +499,9 @@ test("analytics schema requires source observations and canonical metric states"
   assert.equal(metricState.else.properties.reason.$ref, "#/$defs/safeText");
   assert.equal(metricState.else.properties.numerator.type, "null");
   assert.equal(metricState.else.properties.denominator.type, "null");
+  const measuredNonRatio = metricState.then.allOf[0].else.properties;
+  assert.equal(measuredNonRatio.numerator.type, "null");
+  assert.equal(measuredNonRatio.denominator.type, "null");
   assert.equal(schema.$defs.source.allOf[0].then.properties.sourceVersion.$ref, "#/$defs/safeVersion");
   assert.equal(schema.$defs.deliveryChange.properties.linkEvidence.oneOf[0].$ref, "#/$defs/safeText");
   for (const unsafe of [
@@ -528,6 +534,22 @@ test("analytics schema requires source observations and canonical metric states"
   ));
   assert.ok(deliverySchema.$defs.source.required.includes("observations"));
   assert.equal(deliverySchema.$defs.source.allOf[0].then.properties.observations.minItems, 1);
+  assert.equal(
+    deliverySchema.$defs.source.allOf[0].else.properties.reason.$ref,
+    "#/$defs/safeText",
+  );
+  for (const unsafe of [
+    "ghp_0123456789abcdef",
+    "file:///private/evidence.json",
+    "/Users/private/evidence.json",
+  ]) {
+    assert.ok(
+      deliverySchema.$defs.safeText.allOf.some((rule) =>
+        new RegExp(rule.not.pattern).test(unsafe)
+      ),
+      `delivery safeText should reject ${JSON.stringify(unsafe)}`,
+    );
+  }
   assert.equal(
     deliverySchema.properties.schemaVersion.const,
     "tabellio-delivery-evidence-snapshot/v0.1",

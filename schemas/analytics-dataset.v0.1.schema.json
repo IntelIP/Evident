@@ -195,7 +195,8 @@
                 },
                 "else": {
                   "properties": {
-                    "numerator": { "type": "null" }
+                    "numerator": { "type": "null" },
+                    "denominator": { "type": "null" }
                   }
                 }
               }

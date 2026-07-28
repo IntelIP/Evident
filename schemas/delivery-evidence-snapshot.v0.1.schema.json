@@ -31,13 +31,35 @@
     }
   },
   "$defs": {
+    "safeText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "allOf": [
+        { "not": { "pattern": "[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\\\|]" } },
+        { "not": { "pattern": "file:" } },
+        { "not": { "pattern": "(?:^|[\\s=:(\\[\\]'\"`])/(?!/)\\S*" } },
+        { "not": { "pattern": "(?:^|[\\s=:(])~(?:/|$)" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9._-])[A-Za-z]:/(?:\\S*)" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][hH][pPoOuUsSrR]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[gG][iI][tT][hH][uU][bB]_[pP][aA][tT]_[A-Za-z0-9_]{8,}" } },
+        { "not": { "pattern": "(?:^|[^A-Za-z0-9])[sS][kK]-(?:[lL][iI][vV][eE]|[pP][rR][oO][jJ])[_-][A-Za-z0-9_-]{8,}" } },
+        { "not": { "pattern": "\\bAKIA[0-9A-Z]{16}\\b" } },
+        { "not": { "pattern": "://[^/\\s@]+@" } }
+      ]
+    },
     "source": {
       "type": "object",
       "additionalProperties": false,
       "required": ["status", "reason", "observations"],
       "properties": {
         "status": { "enum": ["available", "blocked", "unavailable"] },
-        "reason": { "type": ["string", "null"], "maxLength": 500 },
+        "reason": {
+          "oneOf": [
+            { "$ref": "#/$defs/safeText" },
+            { "type": "null" }
+          ]
+        },
         "observations": {
           "type": "array",
           "items": { "$ref": "#/$defs/observation" }
@@ -54,7 +76,7 @@
           },
           "else": {
             "properties": {
-              "reason": { "type": "string", "minLength": 1 },
+              "reason": { "$ref": "#/$defs/safeText" },
               "observations": { "maxItems": 0 }
             }
           }
