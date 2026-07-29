@@ -169,7 +169,7 @@ function matchingReleaseTag(stdout) {
 
 function unsafeIndexPaths(stdout) {
   return stdout.split("\0")
-    .filter((entry) => entry.startsWith("S ") || entry.startsWith("h "))
+    .filter((entry) => entry.length > 2 && entry[0] !== "H" && entry[1] === " ")
     .map((entry) => entry.slice(2));
 }
 

@@ -232,11 +232,17 @@ test("runner identity inspection does not refresh the Git index", async (t) => {
   assert.equal(after.ctimeMs, before.ctimeMs);
 });
 
-test("runner identity treats assume-unchanged and skip-worktree index flags as dirty", async (t) => {
-  for (const flag of ["--assume-unchanged", "--skip-worktree"]) {
+test("runner identity treats unsafe index flags and their combination as dirty", async (t) => {
+  for (const flags of [
+    ["--assume-unchanged"],
+    ["--skip-worktree"],
+    ["--assume-unchanged", "--skip-worktree"],
+  ]) {
     const root = await identityFixture(t);
     const packagePath = join(root, "package.json");
-    await runGit({ args: ["update-index", flag, "package.json"], cwd: root });
+    for (const flag of flags) {
+      await runGit({ args: ["update-index", flag, "package.json"], cwd: root });
+    }
     await writeFile(packagePath, JSON.stringify({
       name: "@intelip/tabellio",
       version: "9.9.9",
