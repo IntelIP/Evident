@@ -94,6 +94,24 @@ test("validation runner executes exact committed manifests and stores bounded re
     }),
     /runner identity changed during validation/,
   );
+  let stateRead = 0;
+  const dirtyStateRunner = new ValidationRunner({
+    store,
+    ledger,
+    runnerState: async () => ({
+      identity: { ...stableIdentity, sourceDirty: true },
+      fingerprint: stateRead++ === 0 ? "dirty-state-before" : "dirty-state-after",
+    }),
+  });
+  await assert.rejects(
+    dirtyStateRunner.run({
+      repositoryId,
+      commit: passingHead,
+      base: "main",
+      runnerId: "dirty-state-drift-test",
+    }),
+    /runner identity changed during validation/,
+  );
   const otherRepository = await runner.run({
     repositoryId: "other/repository",
     commit: passingHead,
@@ -358,7 +376,17 @@ test("typed validators enforce semantic metrics and cost budgets with durable ev
 
   const store = await NativeGitStore.open(fixture.seed);
   const ledger = await GitJsonLedger.open({ repoPath: fixture.seed, ref: "refs/tabellio/validations" });
-  const result = await new ValidationRunner({ store, ledger }).run({
+  const result = await new ValidationRunner({
+    store,
+    ledger,
+    runnerIdentity: async () => ({
+      packageName: "@intelip/tabellio",
+      packageVersion: "0.6.0",
+      sourceCommit: "a".repeat(40),
+      sourceDirty: false,
+      releaseTag: null,
+    }),
+  }).run({
     repositoryId: "example/repository",
     commit: "HEAD",
     base: "main",
@@ -368,8 +396,8 @@ test("typed validators enforce semantic metrics and cost budgets with durable ev
   assert.equal(result.result.schemaVersion, "tabellio-validation-result/v0.4");
   assert.equal(result.result.runner.packageName, "@intelip/tabellio");
   assert.equal(result.result.runner.packageVersion, "0.6.0");
-  assert.match(result.result.runner.sourceCommit, /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/);
-  assert.equal(typeof result.result.runner.sourceDirty, "boolean");
+  assert.equal(result.result.runner.sourceCommit, "a".repeat(40));
+  assert.equal(result.result.runner.sourceDirty, false);
   assert.equal(result.result.runner.releaseTag, null);
   assert.equal(result.result.status, "passed");
   assert.equal(result.result.acceptance.id, "PLANE-101");

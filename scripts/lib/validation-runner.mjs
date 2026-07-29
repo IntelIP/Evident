@@ -6,7 +6,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from "node:pat
 
 import { LedgerConflictError } from "./git-json-ledger.mjs";
 import { runGit } from "./git-process.mjs";
-import { tabellioRunnerIdentity } from "./runner-identity.mjs";
+import { tabellioRunnerState } from "./runner-identity.mjs";
 import { digestObject } from "./stack-operation.mjs";
 
 const VALIDATION_MANIFEST_SCHEMA_VERSION_V1 = "tabellio-validation/v0.1";
@@ -22,12 +22,11 @@ const MAX_OUTPUT_TAIL_BYTES = 16 * 1024;
 const MAX_EVIDENCE_BYTES = 1024 * 1024;
 
 export class ValidationRunner {
-  constructor({ store, ledger, workspaceRoot = null, runnerIdentity = tabellioRunnerIdentity }) {
-    if (typeof runnerIdentity !== "function") throw new TypeError("runnerIdentity must be a function.");
+  constructor({ store, ledger, workspaceRoot = null, runnerIdentity = null, runnerState = null }) {
     this.store = store;
     this.ledger = ledger;
     this.workspaceRoot = workspaceRoot;
-    this.runnerIdentity = runnerIdentity;
+    this.runnerState = resolveRunnerState(runnerIdentity, runnerState);
   }
 
   async run({
@@ -58,7 +57,8 @@ export class ValidationRunner {
     if (manifest.requireEntireCheckpoint && checkpoints.length === 0) {
       throw new Error(`Checkpoint range ${checkpointRevision.mergeBase}..${checkpointRevision.headCommit} has no Entire checkpoint.`);
     }
-    const runnerIdentity = await this.runnerIdentity();
+    const initialRunnerState = await this.runnerState();
+    const runnerIdentity = initialRunnerState.identity;
 
     const runId = `validation-${randomUUID()}`;
     const common = await runGit({ args: ["rev-parse", "--git-common-dir"], cwd: this.store.repoPath });
@@ -96,8 +96,11 @@ export class ValidationRunner {
       }
     }
     const completedAt = new Date().toISOString();
-    const completedRunnerIdentity = await this.runnerIdentity();
-    if (JSON.stringify(completedRunnerIdentity) !== JSON.stringify(runnerIdentity)) {
+    const completedRunnerState = await this.runnerState();
+    if (
+      completedRunnerState.fingerprint !== initialRunnerState.fingerprint
+      || JSON.stringify(completedRunnerState.identity) !== JSON.stringify(runnerIdentity)
+    ) {
       throw new Error("Tabellio runner identity changed during validation.");
     }
     const result = buildValidationResult({
@@ -121,6 +124,29 @@ export class ValidationRunner {
     const written = await writeResultWithRetry(this.ledger, path, result);
     return { result, path, version: written.version };
   }
+}
+
+function resolveRunnerState(runnerIdentity, runnerState) {
+  optionalFunction(runnerIdentity, "runnerIdentity");
+  optionalFunction(runnerState, "runnerState");
+  rejectCompetingRunnerSources(runnerIdentity, runnerState);
+  return runnerState ?? runnerStateFromIdentity(runnerIdentity);
+}
+
+function rejectCompetingRunnerSources(runnerIdentity, runnerState) {
+  if (runnerIdentity !== null && runnerState !== null) throw new TypeError("Supply runnerIdentity or runnerState, not both.");
+}
+
+function runnerStateFromIdentity(runnerIdentity) {
+  if (runnerIdentity === null) return tabellioRunnerState;
+  return async () => {
+    const identity = await runnerIdentity();
+    return { identity, fingerprint: digestObject(identity) };
+  };
+}
+
+function optionalFunction(value, label) {
+  if (value !== null && typeof value !== "function") throw new TypeError(`${label} must be a function.`);
 }
 
 async function registeredWorktree(repoPath, workspace) {

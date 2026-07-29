@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, stat, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,7 +8,7 @@ import { execFile } from "node:child_process";
 import test from "node:test";
 
 import { runGit } from "../scripts/lib/git-process.mjs";
-import { tabellioRunnerIdentity } from "../scripts/lib/runner-identity.mjs";
+import { tabellioRunnerIdentity, tabellioRunnerState } from "../scripts/lib/runner-identity.mjs";
 import { identityEnv } from "./helpers/git-fixture.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -26,9 +26,29 @@ test("runner identity schema binds package version, source commit, cleanliness, 
   assert.equal((await tabellioRunnerIdentity({ root })).releaseTag, "v0.6.0");
 
   await writeFile(join(root, "private-customer-name.txt"), "not exported\n");
-  const dirty = await tabellioRunnerIdentity({ root });
+  const dirtyState = await tabellioRunnerState({ root });
+  const dirty = dirtyState.identity;
   assert.equal(dirty.sourceDirty, true);
   assert.equal(Object.values(dirty).some((value) => String(value).includes("private-customer-name")), false);
+  await writeFile(join(root, "private-customer-name.txt"), "changed while still dirty\n");
+  const changedState = await tabellioRunnerState({ root });
+  assert.deepEqual(changedState.identity, dirtyState.identity);
+  assert.notEqual(changedState.fingerprint, dirtyState.fingerprint);
+
+  const nested = join(root, "nested");
+  await mkdir(nested);
+  await runGit({ args: ["init", "-b", "main"], cwd: nested });
+  await writeFile(join(nested, "nested.txt"), "one\n");
+  const nestedState = await tabellioRunnerState({ root });
+  assert.equal(nestedState.identity.sourceDirty, true);
+  assert.match(nestedState.fingerprint, /^[0-9a-f]{64}$/);
+  await runGit({ args: ["add", "nested.txt"], cwd: nested });
+  await runGit({ args: ["commit", "-m", "Add nested source"], cwd: nested, env: identityEnv() });
+  const committedNestedState = await tabellioRunnerState({ root });
+  assert.notEqual(committedNestedState.fingerprint, nestedState.fingerprint);
+  await writeFile(join(nested, "nested.txt"), "two\n");
+  const changedNestedState = await tabellioRunnerState({ root });
+  assert.notEqual(changedNestedState.fingerprint, committedNestedState.fingerprint);
 });
 
 test("runner identity security reports unavailable non-Git source without exposing paths", async (t) => {
@@ -129,6 +149,30 @@ test("runner identity operational lookup stays bounded", async () => {
   for (let index = 0; index < 10; index += 1) await tabellioRunnerIdentity();
   const duration = performance.now() - started;
   console.log(`runner_identity_10x_duration_ms=${duration.toFixed(3)}`);
+});
+
+test("runner identity fingerprints tracked changes larger than the Git output buffer", async (t) => {
+  const root = await identityFixture(t);
+  const large = join(root, "large.bin");
+  await writeFile(large, Buffer.alloc(11 * 1024 * 1024, 1));
+  await runGit({ args: ["add", "large.bin"], cwd: root });
+  await runGit({ args: ["commit", "-m", "Add large file"], cwd: root, env: identityEnv() });
+  await writeFile(large, Buffer.alloc(11 * 1024 * 1024, 2));
+  const state = await tabellioRunnerState({ root });
+  assert.equal(state.identity.sourceDirty, true);
+  assert.match(state.fingerprint, /^[0-9a-f]{64}$/);
+});
+
+test("runner identity inspection does not refresh the Git index", async (t) => {
+  const root = await identityFixture(t);
+  const packagePath = join(root, "package.json");
+  const now = new Date();
+  await utimes(packagePath, now, now);
+  const before = await stat(join(root, ".git", "index"));
+  await tabellioRunnerState({ root });
+  const after = await stat(join(root, ".git", "index"));
+  assert.equal(after.mtimeMs, before.mtimeMs);
+  assert.equal(after.ctimeMs, before.ctimeMs);
 });
 
 async function identityFixture(t) {
