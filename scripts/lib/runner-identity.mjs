@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
-import { lstat, readFile, readlink, realpath } from "node:fs/promises";
+import { copyFile, lstat, mkdtemp, readFile, readlink, realpath, rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { basename, dirname, join, resolve } from "node:path";
 
 import { runGit } from "./git-process.mjs";
 
@@ -44,7 +45,7 @@ async function readGitSourceIdentity(root, packageVersion) {
   const commit = revision.stdout.trim();
   assertGitObjectId(commit);
   const status = await readGit(root, ["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
-  const indexFlags = await readGit(root, ["ls-files", "-v", "-z"]);
+  const indexFlags = await readIndexFlags(root);
   const flaggedPaths = unsafeIndexPaths(indexFlags.stdout);
   const tags = await readGit(root, ["tag", "--points-at", commit, "--list", `v${packageVersion}`]);
   return {
@@ -122,6 +123,29 @@ async function directoryFingerprint(path) {
 
 function readGit(root, args) {
   return runGit({ args, cwd: root, env: { GIT_OPTIONAL_LOCKS: "0" } });
+}
+
+async function readIndexFlags(root) {
+  const indexPath = (await readGit(root, ["rev-parse", "--git-path", "index"])).stdout.trim();
+  const sharedIndexPath = (await readGit(root, ["rev-parse", "--shared-index-path"])).stdout.trim();
+  const directory = await mkdtemp(join(tmpdir(), "TabellioIndex-"));
+  const copiedIndex = join(directory, "index");
+  try {
+    await copyFile(resolve(root, indexPath), copiedIndex);
+    if (sharedIndexPath) {
+      await copyFile(resolve(root, sharedIndexPath), join(directory, basename(sharedIndexPath)));
+    }
+    return await runGit({
+      args: ["ls-files", "-v", "-z"],
+      cwd: root,
+      env: {
+        GIT_INDEX_FILE: copiedIndex,
+        GIT_OPTIONAL_LOCKS: "0",
+      },
+    });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 }
 
 function isMissingFile(error) {
