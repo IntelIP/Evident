@@ -369,6 +369,12 @@ test("typed validators enforce semantic metrics and cost budgets with durable ev
     malformed.integrity.digest = digestObject(unsigned);
     assert.throws(() => validateValidationResult(malformed), message);
   }
+
+  const buildMetadata = structuredClone(result.result);
+  buildMetadata.runner.packageVersion = "0.6.1+build.7";
+  const { integrity: _integrity, ...unsigned } = buildMetadata;
+  buildMetadata.integrity.digest = digestObject(unsigned);
+  assert.equal(validateValidationResult(buildMetadata), buildMetadata);
 });
 
 test("typed validation distinguishes product failure from blocked evidence", async (t) => {

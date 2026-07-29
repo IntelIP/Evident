@@ -17,7 +17,7 @@ const VALIDATION_RESULT_SCHEMA_VERSION_V3 = "tabellio-validation-result/v0.3";
 const VALIDATION_RESULT_SCHEMA_VERSION_V4 = "tabellio-validation-result/v0.4";
 const VALIDATOR_EVIDENCE_SCHEMA_VERSION = "tabellio-validator-evidence/v0.1";
 const VALIDATOR_TYPES = ["static", "schema", "semantic", "workflow", "visual", "operational", "security"];
-const SEMANTIC_VERSION = /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$/;
+const SEMANTIC_VERSION = /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 const MAX_OUTPUT_TAIL_BYTES = 16 * 1024;
 const MAX_EVIDENCE_BYTES = 1024 * 1024;
 
