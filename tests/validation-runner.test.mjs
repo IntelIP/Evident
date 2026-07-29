@@ -69,6 +69,31 @@ test("validation runner executes exact committed manifests and stores bounded re
   assert.equal(passed.result.commands[4].status, "passed");
   assert.equal(validateValidationResult(passed.result), passed.result);
   assert.deepEqual(await latestValidationResult(ledger, passingHead), passed.result);
+  let identityRead = 0;
+  const stableIdentity = {
+    packageName: "@intelip/tabellio",
+    packageVersion: "0.6.0",
+    sourceCommit: "a".repeat(40),
+    sourceDirty: false,
+    releaseTag: null,
+  };
+  const driftingRunner = new ValidationRunner({
+    store,
+    ledger,
+    runnerIdentity: async () => ({
+      ...stableIdentity,
+      sourceCommit: (identityRead++ === 0 ? "a" : "b").repeat(40),
+    }),
+  });
+  await assert.rejects(
+    driftingRunner.run({
+      repositoryId,
+      commit: passingHead,
+      base: "main",
+      runnerId: "drift-test",
+    }),
+    /runner identity changed during validation/,
+  );
   const otherRepository = await runner.run({
     repositoryId: "other/repository",
     commit: passingHead,

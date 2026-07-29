@@ -22,10 +22,12 @@ const MAX_OUTPUT_TAIL_BYTES = 16 * 1024;
 const MAX_EVIDENCE_BYTES = 1024 * 1024;
 
 export class ValidationRunner {
-  constructor({ store, ledger, workspaceRoot = null }) {
+  constructor({ store, ledger, workspaceRoot = null, runnerIdentity = tabellioRunnerIdentity }) {
+    if (typeof runnerIdentity !== "function") throw new TypeError("runnerIdentity must be a function.");
     this.store = store;
     this.ledger = ledger;
     this.workspaceRoot = workspaceRoot;
+    this.runnerIdentity = runnerIdentity;
   }
 
   async run({
@@ -56,6 +58,7 @@ export class ValidationRunner {
     if (manifest.requireEntireCheckpoint && checkpoints.length === 0) {
       throw new Error(`Checkpoint range ${checkpointRevision.mergeBase}..${checkpointRevision.headCommit} has no Entire checkpoint.`);
     }
+    const runnerIdentity = await this.runnerIdentity();
 
     const runId = `validation-${randomUUID()}`;
     const common = await runGit({ args: ["rev-parse", "--git-common-dir"], cwd: this.store.repoPath });
@@ -93,7 +96,10 @@ export class ValidationRunner {
       }
     }
     const completedAt = new Date().toISOString();
-    const runnerIdentity = await tabellioRunnerIdentity();
+    const completedRunnerIdentity = await this.runnerIdentity();
+    if (JSON.stringify(completedRunnerIdentity) !== JSON.stringify(runnerIdentity)) {
+      throw new Error("Tabellio runner identity changed during validation.");
+    }
     const result = buildValidationResult({
       manifest,
       definitions,

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { execFile } from "node:child_process";
 import test from "node:test";
@@ -69,7 +70,7 @@ test("runner identity does not attribute a parent consumer repository to an inst
   });
 });
 
-test("runner identity CLI workflow reports current checkout and enforces expectations", async () => {
+test("runner identity CLI workflow reports current checkout and enforces expectations", async (t) => {
   const result = await execFileAsync(process.execPath, [
     "scripts/tabellio-version.mjs",
     "--expect-version", "0.6.0",
@@ -86,6 +87,14 @@ test("runner identity CLI workflow reports current checkout and enforces expecta
     "sourceCommit",
     "sourceDirty",
   ]);
+
+  const outside = await temporaryDirectory(t, "TabellioCaller-");
+  const script = fileURLToPath(new URL("../scripts/tabellio-version.mjs", import.meta.url));
+  const outsideResult = await execFileAsync(process.execPath, [
+    script,
+    "--expect-ref", "HEAD",
+  ], { cwd: outside, encoding: "utf8" });
+  assert.equal(JSON.parse(outsideResult.stdout).ok, true);
 
   await assert.rejects(
     execFileAsync(process.execPath, [

@@ -1,19 +1,23 @@
 #!/usr/bin/env node
 
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { runGit } from "./lib/git-process.mjs";
 import { assertAllowedOptions, parseOptionPairs } from "./lib/cli-options.mjs";
 import { tabellioRunnerIdentity } from "./lib/runner-identity.mjs";
 
 const BOOLEAN_FLAGS = new Set(["--require-clean", "--require-release-tag"]);
 const ALLOWED_OPTIONS = ["expectVersion", "expectRef", "requireClean", "requireReleaseTag"];
+const RUNNER_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 try {
   const options = parseArgs(process.argv.slice(2));
-  const identity = await tabellioRunnerIdentity();
+  const identity = await tabellioRunnerIdentity({ root: RUNNER_ROOT });
   const expectedCommit = options.expectRef
     ? verifiedCommit((await runGit({
       args: ["rev-parse", "--verify", "--end-of-options", `${options.expectRef}^{commit}`],
-      cwd: process.cwd(),
+      cwd: RUNNER_ROOT,
     })).stdout.trim())
     : null;
   const blockers = [];
