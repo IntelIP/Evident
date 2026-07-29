@@ -144,6 +144,30 @@ test("delivery join uses one designated Buildkite pipeline", () => {
   );
 });
 
+test("delivery join binds available collectors to provider source versions", () => {
+  for (const [source, input, message] of [
+    ["plane", {
+      planeSnapshot: { ...plane(), capturedAt: "2026-07-25T13:00:00.000Z" },
+    }, /Plane snapshot version/],
+    ["buildkite", {
+      buildkiteSnapshots: [{
+        ...buildkite(),
+        capturedAt: "2026-07-25T13:00:00.000Z",
+      }],
+    }, /Buildkite snapshot version/],
+    ["github", {
+      releaseSnapshot: {
+        ...releases(),
+        capturedAt: "2026-07-25T13:00:00.000Z",
+      },
+    }, /GitHub Release snapshot version/],
+  ]) {
+    const providerSnapshot = provider();
+    providerSnapshot.sources[source].version = fixture.at;
+    assert.throws(() => join({ providerSnapshot, ...input }), message);
+  }
+});
+
 test("delivery join preserves terminal CI and blocked deployment states", () => {
   for (const state of ["skipped", "not_run", "blocked"]) {
     const snapshot = buildkite();
@@ -598,12 +622,30 @@ test("delivery join never passes deployment before merge", () => {
   assert.equal(premature.deliveryRecords[0].deployment.status, "unavailable");
 });
 
+test("delivery join preserves failed deployment attempts before merge", () => {
+  const providerSnapshot = provider();
+  providerSnapshot.deliveryChanges[0].mergedAt = null;
+  providerSnapshot.deliveryChanges[0].mergeCommit = null;
+  const snapshot = join({
+    providerSnapshot,
+    deploymentReceipts: [deployment({
+      status: "failed",
+      deployedAt: null,
+    })],
+    deploymentEnvironment: "production",
+  });
+  assert.equal(snapshot.deliveryRecords[0].deployment.status, "failed");
+  assert.equal(snapshot.deliveryRecords[0].deployment.commit, fixture.commit);
+});
+
 test("delivery join ages WIP at Plane observation time", () => {
   const planeSnapshot = plane();
   planeSnapshot.capturedAt = "2026-07-22T12:00:00.000Z";
   planeSnapshot.workItems[0].createdAt = "2026-07-20T12:00:00.000Z";
   planeSnapshot.workItems[0].updatedAt = "2026-07-20T12:00:01.000Z";
-  const snapshot = join({ planeSnapshot });
+  const providerSnapshot = provider();
+  providerSnapshot.sources.plane.version = planeSnapshot.capturedAt;
+  const snapshot = join({ providerSnapshot, planeSnapshot });
   assert.equal(snapshot.wipByProject[0].aging3dCount, 0);
 });
 

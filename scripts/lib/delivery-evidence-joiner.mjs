@@ -213,6 +213,13 @@ function assertBuildkiteBinding({
       || !buildkiteSnapshots.some((snapshot) => snapshot.status === "available"),
     "Provider and Buildkite source availability mismatch.",
   );
+  for (const snapshot of buildkiteSnapshots) {
+    assertAvailableCollectorVersion(
+      providerSnapshot.sources.buildkite,
+      snapshot,
+      "Buildkite",
+    );
+  }
 }
 
 function validBuildkiteAuthority(authority) {
@@ -273,6 +280,23 @@ function assertPlaneBinding({
     providerSnapshot.sources.github.status === "available"
       || releaseSnapshot.status !== "available",
     "Provider and GitHub Release source availability mismatch.",
+  );
+  assertAvailableCollectorVersion(providerPlane, planeSnapshot, "Plane");
+  assertAvailableCollectorVersion(
+    providerSnapshot.sources.github,
+    releaseSnapshot,
+    "GitHub Release",
+  );
+}
+
+function assertAvailableCollectorVersion(providerSource, collectorSnapshot, label) {
+  if (
+    providerSource.status !== "available"
+    || collectorSnapshot.status !== "available"
+  ) return;
+  ensure(
+    providerSource.version === collectorSnapshot.capturedAt,
+    `${label} snapshot version does not match provider authority.`,
   );
 }
 
@@ -553,14 +577,20 @@ function releaseFollowsMerge(change, candidate) {
 }
 
 function latestReceiptFor(change, receipts, repository) {
-  if (!change.mergeCommit || !change.mergedAt) return null;
   const commits = changeCommits(change);
   return latestBy(
     receipts.filter(
       (receipt) =>
         commits.includes(receipt.commit)
         && sameRepository(receipt.repository, repository)
-        && receiptFollowsMerge(receipt, change.mergedAt),
+        && (
+          receipt.status !== "passed"
+          || (
+            change.mergeCommit
+            && change.mergedAt
+            && receiptFollowsMerge(receipt, change.mergedAt)
+          )
+        ),
     ),
     (receipt) => receipt.observedAt,
   );
