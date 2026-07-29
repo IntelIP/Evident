@@ -288,6 +288,8 @@ test("stable schema identifiers keep external references and released contracts 
     validationAlias,
     validationV1,
     validationV2,
+    validationV3,
+    validationV4,
   ] = await Promise.all([
     readFile(`${projectRoot}/schemas/evidence-envelope.schema.json`, "utf8").then(JSON.parse),
     readFile(`${projectRoot}/schemas/external-action-policy.schema.json`, "utf8").then(JSON.parse),
@@ -299,6 +301,8 @@ test("stable schema identifiers keep external references and released contracts 
     readFile(`${projectRoot}/schemas/validation-result.schema.json`, "utf8").then(JSON.parse),
     readFile(`${projectRoot}/schemas/validation-result.v0.1.schema.json`, "utf8").then(JSON.parse),
     readFile(`${projectRoot}/schemas/validation-result.v0.2.schema.json`, "utf8").then(JSON.parse),
+    readFile(`${projectRoot}/schemas/validation-result.v0.3.schema.json`, "utf8").then(JSON.parse),
+    readFile(`${projectRoot}/schemas/validation-result.v0.4.schema.json`, "utf8").then(JSON.parse),
   ]);
   assert.equal(evidenceSchema.properties.externalActionPolicy.$ref, policySchema.$id);
   assert.equal(releaseSchema.properties.control.properties.intent.$ref, controlSchema.$id);
@@ -312,6 +316,11 @@ test("stable schema identifiers keep external references and released contracts 
   assert.equal(validationV2.$id, "urn:tabellio:schema:validation-result:v0.2");
   assert.equal(Object.hasOwn(validationV1.properties, "checkpointRevision"), false);
   assert.equal(validationV2.required.includes("checkpointRevision"), true);
+  assert.equal(validationV3.$id, "urn:tabellio:schema:validation-result:v0.3");
+  assert.equal(validationV4.$id, "urn:tabellio:schema:validation-result:v0.4");
+  assert.deepEqual(validationV3.properties.runner.required, ["id", "runtime"]);
+  assert.equal(validationV4.properties.runner.required.includes("packageVersion"), true);
+  assert.equal(validationV4.properties.runner.required.includes("sourceCommit"), true);
 });
 
 test("required repository validation is recorded in evidence", async (t) => {

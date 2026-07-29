@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "tabellio-validation/v0.2",
+  "id": "tabellio-v060-runner-identity",
+  "failFast": false,
+  "requireEntireCheckpoint": true,
+  "acceptance": {
+    "id": "intb-279-v060-runner-identity",
+    "source": "INTB-279 and docs/intb-279-v060-execution-contract.md",
+    "risk": "high",
+    "outcomes": [
+      "Package metadata, release notes, and validation evidence identify Tabellio 0.6.0.",
+      "A machine-readable command reports package version, exact source commit, source cleanliness, and a matching release tag when present.",
+      "Typed validation evidence identifies the runner package version and exact source commit.",
+      "Existing v0.1, v0.2, and v0.3 validation-result readers remain supported."
+    ],
+    "invariants": [
+      "Version inspection performs no external writes.",
+      "Unknown source identity remains unavailable rather than inferred.",
+      "A dirty source tree remains visibly dirty.",
+      "Cost telemetry is available and zero for every required validator."
+    ],
+    "forbiddenOutcomes": [
+      "Package version and evidence version diverge.",
+      "A missing or mismatched release tag is reported as a release.",
+      "Private filesystem paths are copied into runner identity evidence.",
+      "A prior validation result format becomes unreadable."
+    ],
+    "requiredValidatorTypes": ["static", "schema", "semantic", "workflow", "operational", "security"]
+  },
+  "validators": [
+    {"id": "v060-identity-static", "type": "static", "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "v060-identity-static", "--validator-id", "v060-identity-static", "--out", ".artifacts/tabellio/v060-identity-static.json"], "cwd": ".", "timeoutMs": 300000, "required": true, "evidence": {"path": ".artifacts/tabellio/v060-identity-static.json"}, "policy": {"metricThresholds": [{"metric": "runner_identity_static_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}},
+    {"id": "v060-identity-schema", "type": "schema", "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "v060-identity-schema", "--validator-id", "v060-identity-schema", "--out", ".artifacts/tabellio/v060-identity-schema.json"], "cwd": ".", "timeoutMs": 300000, "required": true, "evidence": {"path": ".artifacts/tabellio/v060-identity-schema.json"}, "policy": {"metricThresholds": [{"metric": "runner_identity_schema_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}},
+    {"id": "v060-identity-semantic", "type": "semantic", "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "v060-identity-semantic", "--validator-id", "v060-identity-semantic", "--out", ".artifacts/tabellio/v060-identity-semantic.json"], "cwd": ".", "timeoutMs": 300000, "required": true, "evidence": {"path": ".artifacts/tabellio/v060-identity-semantic.json"}, "policy": {"metricThresholds": [{"metric": "runner_identity_semantic_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}},
+    {"id": "v060-identity-workflow", "type": "workflow", "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "v060-identity-workflow", "--validator-id", "v060-identity-workflow", "--out", ".artifacts/tabellio/v060-identity-workflow.json"], "cwd": ".", "timeoutMs": 300000, "required": true, "evidence": {"path": ".artifacts/tabellio/v060-identity-workflow.json"}, "policy": {"metricThresholds": [{"metric": "runner_identity_workflow_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}},
+    {"id": "v060-identity-operational", "type": "operational", "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "v060-identity-operational", "--validator-id", "v060-identity-operational", "--out", ".artifacts/tabellio/v060-identity-operational.json"], "cwd": ".", "timeoutMs": 300000, "required": true, "evidence": {"path": ".artifacts/tabellio/v060-identity-operational.json"}, "policy": {"metricThresholds": [{"metric": "runner_identity_10x_duration_ms", "operator": "lte", "value": 2000}], "maxCostUsd": 0, "requireCostTelemetry": true}},
+    {"id": "v060-identity-security", "type": "security", "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "v060-identity-security", "--validator-id", "v060-identity-security", "--out", ".artifacts/tabellio/v060-identity-security.json"], "cwd": ".", "timeoutMs": 300000, "required": true, "evidence": {"path": ".artifacts/tabellio/v060-identity-security.json"}, "policy": {"metricThresholds": [{"metric": "runner_identity_security_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}}
+  ]
+}

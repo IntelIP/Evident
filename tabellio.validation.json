@@ -4,8 +4,8 @@
   "failFast": false,
   "requireEntireCheckpoint": true,
   "acceptance": {
-    "id": "tabellio-v0.5-control-plane-and-analytics",
-    "source": "repository product contract, docs/product-validation.md, and INTB-261",
+    "id": "tabellio-v0.6-control-plane-analytics-and-runner-identity",
+    "source": "repository product contract, docs/product-validation.md, INTB-261, and INTB-279",
     "risk": "high",
     "outcomes": [
       "Agent runs, checkpoints, reviews, and validation results remain bound to exact Git state.",
@@ -13,14 +13,16 @@
       "External actions and release operations remain approval-gated and fail closed.",
       "Validation worktrees and isolated home directories remain outside the repository and Git common directory and are removed after each run.",
       "Analytics validator evidence distinguishes malformed inputs from valid contract failures.",
-      "The packaged cross-repository baseline binds exact repository heads, provider snapshots, and a reproducible report."
+      "The packaged cross-repository baseline binds exact repository heads, provider snapshots, and a reproducible report.",
+      "Every new typed validation result identifies the Tabellio package version and exact runner source commit."
     ],
     "invariants": [
       "Validation never publishes, deploys, or mutates a live external system.",
       "Unknown or missing cost telemetry cannot be treated as zero.",
       "A validation run cannot select a workspace root inside the repository or Git common directory.",
       "Analytics validator summaries and artifacts never copy rejected private source text.",
-      "Baseline unavailable reasons remain derived from their packaged provider snapshots."
+      "Baseline unavailable reasons remain derived from their packaged provider snapshots.",
+      "Unavailable or dirty runner source identity remains explicit and is never inferred as released."
     ],
     "forbiddenOutcomes": [
       "A stale validation result is accepted for a moved head.",
@@ -28,7 +30,8 @@
       "An unapproved external action is executed.",
       "A validation worktree, temporary HOME, dependency cache, or generated validator output is created under .git.",
       "Malformed analytics input is reported as passed or as a valid product failure.",
-      "The shipped validation manifest references baseline evidence omitted from the package."
+      "The shipped validation manifest references baseline evidence omitted from the package.",
+      "Package metadata, runner evidence, and release identity disagree."
     ],
     "requiredValidatorTypes": ["static", "schema", "semantic", "workflow", "operational", "security"]
   },
