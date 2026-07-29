@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { runGit } from "./lib/git-process.mjs";
 import { assertAllowedOptions, parseOptionPairs } from "./lib/cli-options.mjs";
 import { tabellioRunnerIdentity } from "./lib/runner-identity.mjs";
+import { verifyPublishedRunnerRelease } from "./lib/runner-release.mjs";
 
 const BOOLEAN_FLAGS = new Set(["--require-clean", "--require-release-tag"]);
 const ALLOWED_OPTIONS = ["expectVersion", "expectRef", "requireClean", "requireReleaseTag"];
@@ -28,15 +29,20 @@ try {
     blockers.push(`source_commit_mismatch:${expectedCommit}`);
   }
   if (options.requireClean && identity.sourceDirty !== false) blockers.push("runner_source_not_clean");
-  if (options.requireReleaseTag && identity.releaseTag !== `v${identity.packageVersion}`) {
-    blockers.push(`release_tag_missing:v${identity.packageVersion}`);
+  const publishedRelease = options.requireReleaseTag
+    ? await verifyPublishedRunnerRelease({ root: RUNNER_ROOT, identity })
+    : false;
+  if (options.requireReleaseTag && !publishedRelease) {
+    blockers.push(`published_release_missing:v${identity.packageVersion}`);
   }
   const status = identity.sourceCommit === null
     ? "source_unavailable"
     : identity.sourceDirty
       ? "dirty"
-      : identity.releaseTag
+      : publishedRelease
         ? "released"
+        : identity.releaseTag
+          ? "tagged"
         : "identified";
   const result = { ok: blockers.length === 0, status, runner: identity, blockers };
   console.log(JSON.stringify(result, null, 2));

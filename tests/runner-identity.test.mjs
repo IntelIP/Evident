@@ -9,6 +9,7 @@ import test from "node:test";
 
 import { runGit } from "../scripts/lib/git-process.mjs";
 import { tabellioRunnerIdentity, tabellioRunnerState } from "../scripts/lib/runner-identity.mjs";
+import { verifyPublishedRunnerRelease } from "../scripts/lib/runner-release.mjs";
 import { identityEnv } from "./helpers/git-fixture.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -149,6 +150,44 @@ test("runner identity operational lookup stays bounded", async () => {
   for (let index = 0; index < 10; index += 1) await tabellioRunnerIdentity();
   const duration = performance.now() - started;
   console.log(`runner_identity_10x_duration_ms=${duration.toFixed(3)}`);
+});
+
+test("runner release proof rejects local-only tags and binds published GitHub evidence", async (t) => {
+  const root = await identityFixture(t);
+  await runGit({ args: ["tag", "v0.6.0"], cwd: root });
+  const identity = await tabellioRunnerIdentity({ root });
+  assert.equal(await verifyPublishedRunnerRelease({
+    root,
+    identity,
+    repositoryReader: async () => ({ fullName: "IntelIP/Tabellio" }),
+    remoteTagReader: async () => null,
+    commandRunner: async () => {
+      throw new Error("GitHub must not be queried without a published remote tag.");
+    },
+  }), false);
+  assert.equal(await verifyPublishedRunnerRelease({
+    root,
+    identity,
+    repositoryReader: async () => ({ fullName: "IntelIP/Tabellio" }),
+    remoteTagReader: async () => ({ annotated: true, commit: identity.sourceCommit }),
+    commandRunner: async ({ args }) => {
+      assert.deepEqual(args, [
+        "release", "view", "v0.6.0",
+        "--repo", "IntelIP/Tabellio",
+        "--json", "tagName,isDraft,isPrerelease",
+      ]);
+      return {
+        stdout: JSON.stringify({ tagName: "v0.6.0", isDraft: false, isPrerelease: false }),
+      };
+    },
+  }), true);
+  assert.equal(await verifyPublishedRunnerRelease({
+    root,
+    identity,
+    repositoryReader: async () => ({ fullName: "IntelIP/Tabellio" }),
+    remoteTagReader: async () => ({ annotated: false, commit: identity.sourceCommit }),
+    commandRunner: async () => ({ stdout: "{}" }),
+  }), false);
 });
 
 test("runner identity fingerprints tracked changes larger than the Git output buffer", async (t) => {

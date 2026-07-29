@@ -81,7 +81,7 @@ npm run tabellio:version -- \
   --expect-ref HEAD
 ```
 
-Add `--require-clean` for an immutable candidate and `--require-release-tag` only after the approved GitHub Release tag exists.
+Add `--require-clean` for an immutable candidate and `--require-release-tag` only after the approved, non-draft GitHub Release exists. The release check requires an annotated `origin` tag at the exact source commit; a local-only tag is insufficient.
 
 Run preflight before agent work and again from clean merged `main`:
 
