@@ -168,6 +168,13 @@ test("delivery join binds available collectors to provider source versions", () 
   }
 });
 
+test("delivery join accepts release evidence older than a preserved source version", () => {
+  const providerSnapshot = provider();
+  providerSnapshot.capturedAt = "2026-07-25T13:00:00.000Z";
+  providerSnapshot.sources.github.version = providerSnapshot.capturedAt;
+  assert.doesNotThrow(() => join({ providerSnapshot }));
+});
+
 test("delivery join preserves terminal CI and blocked deployment states", () => {
   for (const state of ["skipped", "not_run", "blocked"]) {
     const snapshot = buildkite();

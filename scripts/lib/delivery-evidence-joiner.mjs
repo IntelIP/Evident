@@ -286,16 +286,25 @@ function assertPlaneBinding({
     providerSnapshot.sources.github,
     releaseSnapshot,
     "GitHub Release",
+    { allowOlder: true },
   );
 }
 
-function assertAvailableCollectorVersion(providerSource, collectorSnapshot, label) {
+function assertAvailableCollectorVersion(
+  providerSource,
+  collectorSnapshot,
+  label,
+  { allowOlder = false } = {},
+) {
   if (
     providerSource.status !== "available"
     || collectorSnapshot.status !== "available"
   ) return;
+  const versionMatches = allowOlder
+    ? Date.parse(collectorSnapshot.capturedAt) <= Date.parse(providerSource.version)
+    : providerSource.version === collectorSnapshot.capturedAt;
   ensure(
-    providerSource.version === collectorSnapshot.capturedAt,
+    versionMatches,
     `${label} snapshot version does not match provider authority.`,
   );
 }
