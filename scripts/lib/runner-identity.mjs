@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { copyFile, lstat, mkdtemp, readFile, readlink, realpath, rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 import { runGit } from "./git-process.mjs";
 
@@ -127,14 +127,10 @@ function readGit(root, args) {
 
 async function readIndexFlags(root) {
   const indexPath = (await readGit(root, ["rev-parse", "--git-path", "index"])).stdout.trim();
-  const sharedIndexPath = (await readGit(root, ["rev-parse", "--shared-index-path"])).stdout.trim();
   const directory = await mkdtemp(join(tmpdir(), "TabellioIndex-"));
   const copiedIndex = join(directory, "index");
   try {
     await copyFile(resolve(root, indexPath), copiedIndex);
-    if (sharedIndexPath) {
-      await copyFile(resolve(root, sharedIndexPath), join(directory, basename(sharedIndexPath)));
-    }
     return await runGit({
       args: ["ls-files", "-v", "-z"],
       cwd: root,
