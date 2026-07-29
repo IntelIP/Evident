@@ -498,6 +498,20 @@ test("delivery join restricts runtime proof to the target environment", () => {
   assert.equal(snapshot.deliveryRecords[0].deployment.environment, "production");
 });
 
+test("delivery join scopes blocked collection to the target environment", () => {
+  const snapshot = join({
+    deploymentReceipts: [deployment({ environment: "staging" })],
+    deploymentEnvironment: "production",
+    deploymentBlockedReason: "Production collector unavailable.",
+  });
+  assert.equal(snapshot.sources.deployment.status, "blocked");
+  assert.equal(
+    snapshot.sources.deployment.reason,
+    "Production collector unavailable.",
+  );
+  assert.equal(snapshot.deliveryRecords[0].deployment.status, "blocked");
+});
+
 test("delivery join follows landed squash commits", () => {
   const mergeCommit = "b".repeat(40);
   const providerSnapshot = provider();

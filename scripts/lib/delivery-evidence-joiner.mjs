@@ -346,7 +346,9 @@ function assertDeploymentBinding({
     "deployment source observation IDs must be unique.",
   );
   assertDeploymentCollectionConsistency(
-    deploymentReceipts,
+    deploymentReceipts.filter(
+      (receipt) => receipt.environment === deploymentEnvironment,
+    ),
     deploymentBlockedReason,
   );
 }
