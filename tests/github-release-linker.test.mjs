@@ -163,12 +163,16 @@ function providerSnapshot({
   if (releasedAt !== undefined) change.releasedAt = releasedAt;
   if (releaseCommit !== undefined) change.releaseCommit = releaseCommit;
   return {
-    schemaVersion: "tabellio-analytics-provider-snapshot/v0.1",
+    schemaVersion: "tabellio-analytics-provider-snapshot/v0.2",
     repository: "IntelIP/Tabellio",
     headCommit: HEAD,
     capturedAt,
     sources: {
-      plane: { status: "available", version: "2026-07-25T09:00:00.000Z" },
+      plane: {
+        status: "available",
+        version: "2026-07-25T09:00:00.000Z",
+        workspace: "intelip",
+      },
       github: { status: "available", version: githubVersion },
       "github-actions": { status: "available", version: "2026-07-25T11:00:00.000Z" },
       buildkite: { status: "available", version: "2026-07-25T11:00:00.000Z" },

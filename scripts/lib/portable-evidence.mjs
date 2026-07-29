@@ -17,6 +17,10 @@ const CHANGE_FIELDS = new Set([
   "hostedStatus",
 ]);
 const SOURCE_FIELDS = new Set(["status", "version", "reason"]);
+const PROVIDER_SCHEMA_VERSIONS = new Set([
+  "tabellio-analytics-provider-snapshot/v0.1",
+  "tabellio-analytics-provider-snapshot/v0.2",
+]);
 const CREDENTIAL_PATTERNS = [
   /(?:^|[^a-z0-9])gh[pousr]_[a-z0-9_]{8,}/i,
   /(?:^|[^a-z0-9])github_pat_[a-z0-9_]{8,}/i,
@@ -75,29 +79,73 @@ export function sameRepository(left, right) {
   return leftId !== null && leftId === rightId;
 }
 
-export function validateEvidenceSource(source, { observedAt } = {}) {
-  const errors = [];
+export function validateEvidenceSource(source, {
+  observedAt,
+  allowWorkspace = false,
+} = {}) {
   if (!isPlainObject(source)) return ["source must be an object"];
-  rejectUnknownFields(source, SOURCE_FIELDS, "source", errors);
-  if (!SOURCE_STATES.has(source.status)) errors.push("source status is invalid");
-  if (!isSafeProviderVersion(source.version ?? null)) errors.push("source version is unsafe");
-  if (source.status === "available" && (typeof source.version !== "string" || !isSafeProviderVersion(source.version))) {
+  const errors = [];
+  rejectUnknownFields(
+    source,
+    allowWorkspace ? new Set([...SOURCE_FIELDS, "workspace"]) : SOURCE_FIELDS,
+    "source",
+    errors,
+  );
+  errors.push(...validateSourceStatus(source));
+  errors.push(...validateSourcePayload(source));
+  if (allowWorkspace) errors.push(...validateSourceWorkspace(source));
+  errors.push(...validateSourceObservationTime(source.version, observedAt));
+  return unique(errors);
+}
+
+function validateSourceStatus(source) {
+  return SOURCE_STATES.has(source.status)
+    ? []
+    : ["source status is invalid"];
+}
+
+function validateSourcePayload(source) {
+  const errors = [];
+  if (!isSafeProviderVersion(source.version ?? null)) {
+    errors.push("source version is unsafe");
+  }
+  errors.push(...(
+    source.status === "available"
+      ? validateAvailableSource(source)
+      : validateUnavailableSource(source)
+  ));
+  return errors;
+}
+
+function validateAvailableSource(source) {
+  const errors = [];
+  if (typeof source.version !== "string") {
     errors.push("available source requires a safe version");
   }
-  if (source.status !== "available" && !isSafeProviderText(source.reason)) {
-    errors.push("unavailable source requires a safe reason");
-  }
-  if (source.status !== "available" && source.version !== undefined && source.version !== null) {
-    errors.push("unavailable source cannot carry a version");
-  }
-  if (source.status === "available" && Object.hasOwn(source, "reason")) {
+  if (Object.hasOwn(source, "reason")) {
     errors.push("available source cannot carry a reason");
   }
-  const versionTimestamp = parseProviderVersionTimestamp(source.version);
-  if (versionTimestamp !== null && isDateTime(observedAt) && versionTimestamp > Date.parse(observedAt)) {
-    errors.push("source version is later than observation");
+  return errors;
+}
+
+function validateUnavailableSource(source) {
+  const errors = [];
+  if (!isSafeProviderText(source.reason)) {
+    errors.push("unavailable source requires a safe reason");
   }
-  return unique(errors);
+  if (source.version !== undefined && source.version !== null) {
+    errors.push("unavailable source cannot carry a version");
+  }
+  return errors;
+}
+
+function validateSourceObservationTime(version, observedAt) {
+  const versionTimestamp = parseProviderVersionTimestamp(version);
+  if (versionTimestamp === null) return [];
+  if (!isDateTime(observedAt)) return [];
+  return versionTimestamp > Date.parse(observedAt)
+    ? ["source version is later than observation"]
+    : [];
 }
 
 export function validateEvidenceBinding({ repository, headCommit, sourceRepository, sourceHeadCommit }) {
@@ -113,7 +161,7 @@ export function validateProviderSnapshot(snapshot, { repository, headCommit, obs
   const errors = [];
   if (!isPlainObject(snapshot)) return ["provider snapshot must be an object"];
   rejectUnknownFields(snapshot, new Set(["schemaVersion", "repository", "headCommit", "capturedAt", "sources", "deliveryChanges"]), "provider snapshot", errors);
-  if (snapshot.schemaVersion !== "tabellio-analytics-provider-snapshot/v0.1") errors.push("provider snapshot schemaVersion is invalid");
+  if (!PROVIDER_SCHEMA_VERSIONS.has(snapshot.schemaVersion)) errors.push("provider snapshot schemaVersion is invalid");
   if (!sameRepository(repository, snapshot.repository)) errors.push("provider snapshot repository is invalid");
   if (!isCommit(snapshot.headCommit) || snapshot.headCommit !== headCommit) errors.push("provider snapshot headCommit does not bind the repository head");
   if (!isDateTime(snapshot.capturedAt)) errors.push("provider snapshot capturedAt is invalid");
@@ -129,7 +177,17 @@ export function validateProviderSnapshot(snapshot, { repository, headCommit, obs
     }
     for (const system of SOURCE_SYSTEMS) {
       if (!Object.hasOwn(sources, system)) errors.push(`provider source ${system} is missing`);
-      else errors.push(...prefix(system, validateEvidenceSource(sources[system], { observedAt: snapshot.capturedAt })));
+      else errors.push(...prefix(system, validateEvidenceSource(sources[system], {
+        observedAt: snapshot.capturedAt,
+        allowWorkspace:
+          snapshot.schemaVersion === "tabellio-analytics-provider-snapshot/v0.2"
+          && system === "plane",
+      })));
+    }
+    if (snapshot.schemaVersion === "tabellio-analytics-provider-snapshot/v0.2"
+      && (!isPlainObject(sources.plane)
+      || !Object.hasOwn(sources.plane, "workspace"))) {
+      errors.push("provider Plane source workspace is missing");
     }
   }
   if (!Array.isArray(snapshot.deliveryChanges)) {
@@ -156,6 +214,13 @@ export function validateProviderSnapshot(snapshot, { repository, headCommit, obs
     });
   }
   return unique(errors);
+}
+
+function validateSourceWorkspace(source) {
+  if (!Object.hasOwn(source, "workspace")) return [];
+  return isPortableIdentifier(source.workspace)
+    ? []
+    : ["source workspace is unsafe"];
 }
 
 function validateDeliveryChange(change, { sources, headCommit, capturedAt }) {

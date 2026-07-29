@@ -46,7 +46,22 @@ test("source contracts require exact state shapes and safe evidence", () => {
   assert.match(validateEvidenceSource({ status: "blocked", reason: "FILE:///Users/alice/private" })[0], /safe reason/);
   assert.match(validateEvidenceSource({ status: "blocked", reason: "../private/provider.json" })[0], /safe reason/);
   assert.match(validateEvidenceSource({ status: "blocked", reason: "provider error: ./cache.json" })[0], /safe reason/);
-  assert.match(validateEvidenceSource({ status: "unavailable", reason: "offline", workspace: "private" })[0], /not allowed/);
+  assert.deepEqual(
+    validateEvidenceSource({
+      status: "available",
+      version: "2026-07-25T00:00:00.000Z",
+      workspace: "private",
+    }, { allowWorkspace: true }),
+    [],
+  );
+  assert.match(
+    validateEvidenceSource({
+      status: "unavailable",
+      reason: "offline",
+      workspace: "../private",
+    }, { allowWorkspace: true })[0],
+    /workspace is unsafe/,
+  );
   assert.match(validateEvidenceSource({ status: "unavailable", reason: "offline", version: "2026-07-25T00:00:00.000Z" }).join(" "), /cannot carry a version/);
   assert.deepEqual(validateEvidenceSource({ status: "unavailable", reason: "offline", ghp_0123456789abcdef: true }), ["source contains a field that is not allowed"]);
   assert.match(validateEvidenceSource({ status: "available", version: "2099-01-01T00:00:00.000Z" }, { observedAt: OBSERVED_AT }).join(" "), /later than observation/);
@@ -81,6 +96,17 @@ test("evidence binding requires canonical repository and exact head", () => {
 
 test("provider snapshot accepts a minimal portable exact-head record", () => {
   assert.deepEqual(validateProviderSnapshot(snapshot(), {
+    repository: "IntelIP/Tabellio",
+    headCommit: HEAD,
+    observedAt: OBSERVED_AT,
+  }), []);
+});
+
+test("provider snapshot preserves the v0.1 contract without Plane workspace", () => {
+  const value = snapshot();
+  value.schemaVersion = "tabellio-analytics-provider-snapshot/v0.1";
+  delete value.sources.plane.workspace;
+  assert.deepEqual(validateProviderSnapshot(value, {
     repository: "IntelIP/Tabellio",
     headCommit: HEAD,
     observedAt: OBSERVED_AT,
@@ -130,6 +156,7 @@ test("provider snapshot rejects unsafe and contradictory claims", () => {
     ["future capture", (value) => { value.capturedAt = "2099-01-01T00:00:00.000Z"; }, /later than observation/],
     ["normalized capture", (value) => { value.capturedAt = "2026-02-30T00:00:00.000Z"; }, /capturedAt is invalid/],
     ["missing source", (value) => { delete value.sources.github; }, /github is missing/],
+    ["missing Plane workspace", (value) => { delete value.sources.plane.workspace; }, /workspace is missing/],
     ["unknown source", (value) => { value.sources.raw = { status: "available", version: "v1" }; }, /not allowed/],
     ["bad head", (value) => { value.deliveryChanges[0].headCommit = "bad"; }, /headCommit/],
     ["future lifecycle", (value) => { value.deliveryChanges[0].mergedAt = "2099-01-01T00:00:00.000Z"; }, /later than capture/],
@@ -162,12 +189,16 @@ test("provider snapshot rejects unsafe and contradictory claims", () => {
 
 function snapshot(headCommit = HEAD) {
   return {
-    schemaVersion: "tabellio-analytics-provider-snapshot/v0.1",
+    schemaVersion: "tabellio-analytics-provider-snapshot/v0.2",
     repository: "IntelIP/Tabellio",
     headCommit,
     capturedAt: "2026-07-26T00:00:00.000Z",
     sources: {
-      plane: { status: "available", version: "2026-07-25T00:00:00.000Z" },
+      plane: {
+        status: "available",
+        version: "2026-07-25T00:00:00.000Z",
+        workspace: "intelip",
+      },
       github: { status: "available", version: "2026-07-25T00:00:00.000Z" },
       "github-actions": { status: "available", version: "2026-07-25T00:00:00.000Z" },
       buildkite: { status: "available", version: "2026-07-25T00:00:00.000Z" },

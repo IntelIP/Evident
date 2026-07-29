@@ -718,12 +718,12 @@ test("analytics schema requires source observations and canonical metric states"
     );
   }
   const providerSchema = JSON.parse(await readFile(
-    new URL("../schemas/analytics-provider-snapshot.v0.1.schema.json", import.meta.url),
+    new URL("../schemas/analytics-provider-snapshot.v0.2.schema.json", import.meta.url),
     "utf8",
   ));
   assert.equal(
     providerSchema.properties.schemaVersion.const,
-    "tabellio-analytics-provider-snapshot/v0.1",
+    "tabellio-analytics-provider-snapshot/v0.2",
   );
   assert.ok(providerSchema.required.includes("headCommit"));
   assert.equal(
@@ -743,16 +743,37 @@ test("analytics schema requires source observations and canonical metric states"
     providerSchema.properties.sources.required,
     ["plane", "github", "github-actions", "buildkite"],
   );
+  assert(
+    providerSchema.properties.sources.properties.plane.allOf[1].required
+      .includes("workspace"),
+  );
+  const providerSchemaV01 = JSON.parse(await readFile(
+    new URL("../schemas/analytics-provider-snapshot.v0.1.schema.json", import.meta.url),
+    "utf8",
+  ));
+  assert.equal(
+    providerSchemaV01.properties.schemaVersion.const,
+    "tabellio-analytics-provider-snapshot/v0.1",
+  );
+  assert.equal(
+    providerSchemaV01.properties.sources.properties.plane.$ref,
+    "#/$defs/source",
+  );
+  assert.equal(providerSchemaV01.$defs.source.properties.workspace, undefined);
   const deliverySchema = JSON.parse(await readFile(
-    new URL("../schemas/delivery-evidence-snapshot.v0.1.schema.json", import.meta.url),
+    new URL("../schemas/delivery-evidence-snapshot.v0.2.schema.json", import.meta.url),
     "utf8",
   ));
   assertCredentialSafeRepositorySchema(deliverySchema.$defs.repositoryIdentifier);
   assert.ok(deliverySchema.$defs.source.required.includes("observations"));
   assert.equal(deliverySchema.$defs.source.allOf[0].then.properties.observations.minItems, 1);
   assert.equal(
-    deliverySchema.$defs.source.allOf[0].else.properties.reason.$ref,
+    deliverySchema.$defs.source.allOf[1].then.properties.reason.$ref,
     "#/$defs/safeText",
+  );
+  assert.equal(
+    deliverySchema.$defs.source.allOf[2].then.properties.observations.maxItems,
+    0,
   );
   assert.equal(
     deliverySchema.$defs.observation.properties.id.$ref,
@@ -785,7 +806,20 @@ test("analytics schema requires source observations and canonical metric states"
   }
   assert.equal(
     deliverySchema.properties.schemaVersion.const,
+    "tabellio-delivery-evidence-snapshot/v0.2",
+  );
+  const deliverySchemaV01 = JSON.parse(await readFile(
+    new URL("../schemas/delivery-evidence-snapshot.v0.1.schema.json", import.meta.url),
+    "utf8",
+  ));
+  assert.equal(
+    deliverySchemaV01.properties.schemaVersion.const,
     "tabellio-delivery-evidence-snapshot/v0.1",
+  );
+  assert.equal(deliverySchemaV01.required.includes("ciAuthority"), false);
+  assert.equal(
+    deliverySchemaV01.$defs.observation.required.includes("evidence"),
+    false,
   );
   const packageDefinition = JSON.parse(await readFile(
     new URL("../package.json", import.meta.url),
@@ -884,8 +918,9 @@ function providerSnapshot(headCommit) {
       { status: "available", version: "2026-07-25T00:00:00.000Z" },
     ]),
   );
+  sources.plane.workspace = "intelip";
   return {
-    schemaVersion: "tabellio-analytics-provider-snapshot/v0.1",
+    schemaVersion: "tabellio-analytics-provider-snapshot/v0.2",
     repository: "IntelIP/Example",
     headCommit,
     capturedAt: "2026-07-26T00:00:00.000Z",

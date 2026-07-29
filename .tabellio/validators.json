@@ -240,6 +240,42 @@
       "metrics": [{"name": "deployment_receipt_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
       "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
       "summary": "Deployment credential, path, environment, and commit boundaries"
+    },
+    "delivery-claims-static": {
+      "commands": [["npm", "run", "check"]],
+      "metrics": [{"name": "delivery_claim_static_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Delivery claim joiner and repository checks"
+    },
+    "delivery-claims-schema": {
+      "commands": [["node", "--test", "--test-name-pattern", "schema requires|duplicate records|hyphenated Plane", "tests/delivery-evidence-joiner.test.mjs"], ["node", "--test", "--test-name-pattern", "analytics schema|v0.1 contract", "tests/analytics-core.test.mjs", "tests/portable-evidence.test.mjs"]],
+      "metrics": [{"name": "delivery_claim_schema_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Delivery snapshot structure and uniqueness contract"
+    },
+    "delivery-claims-semantic": {
+      "commands": [["node", "--test", "--test-name-pattern", "binds exact|binds CI|landed squash|containment-linked|earliest post-merge|equal release timestamps|release claims absent|skips an earlier|never ships an unmerged|never passes deployment|preserves failed deployment|equal-time deployment|shipment without merge identity", "tests/delivery-evidence-joiner.test.mjs"]],
+      "metrics": [{"name": "delivery_claim_semantic_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Exact CI, release, deployment, and squash-merge claims"
+    },
+    "delivery-claims-workflow": {
+      "commands": [["node", "--test", "--test-name-pattern", "preserves exact source|reordered JSON|terminal CI|unfinished Buildkite|newest Buildkite|blocked provider Buildkite|blocked collector|blocked Plane and release|maximum portable|target environment|scopes blocked collection|immutable Plane|unavailable Plane|older than a preserved|opaque provider source", "tests/delivery-evidence-joiner.test.mjs"]],
+      "metrics": [{"name": "delivery_claim_workflow_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Joined delivery lifecycle and blocked-state preservation"
+    },
+    "delivery-claims-operational": {
+      "commands": [["node", "--test", "--test-name-pattern", "binds exact|ages WIP", "tests/delivery-evidence-joiner.test.mjs"]],
+      "metrics": [{"name": "delivery_claim_binding_count", "unit": "claims", "pattern": "delivery_claim_binding_count=([0-9]+)"}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Bound claim coverage and Plane-time WIP aging"
+    },
+    "delivery-claims-security": {
+      "commands": [["node", "--test", "--test-name-pattern", "cross-authority|unsafe source|unsupported successful|self-asserted|record downgrades|future record|status relabeling|erasing available|freshness relabeling|environment relabeling|partial blocked|malformed blocked|ambiguous authoritative|binds authority states|binds available collectors|unavailable to blocked relabeling", "tests/delivery-evidence-joiner.test.mjs"]],
+      "metrics": [{"name": "delivery_claim_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Cross-authority, forged-claim, unsafe-text, and temporal boundaries"
     }
   }
 }
