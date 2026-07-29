@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "tabellio-validation/v0.2",
+  "id": "intb-261-p8-delivery-cli-report",
+  "failFast": false,
+  "requireEntireCheckpoint": true,
+  "acceptance": {
+    "id": "INTB-261-P8",
+    "source": "INTB-261 and docs/intb-261-p8-execution-contract.md",
+    "risk": "high",
+    "outcomes": [
+      "Delivery evidence and reports preserve decision-grade source truth.",
+      "Deployment receipts reach the joined delivery snapshot.",
+      "Reports surface relationship and CI evidence gaps."
+    ],
+    "invariants": [
+      "CLI outputs remain distinct from every evidence input.",
+      "Markdown-shaped evidence is escaped before rendering.",
+      "Shipping and deployment claims remain separate.",
+      "All validators report complete zero-cost telemetry."
+    ],
+    "forbiddenOutcomes": [
+      "A deployment input is silently dropped.",
+      "A report or snapshot overwrites source evidence.",
+      "Evidence text alters Markdown report structure.",
+      "Failed, missing, or unlinked evidence is reported as healthy."
+    ],
+    "requiredValidatorTypes": [
+      "static",
+      "schema",
+      "semantic",
+      "workflow",
+      "operational",
+      "security"
+    ]
+  },
+  "validators": [
+    {
+      "id": "delivery-report-static",
+      "type": "static",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "delivery-report-static", "--validator-id", "delivery-report-static", "--out", ".artifacts/tabellio/delivery-report-static.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/delivery-report-static.json"},
+      "policy": {"metricThresholds": [{"metric": "delivery_report_static_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "delivery-report-schema",
+      "type": "schema",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "delivery-report-schema", "--validator-id", "delivery-report-schema", "--out", ".artifacts/tabellio/delivery-report-schema.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/delivery-report-schema.json"},
+      "policy": {"metricThresholds": [{"metric": "delivery_report_schema_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "delivery-report-semantic",
+      "type": "semantic",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "delivery-report-semantic", "--validator-id", "delivery-report-semantic", "--out", ".artifacts/tabellio/delivery-report-semantic.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/delivery-report-semantic.json"},
+      "policy": {"metricThresholds": [{"metric": "delivery_report_semantic_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "delivery-report-workflow",
+      "type": "workflow",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "delivery-report-workflow", "--validator-id", "delivery-report-workflow", "--out", ".artifacts/tabellio/delivery-report-workflow.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/delivery-report-workflow.json"},
+      "policy": {"metricThresholds": [{"metric": "delivery_report_workflow_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "delivery-report-operational",
+      "type": "operational",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "delivery-report-operational", "--validator-id", "delivery-report-operational", "--out", ".artifacts/tabellio/delivery-report-operational.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/delivery-report-operational.json"},
+      "policy": {"metricThresholds": [{"metric": "delivery_report_record_count", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "delivery-report-security",
+      "type": "security",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "delivery-report-security", "--validator-id", "delivery-report-security", "--out", ".artifacts/tabellio/delivery-report-security.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/delivery-report-security.json"},
+      "policy": {"metricThresholds": [{"metric": "delivery_report_security_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    }
+  ]
+}

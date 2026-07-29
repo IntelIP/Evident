@@ -276,6 +276,42 @@
       "metrics": [{"name": "delivery_claim_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
       "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
       "summary": "Cross-authority, forged-claim, unsafe-text, and temporal boundaries"
+    },
+    "delivery-report-static": {
+      "commands": [["npm", "run", "check"]],
+      "metrics": [{"name": "delivery_report_static_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Delivery CLI, report, and repository checks"
+    },
+    "delivery-report-schema": {
+      "commands": [["node", "--test", "--test-name-pattern", "validates its snapshot and cadence", "tests/delivery-report.test.mjs"]],
+      "metrics": [{"name": "delivery_report_schema_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Delivery report input and cadence contracts"
+    },
+    "delivery-report-semantic": {
+      "commands": [["node", "--test", "--test-name-pattern", "shipping boundary|unlinked and failed CI", "tests/delivery-report.test.mjs"]],
+      "metrics": [{"name": "delivery_report_semantic_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Shipping, deployment, relationship, and CI gap semantics"
+    },
+    "delivery-report-workflow": {
+      "commands": [["node", "--test", "--test-name-pattern", "CLI forwards deployment receipts", "tests/delivery-report.test.mjs"]],
+      "metrics": [{"name": "delivery_report_workflow_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Delivery evidence CLI receipt forwarding workflow"
+    },
+    "delivery-report-operational": {
+      "commands": [["node", "--test", "--test-name-pattern", "CLI forwards deployment receipts", "tests/delivery-report.test.mjs"]],
+      "metrics": [{"name": "delivery_report_record_count", "unit": "records", "pattern": "delivery_report_record_count=([0-9]+)"}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Bounded joined delivery record production"
+    },
+    "delivery-report-security": {
+      "commands": [["node", "--test", "--test-name-pattern", "escapes record IDs|distinct from every input|refuses to overwrite", "tests/delivery-report.test.mjs"]],
+      "metrics": [{"name": "delivery_report_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Markdown injection and filesystem alias boundaries"
     }
   }
 }
