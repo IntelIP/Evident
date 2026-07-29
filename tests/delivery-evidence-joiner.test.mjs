@@ -175,6 +175,14 @@ test("delivery join accepts release evidence older than a preserved source versi
   assert.doesNotThrow(() => join({ providerSnapshot }));
 });
 
+test("delivery join preserves valid opaque provider source versions", () => {
+  const providerSnapshot = provider();
+  providerSnapshot.sources.plane.version = "plane-scan-3000";
+  providerSnapshot.sources.buildkite.version = "build-3000";
+  providerSnapshot.sources.github.version = "release-scan-3000";
+  assert.doesNotThrow(() => join({ providerSnapshot }));
+});
+
 test("delivery join preserves terminal CI and blocked deployment states", () => {
   for (const state of ["skipped", "not_run", "blocked"]) {
     const snapshot = buildkite();
@@ -863,6 +871,29 @@ test("delivery snapshot rejects self-asserted claim digest rewrites", () => {
   assert.throws(
     () => validateDeliveryEvidenceSnapshot(tamperedEvidence),
     /source digest does not match its evidence/,
+  );
+
+  const changedProviderStatus = join();
+  const providerObservation =
+    changedProviderStatus.sources.provider.observations[0];
+  const providerChange = providerObservation.evidence.deliveryChanges[0];
+  providerChange.validationStatus = "failed";
+  providerObservation.digest = digest(providerObservation.evidence);
+  providerObservation.claimDigests = [digest({
+    id: providerChange.id,
+    linkBasis: providerChange.linkBasis,
+    pullRequestNumber: providerChange.pullRequestNumber,
+    headCommit: providerChange.headCommit,
+    mergeCommit: providerChange.mergeCommit,
+    mergedAt: providerChange.mergedAt,
+    releaseCommit: providerChange.releaseCommit,
+    planeStoryId: providerChange.planeStoryId,
+    validationStatus: providerChange.validationStatus,
+    hostedStatus: providerChange.hostedStatus,
+  })];
+  assert.throws(
+    () => validateDeliveryEvidenceSnapshot(changedProviderStatus),
+    /not bound to the provider observation/,
   );
 });
 

@@ -300,6 +300,7 @@ function assertAvailableCollectorVersion(
     providerSource.status !== "available"
     || collectorSnapshot.status !== "available"
   ) return;
+  if (!isJsonDateTime(providerSource.version)) return;
   const versionMatches = allowOlder
     ? Date.parse(collectorSnapshot.capturedAt) <= Date.parse(providerSource.version)
     : providerSource.version === collectorSnapshot.capturedAt;
@@ -780,6 +781,8 @@ function providerChangeClaim(change) {
     mergedAt: change.mergedAt || null,
     releaseCommit: change.releaseCommit || null,
     planeStoryId: change.planeStoryId,
+    validationStatus: change.validationStatus,
+    hostedStatus: change.hostedStatus,
   };
 }
 
@@ -1251,7 +1254,27 @@ function assertProviderRecordEvidence(record, source) {
     source.status === "available",
     "Delivery record requires an available provider source observation.",
   );
-  const expected = digestClaim({
+  const providerChange = source.observations[0]?.evidence?.deliveryChanges
+    ?.find((change) => change.id === record.id);
+  ensure(
+    providerChange !== undefined,
+    "Delivery record is absent from provider source evidence.",
+  );
+  ensure(
+    sameJson(providerRecordIdentity(record), providerChangeIdentity(providerChange)),
+    "Delivery record is not bound to the provider observation.",
+  );
+  const expected = digestClaim(providerChangeClaim(providerChange));
+  assertBoundClaim(
+    record.sourceClaimDigest,
+    expected,
+    source,
+    "Delivery record is not bound to the provider observation.",
+  );
+}
+
+function providerRecordIdentity(record) {
+  return {
     id: record.id,
     linkBasis: record.linkBasis,
     pullRequestNumber: record.pullRequestNumber,
@@ -1260,13 +1283,16 @@ function assertProviderRecordEvidence(record, source) {
     mergedAt: record.mergedAt,
     releaseCommit: record.releaseCommit,
     planeStoryId: record.plane.key,
-  });
-  assertBoundClaim(
-    record.sourceClaimDigest,
-    expected,
-    source,
-    "Delivery record is not bound to the provider observation.",
-  );
+  };
+}
+
+function providerChangeIdentity(change) {
+  const {
+    validationStatus: _validationStatus,
+    hostedStatus: _hostedStatus,
+    ...identity
+  } = providerChangeClaim(change);
+  return identity;
 }
 
 function assertPlaneEvidence(plane, source, capturedAt) {
