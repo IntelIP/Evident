@@ -1,17 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version="2.50.1"
-artifact=".artifacts/toolchain/git-${version}-linux-amd64.tar.gz"
-install_root="/tmp/intelip-tabellio-git-${version}"
+required_version="2.50.1"
+actual_version="$(git version | awk '{print $3}')"
 
-buildkite-agent artifact download "$artifact" .
-rm -rf "$install_root"
-mkdir -p "$install_root"
-tar -C "$install_root" -xzf "$artifact"
+if ! awk -v actual="$actual_version" -v required="$required_version" '
+  BEGIN {
+    split(actual, actual_parts, ".")
+    split(required, required_parts, ".")
+    for (part_index = 1; part_index <= 3; part_index++) {
+      actual_part = actual_parts[part_index] + 0
+      required_part = required_parts[part_index] + 0
+      if (actual_part > required_part) {
+        exit 0
+      }
+      if (actual_part < required_part) {
+        exit 1
+      }
+    }
+    exit 0
+  }
+'; then
+  printf 'Git %s or newer is required; found %s.\n' "$required_version" "$actual_version" >&2
+  exit 1
+fi
 
-export PATH="${install_root}/bin:${PATH}"
-export GIT_EXEC_PATH="${install_root}/libexec/git-core"
-export GIT_TEMPLATE_DIR="${install_root}/share/git-core/templates"
-export GITPERLLIB="${install_root}/share/perl5"
 git --version

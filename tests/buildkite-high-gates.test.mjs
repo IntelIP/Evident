@@ -6,23 +6,26 @@ async function repositoryFile(path) {
   return readFile(new URL(`../${path}`, import.meta.url), "utf8");
 }
 
-test("Buildkite adds bounded pull-request quality gates without CI cutover", async () => {
+test("Buildkite runs bounded pull-request quality gates on the included macOS queue", async () => {
   const [pipeline, productValidation, fallow, packageCheck, gitToolchain] = await Promise.all([
     repositoryFile(".buildkite/pipeline.yml"),
     repositoryFile(".buildkite/scripts/product-validation.sh"),
     repositoryFile(".buildkite/scripts/fallow.sh"),
     repositoryFile(".buildkite/scripts/package.sh"),
-    repositoryFile(".buildkite/scripts/build-modern-git.sh"),
+    repositoryFile(".buildkite/scripts/use-modern-git.sh"),
   ]);
 
+  assert.match(pipeline, /queue: "macos-medium"/);
   assert.match(pipeline, /key: "repository-check"/);
   assert.match(pipeline, /key: "fallow"/);
   assert.match(pipeline, /key: "package"/);
   assert.match(pipeline, /key: "product-validation"/);
+  assert.doesNotMatch(pipeline, /linux-small/);
+  assert.doesNotMatch(pipeline, /git-toolchain/);
   assert.doesNotMatch(pipeline, /BUILDKITE_GITHUB_EVENT/);
   assert.equal(
     pipeline.match(/build\.pull_request\.id != null/g)?.length,
-    5,
+    4,
   );
   assert.match(
     pipeline,
@@ -60,17 +63,11 @@ test("Buildkite adds bounded pull-request quality gates without CI cutover", asy
   assert.match(fallow, /--gate new-only/);
   assert.match(packageCheck, /npm pack --dry-run --json/);
   assert.match(packageCheck, /forgejo\|change-request-provider/);
-  assert.match(gitToolchain, /dpkg-query/);
-  assert.match(gitToolchain, /Dir::Etc::sourcelist="\$apt_source_list"/);
-  assert.match(gitToolchain, /Dir::Etc::sourceparts="\$apt_source_parts"/);
-  assert.match(gitToolchain, /Dir::State::lists="\$apt_lists"/);
-  assert.match(gitToolchain, /ubuntu\\\.com/);
-  assert.match(gitToolchain, /debian\\\.org/);
-  assert.match(gitToolchain, /sources\.list\.d\/ubuntu\.sources/);
-  assert.match(gitToolchain, /sources\.list\.d\/debian\.sources/);
-  assert.doesNotMatch(gitToolchain, /sources\.list\.d\/\*/);
-  assert.equal(gitToolchain.match(/sudo apt-get "\$\{apt_options\[@\]\}"/g)?.length, 2);
-  assert.doesNotMatch(gitToolchain, /^\s*sudo apt-get update\s*$/m);
+  assert.match(gitToolchain, /required_version="2\.50\.1"/);
+  assert.match(gitToolchain, /git version/);
+  assert.match(gitToolchain, /awk -v actual=/);
+  assert.doesNotMatch(gitToolchain, /buildkite-agent artifact download/);
+  assert.doesNotMatch(gitToolchain, /apt-get/);
 });
 
 function assertMatches(value, patterns) {
