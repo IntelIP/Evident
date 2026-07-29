@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -45,6 +45,28 @@ test("runner identity security reports unavailable non-Git source without exposi
     releaseTag: null,
   });
   assert.equal(JSON.stringify(identity).includes(root), false);
+});
+
+test("runner identity does not attribute a parent consumer repository to an installed package", async (t) => {
+  const consumer = await temporaryDirectory(t, "TabellioConsumer-");
+  await runGit({ args: ["init", "-b", "main"], cwd: consumer });
+  await writeFile(join(consumer, "package.json"), JSON.stringify({ name: "consumer", version: "1.0.0" }));
+  await runGit({ args: ["add", "package.json"], cwd: consumer });
+  await runGit({ args: ["commit", "-m", "Add consumer"], cwd: consumer, env: identityEnv() });
+  const installed = join(consumer, "node_modules", "@intelip", "tabellio");
+  await mkdir(installed, { recursive: true });
+  await writeFile(join(installed, "package.json"), JSON.stringify({
+    name: "@intelip/tabellio",
+    version: "0.6.0",
+  }));
+
+  assert.deepEqual(await tabellioRunnerIdentity({ root: installed }), {
+    packageName: "@intelip/tabellio",
+    packageVersion: "0.6.0",
+    sourceCommit: null,
+    sourceDirty: null,
+    releaseTag: null,
+  });
 });
 
 test("runner identity CLI workflow reports current checkout and enforces expectations", async () => {

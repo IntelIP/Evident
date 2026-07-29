@@ -6,6 +6,7 @@ import test from "node:test";
 import { GitJsonLedger } from "../scripts/lib/git-json-ledger.mjs";
 import { runGit } from "../scripts/lib/git-process.mjs";
 import { repositoryIdentity } from "../scripts/lib/repository-identity.mjs";
+import { digestObject } from "../scripts/lib/stack-operation.mjs";
 import {
   latestValidationResult,
   ValidationRunner,
@@ -357,6 +358,17 @@ test("typed validators enforce semantic metrics and cost budgets with durable ev
   assert.equal(result.result.decision.totalCostUsd, 0.11);
   assert.equal(result.result.decision.costTelemetryComplete, true);
   assert.equal(validateValidationResult(result.result), result.result);
+
+  for (const [field, invalid, message] of [
+    ["packageName", "@example/not-tabellio", /packageName must be/],
+    ["packageVersion", "not-semver", /packageVersion must be a semantic version/],
+  ]) {
+    const malformed = structuredClone(result.result);
+    malformed.runner[field] = invalid;
+    const { integrity: _integrity, ...unsigned } = malformed;
+    malformed.integrity.digest = digestObject(unsigned);
+    assert.throws(() => validateValidationResult(malformed), message);
+  }
 });
 
 test("typed validation distinguishes product failure from blocked evidence", async (t) => {

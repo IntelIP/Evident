@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, realpath } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
@@ -30,6 +30,10 @@ async function gitSourceIdentity(root, packageVersion) {
 }
 
 async function readGitSourceIdentity(root, packageVersion) {
+  const worktree = await runGit({ args: ["rev-parse", "--show-toplevel"], cwd: root });
+  if (await realpath(worktree.stdout.trim()) !== await realpath(root)) {
+    return { commit: null, dirty: null, releaseTag: null };
+  }
   const revision = await runGit({ args: ["rev-parse", "HEAD"], cwd: root });
   const commit = revision.stdout.trim();
   assertGitObjectId(commit);
