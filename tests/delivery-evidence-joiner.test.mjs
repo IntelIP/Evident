@@ -7,6 +7,7 @@ import {
   joinDeliveryEvidence,
   validateDeliveryEvidenceSnapshot,
 } from "../scripts/lib/delivery-evidence-joiner.mjs";
+import { canonicalJson } from "../scripts/lib/context-packet.mjs";
 import { isJsonDateTime } from "../scripts/lib/json-schema-validator.mjs";
 import {
   buildkite,
@@ -36,7 +37,17 @@ function deployedSnapshot() {
 }
 
 function digest(value) {
-  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+  return createHash("sha256").update(canonicalJson(value)).digest("hex");
+}
+
+function reverseKeys(value) {
+  if (Array.isArray(value)) return value.map(reverseKeys);
+  if (value === null || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value).reverse().map(
+      ([key, entry]) => [key, reverseKeys(entry)],
+    ),
+  );
 }
 
 test("delivery join binds exact Plane, CI, release, and deployment evidence", () => {
@@ -86,6 +97,11 @@ test("delivery snapshot preserves exact source provenance", () => {
       deployment: ["deployment:cloud-run:deploy-1"],
     },
   );
+});
+
+test("delivery snapshot accepts semantically identical reordered JSON", () => {
+  const reordered = reverseKeys(deployedSnapshot());
+  assert.doesNotThrow(() => validateDeliveryEvidenceSnapshot(reordered));
 });
 
 test("delivery join rejects cross-authority evidence", () => {

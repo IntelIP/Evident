@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 
 import { validateBuildkiteBuildSnapshot } from "./buildkite-build-collector.mjs";
+import { canonicalJson } from "./context-packet.mjs";
 import { validateDeploymentReceipt } from "./deployment-receipt.mjs";
 import { validateGitHubReleaseSnapshot } from "./github-release-collector.mjs";
 import { isJsonDateTime, validateJsonSchema } from "./json-schema-validator.mjs";
@@ -1190,7 +1191,7 @@ function blockedReleaseSnapshot(snapshot) {
 }
 
 function sameJson(left, right) {
-  return JSON.stringify(left) === JSON.stringify(right);
+  return canonicalJson(left) === canonicalJson(right);
 }
 
 function assertRecordEvidence(record, snapshot) {
@@ -1558,7 +1559,7 @@ function latestBy(values, timestampFor) {
 }
 
 function digestClaim(value) {
-  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+  return createHash("sha256").update(canonicalJson(value)).digest("hex");
 }
 
 function availableSource(observations) {
