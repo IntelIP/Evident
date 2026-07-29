@@ -100,6 +100,19 @@ test("runner identity CLI workflow reports current checkout and enforces expecta
       return true;
     },
   );
+
+  await assert.rejects(
+    execFileAsync(process.execPath, [
+      "scripts/tabellio-version.mjs",
+      "--expect-ref", "--show-toplevel",
+    ], { cwd: new URL("..", import.meta.url), encoding: "utf8" }),
+    (error) => {
+      assert.equal(error.code, 1);
+      assert.equal(error.stdout, "");
+      assert.equal(error.stderr.includes(new URL("..", import.meta.url).pathname), false);
+      return true;
+    },
+  );
 });
 
 test("runner identity operational lookup stays bounded", async () => {

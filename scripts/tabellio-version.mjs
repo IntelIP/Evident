@@ -11,7 +11,10 @@ try {
   const options = parseArgs(process.argv.slice(2));
   const identity = await tabellioRunnerIdentity();
   const expectedCommit = options.expectRef
-    ? (await runGit({ args: ["rev-parse", options.expectRef], cwd: process.cwd() })).stdout.trim()
+    ? verifiedCommit((await runGit({
+      args: ["rev-parse", "--verify", "--end-of-options", `${options.expectRef}^{commit}`],
+      cwd: process.cwd(),
+    })).stdout.trim())
     : null;
   const blockers = [];
   if (options.expectVersion && identity.packageVersion !== options.expectVersion) {
@@ -41,6 +44,13 @@ try {
     error: error instanceof Error ? error.message : String(error),
   }, null, 2));
   process.exitCode = 1;
+}
+
+function verifiedCommit(value) {
+  if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(value)) {
+    throw new Error("Expected ref did not resolve to a Git commit.");
+  }
+  return value;
 }
 
 function parseArgs(args) {

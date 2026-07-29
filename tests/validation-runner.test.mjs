@@ -361,7 +361,7 @@ test("typed validators enforce semantic metrics and cost budgets with durable ev
 
   for (const [field, invalid, message] of [
     ["packageName", "@example/not-tabellio", /packageName must be/],
-    ["packageVersion", "not-semver", /packageVersion must be a semantic version/],
+    ["packageVersion", "1.0.0-alpha..1", /packageVersion must be a semantic version/],
   ]) {
     const malformed = structuredClone(result.result);
     malformed.runner[field] = invalid;

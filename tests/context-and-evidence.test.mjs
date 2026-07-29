@@ -321,6 +321,8 @@ test("stable schema identifiers keep external references and released contracts 
   assert.deepEqual(validationV3.properties.runner.required, ["id", "runtime"]);
   assert.equal(validationV4.properties.runner.required.includes("packageVersion"), true);
   assert.equal(validationV4.properties.runner.required.includes("sourceCommit"), true);
+  assert.equal(JSON.stringify(validationV4).includes("validation-result.v0.3.schema.json"), false);
+  assert.equal(Object.hasOwn(validationV4.$defs, "revision"), true);
 });
 
 test("required repository validation is recorded in evidence", async (t) => {
