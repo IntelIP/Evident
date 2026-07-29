@@ -214,6 +214,21 @@ test("runner identity inspection does not refresh the Git index", async (t) => {
   assert.equal(after.ctimeMs, before.ctimeMs);
 });
 
+test("runner identity treats assume-unchanged and skip-worktree index flags as dirty", async (t) => {
+  for (const flag of ["--assume-unchanged", "--skip-worktree"]) {
+    const root = await identityFixture(t);
+    const packagePath = join(root, "package.json");
+    await runGit({ args: ["update-index", flag, "package.json"], cwd: root });
+    await writeFile(packagePath, JSON.stringify({
+      name: "@intelip/tabellio",
+      version: "9.9.9",
+    }));
+    const state = await tabellioRunnerState({ root });
+    assert.equal(state.identity.sourceDirty, true);
+    assert.match(state.fingerprint, /^[0-9a-f]{64}$/);
+  }
+});
+
 async function identityFixture(t) {
   const root = await temporaryDirectory(t, "TabellioIdentity-");
   await writeFile(join(root, "package.json"), JSON.stringify({

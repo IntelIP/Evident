@@ -52,6 +52,7 @@
     "tabellio.platform.json",
     "tabellio.validation.json",
     "tabellio.*.validation.json",
+    ".tabellio/validators.json",
     "schemas",
     "scripts",
     "examples",

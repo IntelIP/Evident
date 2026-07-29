@@ -44,25 +44,31 @@ async function readGitSourceIdentity(root, packageVersion) {
   const commit = revision.stdout.trim();
   assertGitObjectId(commit);
   const status = await readGit(root, ["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
+  const indexFlags = await readGit(root, ["ls-files", "-v", "-z"]);
+  const flaggedPaths = unsafeIndexPaths(indexFlags.stdout);
   const tags = await readGit(root, ["tag", "--points-at", commit, "--list", `v${packageVersion}`]);
   return {
     commit,
-    dirty: status.stdout.length > 0,
+    dirty: status.stdout.length > 0 || flaggedPaths.length > 0,
     releaseTag: matchingReleaseTag(tags.stdout),
-    fingerprint: await worktreeFingerprint(root, commit, status.stdout),
+    fingerprint: await worktreeFingerprint(root, commit, status.stdout, flaggedPaths),
   };
 }
 
-async function worktreeFingerprint(root, commit, status) {
+async function worktreeFingerprint(root, commit, status, flaggedPaths = []) {
   const changed = await readGit(root, ["diff", "--name-only", "--no-renames", "-z", "HEAD", "--"]);
-  return fingerprintPaths(root, commit, status, changed.stdout);
+  return fingerprintPaths(root, commit, status, changed.stdout, flaggedPaths);
 }
 
-async function fingerprintPaths(root, commit, status, changed) {
+async function fingerprintPaths(root, commit, status, changed, flaggedPaths = []) {
   const untracked = await readGit(root, ["ls-files", "--others", "--exclude-standard", "-z"]);
   const hash = createHash("sha256");
   hash.update(commit).update("\0").update(status).update("\0");
-  const paths = new Set([...changed.split("\0"), ...untracked.stdout.split("\0")].filter(Boolean));
+  const paths = new Set([
+    ...changed.split("\0"),
+    ...untracked.stdout.split("\0"),
+    ...flaggedPaths,
+  ].filter(Boolean));
   for (const path of [...paths].sort()) {
     hash.update(path).update("\0").update(await entryFingerprint(root, path)).update("\0");
   }
@@ -139,6 +145,12 @@ function assertGitObjectId(value) {
 function matchingReleaseTag(stdout) {
   const tags = stdout.split("\n").map((value) => value.trim()).filter(Boolean);
   return tags.length === 1 ? tags[0] : null;
+}
+
+function unsafeIndexPaths(stdout) {
+  return stdout.split("\0")
+    .filter((entry) => entry.startsWith("S ") || entry.startsWith("h "))
+    .map((entry) => entry.slice(2));
 }
 
 function isNotGitRepository(error) {
