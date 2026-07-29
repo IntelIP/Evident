@@ -1,0 +1,584 @@
+{
+  "schemaVersion": "tabellio-analytics-dataset/v0.1",
+  "id": "INTB-261-cross-repository-baseline",
+  "observedAt": "2026-07-29T01:08:22.000Z",
+  "window": {
+    "since": "2026-07-01T00:00:00.000Z",
+    "until": "2026-07-29T01:08:21.000Z"
+  },
+  "metricDefinitions": [
+    {
+      "id": "deliveryChangeCount",
+      "unit": "count"
+    },
+    {
+      "id": "taskToPrTraceability",
+      "unit": "ratio"
+    },
+    {
+      "id": "leadTimeHours",
+      "unit": "hours"
+    },
+    {
+      "id": "cycleTimeHours",
+      "unit": "hours"
+    },
+    {
+      "id": "ciDisagreementRate",
+      "unit": "ratio"
+    },
+    {
+      "id": "releaseLagHours",
+      "unit": "hours"
+    }
+  ],
+  "repositories": [
+    {
+      "id": "condere",
+      "canonicalRepositoryId": "IntelIP/Condere",
+      "headCommit": "4ec36ff4ba24cfd4a92c525b77a0027a001033e9",
+      "headCommittedAt": "2026-07-21T17:35:01.000Z",
+      "branch": "main",
+      "sources": [
+        {
+          "id": "condere:git",
+          "system": "git",
+          "status": "available",
+          "observedAt": "2026-07-29T01:08:22.000Z",
+          "sourceVersion": "4ec36ff4ba24cfd4a92c525b77a0027a001033e9",
+          "contentDigest": "1046df76b5d67ba084699ef959fa871705052f1c6d3c86f425439c3de3e4abdb",
+          "reason": null
+        },
+        {
+          "id": "condere:tabellio-validation",
+          "system": "tabellio-validation",
+          "status": "blocked",
+          "observedAt": "2026-07-29T01:08:22.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Control evidence is malformed or unsafe."
+        },
+        {
+          "id": "condere:tabellio-review",
+          "system": "tabellio-review",
+          "status": "unavailable",
+          "observedAt": "2026-07-29T01:08:22.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Control evidence is unavailable."
+        },
+        {
+          "id": "condere:entire",
+          "system": "entire",
+          "status": "available",
+          "observedAt": "2026-07-29T01:08:22.000Z",
+          "sourceVersion": "8a31aa17b25cde2653c1f18dfdd7d0e380099173",
+          "contentDigest": "769f3f75f2cc65527c21e2d7e5d53677f28d33e406cf479c86fe73d19be4be94",
+          "reason": null
+        },
+        {
+          "id": "condere:plane",
+          "system": "plane",
+          "status": "unavailable",
+          "observedAt": "2026-07-29T01:08:20.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Provider evidence was not collected for this baseline."
+        },
+        {
+          "id": "condere:github",
+          "system": "github",
+          "status": "unavailable",
+          "observedAt": "2026-07-29T01:08:20.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Provider evidence was not collected for this baseline."
+        },
+        {
+          "id": "condere:github-actions",
+          "system": "github-actions",
+          "status": "unavailable",
+          "observedAt": "2026-07-29T01:08:20.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Provider evidence was not collected for this baseline."
+        },
+        {
+          "id": "condere:buildkite",
+          "system": "buildkite",
+          "status": "unavailable",
+          "observedAt": "2026-07-29T01:08:20.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Provider evidence was not collected for this baseline."
+        }
+      ],
+      "metrics": {
+        "deliveryChangeCount": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "count",
+          "reason": "Plane or GitHub evidence unavailable.",
+          "numerator": null,
+          "denominator": null
+        },
+        "taskToPrTraceability": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "ratio",
+          "reason": "No provider-backed delivery changes.",
+          "numerator": null,
+          "denominator": null
+        },
+        "leadTimeHours": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "hours",
+          "reason": "plane and github evidence unavailable.",
+          "numerator": null,
+          "denominator": null
+        },
+        "cycleTimeHours": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "hours",
+          "reason": "plane and github evidence unavailable.",
+          "numerator": null,
+          "denominator": null
+        },
+        "ciDisagreementRate": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "ratio",
+          "reason": "Exact validation or hosted CI evidence unavailable.",
+          "numerator": null,
+          "denominator": null
+        },
+        "releaseLagHours": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "hours",
+          "reason": "github evidence unavailable.",
+          "numerator": null,
+          "denominator": null
+        }
+      },
+      "deliveryChanges": []
+    },
+    {
+      "id": "probanda",
+      "canonicalRepositoryId": "IntelIP/Probanda",
+      "headCommit": "e354f0647f879637dd1ccf9d63d38b735177fbdd",
+      "headCommittedAt": "2026-07-23T18:04:11.000Z",
+      "branch": "main",
+      "sources": [
+        {
+          "id": "probanda:git",
+          "system": "git",
+          "status": "available",
+          "observedAt": "2026-07-29T01:08:22.000Z",
+          "sourceVersion": "e354f0647f879637dd1ccf9d63d38b735177fbdd",
+          "contentDigest": "05a835eeb3bd8c5160e9f5ddfdea494eab8911e4dce04c0bd91c3dab3a1d784a",
+          "reason": null
+        },
+        {
+          "id": "probanda:tabellio-validation",
+          "system": "tabellio-validation",
+          "status": "blocked",
+          "observedAt": "2026-07-29T01:08:22.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Control evidence is malformed or unsafe."
+        },
+        {
+          "id": "probanda:tabellio-review",
+          "system": "tabellio-review",
+          "status": "unavailable",
+          "observedAt": "2026-07-29T01:08:22.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Control evidence is unavailable."
+        },
+        {
+          "id": "probanda:entire",
+          "system": "entire",
+          "status": "available",
+          "observedAt": "2026-07-29T01:08:22.000Z",
+          "sourceVersion": "ae293ab234789fdbf881378ac6dbf04069bd56e4",
+          "contentDigest": "3301dabdfac50586bbd5e930c43f444a62a2da7b6ec44b9a14e7a1b1ed0a43e5",
+          "reason": null
+        },
+        {
+          "id": "probanda:plane",
+          "system": "plane",
+          "status": "unavailable",
+          "observedAt": "2026-07-29T01:08:20.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Provider evidence was not collected for this baseline."
+        },
+        {
+          "id": "probanda:github",
+          "system": "github",
+          "status": "unavailable",
+          "observedAt": "2026-07-29T01:08:20.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Provider evidence was not collected for this baseline."
+        },
+        {
+          "id": "probanda:github-actions",
+          "system": "github-actions",
+          "status": "unavailable",
+          "observedAt": "2026-07-29T01:08:20.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Provider evidence was not collected for this baseline."
+        },
+        {
+          "id": "probanda:buildkite",
+          "system": "buildkite",
+          "status": "unavailable",
+          "observedAt": "2026-07-29T01:08:20.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Provider evidence was not collected for this baseline."
+        }
+      ],
+      "metrics": {
+        "deliveryChangeCount": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "count",
+          "reason": "Plane or GitHub evidence unavailable.",
+          "numerator": null,
+          "denominator": null
+        },
+        "taskToPrTraceability": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "ratio",
+          "reason": "No provider-backed delivery changes.",
+          "numerator": null,
+          "denominator": null
+        },
+        "leadTimeHours": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "hours",
+          "reason": "plane and github evidence unavailable.",
+          "numerator": null,
+          "denominator": null
+        },
+        "cycleTimeHours": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "hours",
+          "reason": "plane and github evidence unavailable.",
+          "numerator": null,
+          "denominator": null
+        },
+        "ciDisagreementRate": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "ratio",
+          "reason": "Exact validation or hosted CI evidence unavailable.",
+          "numerator": null,
+          "denominator": null
+        },
+        "releaseLagHours": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "hours",
+          "reason": "github evidence unavailable.",
+          "numerator": null,
+          "denominator": null
+        }
+      },
+      "deliveryChanges": []
+    },
+    {
+      "id": "tabellio",
+      "canonicalRepositoryId": "IntelIP/Tabellio",
+      "headCommit": "588f394f5603cacc23dc0d6a794966e08eae17ac",
+      "headCommittedAt": "2026-07-29T01:05:49.000Z",
+      "branch": "agent/intb-261-baseline-integration",
+      "sources": [
+        {
+          "id": "tabellio:git",
+          "system": "git",
+          "status": "available",
+          "observedAt": "2026-07-29T01:08:22.000Z",
+          "sourceVersion": "588f394f5603cacc23dc0d6a794966e08eae17ac",
+          "contentDigest": "f4bf60b194ccef1c0d802f1b0748013cd5f76a373fc29a0bac3f2612d2a3c877",
+          "reason": null
+        },
+        {
+          "id": "tabellio:tabellio-validation",
+          "system": "tabellio-validation",
+          "status": "blocked",
+          "observedAt": "2026-07-29T01:08:22.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Control evidence is malformed or unsafe."
+        },
+        {
+          "id": "tabellio:tabellio-review",
+          "system": "tabellio-review",
+          "status": "blocked",
+          "observedAt": "2026-07-29T01:08:22.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Control evidence is malformed or unsafe."
+        },
+        {
+          "id": "tabellio:entire",
+          "system": "entire",
+          "status": "available",
+          "observedAt": "2026-07-29T01:08:22.000Z",
+          "sourceVersion": "dff2929830ef29056062b4f01610e547b745acf0",
+          "contentDigest": "75feb544ec29d00eae4c5c2293e2204fcb28b22458b28bd505caf04364c4003b",
+          "reason": null
+        },
+        {
+          "id": "tabellio:plane",
+          "system": "plane",
+          "status": "available",
+          "observedAt": "2026-07-29T01:08:20.000Z",
+          "sourceVersion": "2026-07-29T01:04:00.000Z",
+          "contentDigest": "504a02f5284fcaaefc0979f98808d387e835a102088c861b0c3491e276707c75",
+          "reason": null
+        },
+        {
+          "id": "tabellio:github",
+          "system": "github",
+          "status": "available",
+          "observedAt": "2026-07-29T01:08:20.000Z",
+          "sourceVersion": "2026-07-29T01:05:49.000Z",
+          "contentDigest": "9b152d68bc0d3a6224a792a24ca171a1f013dd5747c8037213491a3a602ecaa6",
+          "reason": null
+        },
+        {
+          "id": "tabellio:github-actions",
+          "system": "github-actions",
+          "status": "available",
+          "observedAt": "2026-07-29T01:08:20.000Z",
+          "sourceVersion": "2026-07-29T01:04:13.000Z",
+          "contentDigest": "4430bce8cd6d93eea8f80772abafad6e420dac492c4751360365998d0ce2812d",
+          "reason": null
+        },
+        {
+          "id": "tabellio:buildkite",
+          "system": "buildkite",
+          "status": "available",
+          "observedAt": "2026-07-29T01:08:20.000Z",
+          "sourceVersion": "2026-07-29T01:05:35.000Z",
+          "contentDigest": "26cafb4f7d83270705af4c73a01df6eccdf2662995e8447d7de1be6cec8864aa",
+          "reason": null
+        }
+      ],
+      "metrics": {
+        "deliveryChangeCount": {
+          "status": "measured",
+          "value": 1,
+          "unit": "count",
+          "reason": null,
+          "numerator": null,
+          "denominator": null
+        },
+        "taskToPrTraceability": {
+          "status": "measured",
+          "value": 1,
+          "unit": "ratio",
+          "reason": null,
+          "numerator": 1,
+          "denominator": 1
+        },
+        "leadTimeHours": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "hours",
+          "reason": "No complete lifecycle observations.",
+          "numerator": null,
+          "denominator": null
+        },
+        "cycleTimeHours": {
+          "status": "measured",
+          "value": 0.035555555555555556,
+          "unit": "hours",
+          "reason": null,
+          "numerator": null,
+          "denominator": null
+        },
+        "ciDisagreementRate": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "ratio",
+          "reason": "Exact validation or hosted CI evidence unavailable.",
+          "numerator": null,
+          "denominator": null
+        },
+        "releaseLagHours": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "hours",
+          "reason": "No complete lifecycle observations.",
+          "numerator": null,
+          "denominator": null
+        }
+      },
+      "deliveryChanges": [
+        {
+          "id": "tabellio-pr-42",
+          "linkBasis": "explicit",
+          "linkEvidence": null,
+          "planeStoryId": "INTB-261",
+          "pullRequestNumber": 42,
+          "storyCreatedAt": null,
+          "firstActivityAt": "2026-07-29T01:03:41.000Z",
+          "mergedAt": "2026-07-29T01:05:49.000Z",
+          "releasedAt": null,
+          "headCommit": "588f394f5603cacc23dc0d6a794966e08eae17ac",
+          "validationStatus": "unavailable",
+          "hostedStatus": "passed"
+        }
+      ]
+    },
+    {
+      "id": "vaticor",
+      "canonicalRepositoryId": "IntelIP/vaticor",
+      "headCommit": "f09f23fa8a0ef45963bef5360f482994dac68521",
+      "headCommittedAt": "2026-07-28T16:21:15.000Z",
+      "branch": "main",
+      "sources": [
+        {
+          "id": "vaticor:git",
+          "system": "git",
+          "status": "available",
+          "observedAt": "2026-07-29T01:08:22.000Z",
+          "sourceVersion": "f09f23fa8a0ef45963bef5360f482994dac68521",
+          "contentDigest": "3b3075e6add8f36cce92ee1182b96d5ac2af22b26a809f8ae413698a2512b46a",
+          "reason": null
+        },
+        {
+          "id": "vaticor:tabellio-validation",
+          "system": "tabellio-validation",
+          "status": "blocked",
+          "observedAt": "2026-07-29T01:08:22.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Control evidence is malformed or unsafe."
+        },
+        {
+          "id": "vaticor:tabellio-review",
+          "system": "tabellio-review",
+          "status": "unavailable",
+          "observedAt": "2026-07-29T01:08:22.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Control evidence is unavailable."
+        },
+        {
+          "id": "vaticor:entire",
+          "system": "entire",
+          "status": "available",
+          "observedAt": "2026-07-29T01:08:22.000Z",
+          "sourceVersion": "a162aa6361c46a479dd180bcab687d0a4fff55c7",
+          "contentDigest": "2be04575c0738e9588ac5559b2704867ab558621c66f816496c727527e41a38c",
+          "reason": null
+        },
+        {
+          "id": "vaticor:plane",
+          "system": "plane",
+          "status": "unavailable",
+          "observedAt": "2026-07-29T01:08:20.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Provider evidence was not collected for this baseline."
+        },
+        {
+          "id": "vaticor:github",
+          "system": "github",
+          "status": "unavailable",
+          "observedAt": "2026-07-29T01:08:20.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Provider evidence was not collected for this baseline."
+        },
+        {
+          "id": "vaticor:github-actions",
+          "system": "github-actions",
+          "status": "unavailable",
+          "observedAt": "2026-07-29T01:08:20.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Provider evidence was not collected for this baseline."
+        },
+        {
+          "id": "vaticor:buildkite",
+          "system": "buildkite",
+          "status": "unavailable",
+          "observedAt": "2026-07-29T01:08:20.000Z",
+          "sourceVersion": null,
+          "contentDigest": null,
+          "reason": "Provider evidence was not collected for this baseline."
+        }
+      ],
+      "metrics": {
+        "deliveryChangeCount": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "count",
+          "reason": "Plane or GitHub evidence unavailable.",
+          "numerator": null,
+          "denominator": null
+        },
+        "taskToPrTraceability": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "ratio",
+          "reason": "No provider-backed delivery changes.",
+          "numerator": null,
+          "denominator": null
+        },
+        "leadTimeHours": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "hours",
+          "reason": "plane and github evidence unavailable.",
+          "numerator": null,
+          "denominator": null
+        },
+        "cycleTimeHours": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "hours",
+          "reason": "plane and github evidence unavailable.",
+          "numerator": null,
+          "denominator": null
+        },
+        "ciDisagreementRate": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "ratio",
+          "reason": "Exact validation or hosted CI evidence unavailable.",
+          "numerator": null,
+          "denominator": null
+        },
+        "releaseLagHours": {
+          "status": "unavailable",
+          "value": null,
+          "unit": "hours",
+          "reason": "github evidence unavailable.",
+          "numerator": null,
+          "denominator": null
+        }
+      },
+      "deliveryChanges": []
+    }
+  ],
+  "integrity": {
+    "algorithm": "sha256",
+    "digest": "8f8071c5797af2c38abea8d81785bff259f9f42ab347ffe535c29e3c5b7fb9d5"
+  }
+}

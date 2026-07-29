@@ -312,6 +312,42 @@
       "metrics": [{"name": "delivery_report_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
       "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
       "summary": "Markdown injection and filesystem alias boundaries"
+    },
+    "baseline-integration-static": {
+      "commands": [["npm", "run", "check"]],
+      "metrics": [{"name": "baseline_integration_static_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Baseline integration and repository checks"
+    },
+    "baseline-integration-schema": {
+      "commands": [["npm", "run", "tabellio:analytics:product:check"]],
+      "metrics": [{"name": "baseline_integration_schema_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Baseline dataset, report, and provider snapshot contracts"
+    },
+    "baseline-integration-semantic": {
+      "commands": [["node", "--test", "--test-name-pattern", "semantic validation accepts v0.2", "tests/baseline-integration.test.mjs"]],
+      "metrics": [{"name": "baseline_integration_semantic_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Exact source and v0.2 delivery provenance binding"
+    },
+    "baseline-integration-workflow": {
+      "commands": [["node", "--test", "--test-name-pattern", "packaged analytics baseline|merged-head checkpoint", "tests/baseline-integration.test.mjs"]],
+      "metrics": [{"name": "baseline_integration_workflow_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Packaged baseline and merged-head checkpoint workflow"
+    },
+    "baseline-integration-operational": {
+      "commands": [["node", "--test", "--test-name-pattern", "packaged analytics baseline", "tests/baseline-integration.test.mjs"]],
+      "metrics": [{"name": "analytics_baseline_repository_count", "unit": "repositories", "pattern": "analytics_baseline_repository_count=([0-9]+)"}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Four-repository baseline projection"
+    },
+    "baseline-integration-security": {
+      "commands": [["node", "--test", "--test-name-pattern", "npm package includes every baseline", "tests/baseline-integration.test.mjs"], ["node", "scripts/tabellio-analytics-validator.mjs", "--profile", "security", "--validator-id", "baseline-security", "--dataset", "reports/analytics/2026-07-28-intb-261-baseline.json", "--source", "reports/analytics/sources/2026-07-28-condere-provider-snapshot.json", "--source", "reports/analytics/sources/2026-07-28-probanda-provider-snapshot.json", "--source", "reports/analytics/sources/2026-07-28-tabellio-provider-snapshot.json", "--source", "reports/analytics/sources/2026-07-28-vaticor-provider-snapshot.json", "--out", ".artifacts/tabellio/baseline-security-profile.json"]],
+      "metrics": [{"name": "baseline_integration_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Packaged artifact completeness and private-evidence boundaries"
     }
   }
 }

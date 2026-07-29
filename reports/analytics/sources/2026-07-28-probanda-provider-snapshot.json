@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "tabellio-analytics-provider-snapshot/v0.2",
+  "repository": "IntelIP/Probanda",
+  "headCommit": "e354f0647f879637dd1ccf9d63d38b735177fbdd",
+  "capturedAt": "2026-07-29T01:08:20.000Z",
+  "sources": {
+    "plane": {
+      "status": "unavailable",
+      "version": null,
+      "reason": "Provider evidence was not collected for this baseline.",
+      "workspace": "intelligent-intellectual-property"
+    },
+    "github": {
+      "status": "unavailable",
+      "version": null,
+      "reason": "Provider evidence was not collected for this baseline."
+    },
+    "github-actions": {
+      "status": "unavailable",
+      "version": null,
+      "reason": "Provider evidence was not collected for this baseline."
+    },
+    "buildkite": {
+      "status": "unavailable",
+      "version": null,
+      "reason": "Provider evidence was not collected for this baseline."
+    }
+  },
+  "deliveryChanges": []
+}

@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "tabellio-validation/v0.2",
+  "id": "intb-261-p9-baseline-integration",
+  "failFast": false,
+  "requireEntireCheckpoint": true,
+  "acceptance": {
+    "id": "INTB-261-P9",
+    "source": "INTB-261 and docs/intb-261-p9-execution-contract.md",
+    "risk": "high",
+    "outcomes": [
+      "The package ships a validated cross-repository analytics baseline.",
+      "Baseline reports and provider sources bind to one exact digest.",
+      "Merged-head checkpoint validation remains fail closed."
+    ],
+    "invariants": [
+      "Four repository heads and four provider snapshots bind exactly.",
+      "Missing evidence remains unknown rather than zero.",
+      "The main product manifest validates the packaged baseline.",
+      "All validators report complete zero-cost telemetry."
+    ],
+    "forbiddenOutcomes": [
+      "A stale unavailable reason contradicts source evidence.",
+      "A package omits evidence referenced by validation.",
+      "v0.2 provenance cannot bind to the analytics dataset.",
+      "Merged-head checkpoint failures are ignored."
+    ],
+    "requiredValidatorTypes": [
+      "static",
+      "schema",
+      "semantic",
+      "workflow",
+      "operational",
+      "security"
+    ]
+  },
+  "validators": [
+    {
+      "id": "baseline-integration-static",
+      "type": "static",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "baseline-integration-static", "--validator-id", "baseline-integration-static", "--out", ".artifacts/tabellio/baseline-integration-static.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/baseline-integration-static.json"},
+      "policy": {"metricThresholds": [{"metric": "baseline_integration_static_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "baseline-integration-schema",
+      "type": "schema",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "baseline-integration-schema", "--validator-id", "baseline-integration-schema", "--out", ".artifacts/tabellio/baseline-integration-schema.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/baseline-integration-schema.json"},
+      "policy": {"metricThresholds": [{"metric": "baseline_integration_schema_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "baseline-integration-semantic",
+      "type": "semantic",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "baseline-integration-semantic", "--validator-id", "baseline-integration-semantic", "--out", ".artifacts/tabellio/baseline-integration-semantic.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/baseline-integration-semantic.json"},
+      "policy": {"metricThresholds": [{"metric": "baseline_integration_semantic_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "baseline-integration-workflow",
+      "type": "workflow",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "baseline-integration-workflow", "--validator-id", "baseline-integration-workflow", "--out", ".artifacts/tabellio/baseline-integration-workflow.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/baseline-integration-workflow.json"},
+      "policy": {"metricThresholds": [{"metric": "baseline_integration_workflow_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "baseline-integration-operational",
+      "type": "operational",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "baseline-integration-operational", "--validator-id", "baseline-integration-operational", "--out", ".artifacts/tabellio/baseline-integration-operational.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/baseline-integration-operational.json"},
+      "policy": {"metricThresholds": [{"metric": "analytics_baseline_repository_count", "operator": "eq", "value": 4}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    },
+    {
+      "id": "baseline-integration-security",
+      "type": "security",
+      "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "baseline-integration-security", "--validator-id", "baseline-integration-security", "--out", ".artifacts/tabellio/baseline-integration-security.json"],
+      "cwd": ".",
+      "timeoutMs": 300000,
+      "required": true,
+      "evidence": {"path": ".artifacts/tabellio/baseline-integration-security.json"},
+      "policy": {"metricThresholds": [{"metric": "baseline_integration_security_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}
+    }
+  ]
+}
