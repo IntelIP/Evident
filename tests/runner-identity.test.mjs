@@ -99,7 +99,7 @@ async function identityFixture(t) {
   await runGit({
     args: ["commit", "-m", "Add package identity"],
     cwd: root,
-    env: identityEnv,
+    env: identityEnv(),
   });
   assert.equal(JSON.parse(await readFile(join(root, "package.json"), "utf8")).version, "0.6.0");
   return root;
