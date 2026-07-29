@@ -51,7 +51,7 @@ test("source contracts require exact state shapes and safe evidence", () => {
       status: "available",
       version: "2026-07-25T00:00:00.000Z",
       workspace: "private",
-    }),
+    }, { allowWorkspace: true }),
     [],
   );
   assert.match(
@@ -59,7 +59,7 @@ test("source contracts require exact state shapes and safe evidence", () => {
       status: "unavailable",
       reason: "offline",
       workspace: "../private",
-    })[0],
+    }, { allowWorkspace: true })[0],
     /workspace is unsafe/,
   );
   assert.match(validateEvidenceSource({ status: "unavailable", reason: "offline", version: "2026-07-25T00:00:00.000Z" }).join(" "), /cannot carry a version/);
@@ -96,6 +96,17 @@ test("evidence binding requires canonical repository and exact head", () => {
 
 test("provider snapshot accepts a minimal portable exact-head record", () => {
   assert.deepEqual(validateProviderSnapshot(snapshot(), {
+    repository: "IntelIP/Tabellio",
+    headCommit: HEAD,
+    observedAt: OBSERVED_AT,
+  }), []);
+});
+
+test("provider snapshot preserves the v0.1 contract without Plane workspace", () => {
+  const value = snapshot();
+  value.schemaVersion = "tabellio-analytics-provider-snapshot/v0.1";
+  delete value.sources.plane.workspace;
+  assert.deepEqual(validateProviderSnapshot(value, {
     repository: "IntelIP/Tabellio",
     headCommit: HEAD,
     observedAt: OBSERVED_AT,
@@ -178,7 +189,7 @@ test("provider snapshot rejects unsafe and contradictory claims", () => {
 
 function snapshot(headCommit = HEAD) {
   return {
-    schemaVersion: "tabellio-analytics-provider-snapshot/v0.1",
+    schemaVersion: "tabellio-analytics-provider-snapshot/v0.2",
     repository: "IntelIP/Tabellio",
     headCommit,
     capturedAt: "2026-07-26T00:00:00.000Z",

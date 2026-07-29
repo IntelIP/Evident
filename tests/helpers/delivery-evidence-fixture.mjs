@@ -8,7 +8,7 @@ export const fixture = { at, commit };
 
 export function provider() {
   return {
-    schemaVersion: "tabellio-analytics-provider-snapshot/v0.1",
+    schemaVersion: "tabellio-analytics-provider-snapshot/v0.2",
     repository: "IntelIP/Tabellio",
     headCommit: commit,
     capturedAt: at,

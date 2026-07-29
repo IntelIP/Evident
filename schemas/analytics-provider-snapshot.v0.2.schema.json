@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://intelip.co/tabellio/schemas/analytics-provider-snapshot.v0.1.schema.json",
-  "title": "Tabellio analytics provider snapshot v0.1",
+  "$id": "https://intelip.co/tabellio/schemas/analytics-provider-snapshot.v0.2.schema.json",
+  "title": "Tabellio analytics provider snapshot v0.2",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "repository", "headCommit", "capturedAt", "sources", "deliveryChanges"],
   "properties": {
-    "schemaVersion": { "const": "tabellio-analytics-provider-snapshot/v0.1" },
+    "schemaVersion": { "const": "tabellio-analytics-provider-snapshot/v0.2" },
     "repository": { "$ref": "#/$defs/repositoryIdentifier" },
     "headCommit": { "$ref": "#/$defs/commit" },
     "capturedAt": { "type": "string", "format": "date-time" },
@@ -15,7 +15,12 @@
       "additionalProperties": false,
       "required": ["plane", "github", "github-actions", "buildkite"],
       "properties": {
-        "plane": { "$ref": "#/$defs/source" },
+        "plane": {
+          "allOf": [
+            { "$ref": "#/$defs/source" },
+            { "required": ["workspace"] }
+          ]
+        },
         "github": { "$ref": "#/$defs/source" },
         "github-actions": { "$ref": "#/$defs/source" },
         "buildkite": { "$ref": "#/$defs/source" }
@@ -93,7 +98,8 @@
             { "type": "null" }
           ]
         },
-        "reason": { "$ref": "#/$defs/safeText" }
+        "reason": { "$ref": "#/$defs/safeText" },
+        "workspace": { "$ref": "#/$defs/portableIdentifier" }
       },
       "allOf": [
         {

@@ -12,6 +12,7 @@ Acceptance authority is INTB-261, the 44 P7 entries in
 ## Owned Surfaces
 
 - delivery evidence snapshot schema and runtime validator
+- versioned v0.2 provider and delivery contracts with unchanged v0.1 support
 - delivery evidence joiner
 - provider Plane-workspace provenance
 - focused join, tamper, chronology, and authority tests

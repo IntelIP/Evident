@@ -556,7 +556,7 @@ function providerSnapshot(repository, headCommit, { available, linked = false })
   );
   sources.plane.workspace = "intelip";
   return {
-    schemaVersion: "tabellio-analytics-provider-snapshot/v0.1",
+    schemaVersion: "tabellio-analytics-provider-snapshot/v0.2",
     repository,
     headCommit,
     capturedAt: "2026-07-26T00:00:00.000Z",

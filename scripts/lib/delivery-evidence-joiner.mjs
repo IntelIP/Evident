@@ -13,11 +13,11 @@ import {
   validateProviderSnapshot,
 } from "./portable-evidence.mjs";
 
-const SCHEMA_VERSION = "tabellio-delivery-evidence-snapshot/v0.1";
+const SCHEMA_VERSION = "tabellio-delivery-evidence-snapshot/v0.2";
 const DEPLOYMENT_BLOCK_VERSION =
   "tabellio-deployment-collection-block/v0.1";
 const SCHEMA = JSON.parse(readFileSync(
-  new URL("../../schemas/delivery-evidence-snapshot.v0.1.schema.json", import.meta.url),
+  new URL("../../schemas/delivery-evidence-snapshot.v0.2.schema.json", import.meta.url),
   "utf8",
 ));
 const DELIVERY_RECORD_ID = /^[^\r\n|#`][^\r\n|#`]{0,199}$/;
@@ -334,6 +334,17 @@ function assertDeploymentBinding({
       || deploymentEnvironment !== null,
     "Deployment evidence requires a designated target environment.",
   );
+  ensure(
+    new Set(
+      deploymentReceipts.map(
+        (receipt) => boundedObservationId(
+          `deployment:${receipt.provider}`,
+          receipt.id,
+        ),
+      ),
+    ).size === deploymentReceipts.length,
+    "deployment source observation IDs must be unique.",
+  );
   assertDeploymentCollectionConsistency(
     deploymentReceipts,
     deploymentBlockedReason,
@@ -561,7 +572,9 @@ function releaseFor(change, snapshot) {
   return snapshot.releases
     .filter((candidate) => releaseMatches(change, candidate))
     .sort(
-      (left, right) => Date.parse(left.publishedAt) - Date.parse(right.publishedAt),
+      (left, right) =>
+        Date.parse(left.publishedAt) - Date.parse(right.publishedAt)
+        || left.id.localeCompare(right.id),
     )[0] ?? null;
 }
 
@@ -588,22 +601,31 @@ function releaseFollowsMerge(change, candidate) {
 
 function latestReceiptFor(change, receipts, repository) {
   const commits = changeCommits(change);
-  return latestBy(
-    receipts.filter(
-      (receipt) =>
-        commits.includes(receipt.commit)
-        && sameRepository(receipt.repository, repository)
-        && (
-          receipt.status !== "passed"
-          || (
-            change.mergeCommit
-            && change.mergedAt
-            && receiptFollowsMerge(receipt, change.mergedAt)
-          )
-        ),
-    ),
-    (receipt) => receipt.observedAt,
+  const eligible = receipts.filter(
+    (receipt) =>
+      commits.includes(receipt.commit)
+      && sameRepository(receipt.repository, repository)
+      && (
+        receipt.status !== "passed"
+        || (
+          change.mergeCommit
+          && change.mergedAt
+          && receiptFollowsMerge(receipt, change.mergedAt)
+        )
+      ),
   );
+  const latestObservedAt = latestTimestampOrNull(
+    eligible.map((receipt) => receipt.observedAt),
+  );
+  if (latestObservedAt === null) return null;
+  const latest = eligible.filter(
+    (receipt) => receipt.observedAt === latestObservedAt,
+  );
+  ensure(
+    latest.length === 1,
+    `Delivery change ${change.id} has ambiguous latest deployment receipts.`,
+  );
+  return latest[0];
 }
 
 function receiptFollowsMerge(receipt, mergedAt) {
@@ -1638,6 +1660,10 @@ function latestTimestamp(values) {
   return valid.sort(
     (left, right) => Date.parse(right) - Date.parse(left),
   )[0];
+}
+
+function latestTimestampOrNull(values) {
+  return values.length === 0 ? null : latestTimestamp(values);
 }
 
 function latestSourceObservation(sources) {

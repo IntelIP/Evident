@@ -68,7 +68,7 @@ test("delivery join binds exact Plane, CI, release, and deployment evidence", ()
 
 test("delivery evidence schema requires decision claim digests", async () => {
   const schema = JSON.parse(await readFile(
-    "schemas/delivery-evidence-snapshot.v0.1.schema.json",
+    "schemas/delivery-evidence-snapshot.v0.2.schema.json",
     "utf8",
   ));
   assert(schema.$defs.record.required.includes("sourceClaimDigest"));
@@ -582,6 +582,31 @@ test("delivery join selects earliest post-merge release", () => {
   );
 });
 
+test("delivery join breaks equal release timestamps by release ID", () => {
+  const releaseSnapshot = releases();
+  releaseSnapshot.releases = [
+    {
+      ...releaseSnapshot.releases[0],
+      id: "z-release",
+      tagName: "v0.6.0",
+    },
+    {
+      ...releaseSnapshot.releases[0],
+      id: "a-release",
+      tagName: "v0.5.0",
+    },
+  ];
+  for (const rows of [
+    releaseSnapshot.releases,
+    releaseSnapshot.releases.toReversed(),
+  ]) {
+    const snapshot = join({
+      releaseSnapshot: { ...releaseSnapshot, releases: rows },
+    });
+    assert.equal(snapshot.deliveryRecords[0].release.releaseId, "a-release");
+  }
+});
+
 test("delivery join rejects provider release claims absent from source evidence", () => {
   const providerSnapshot = provider();
   providerSnapshot.deliveryChanges[0].releasedAt = fixture.at;
@@ -666,6 +691,23 @@ test("delivery join preserves failed deployment attempts before merge", () => {
   });
   assert.equal(snapshot.deliveryRecords[0].deployment.status, "failed");
   assert.equal(snapshot.deliveryRecords[0].deployment.commit, fixture.commit);
+});
+
+test("delivery join rejects equal-time deployment receipt ambiguity", () => {
+  assert.throws(
+    () => join({
+      deploymentReceipts: [
+        deployment({ id: "passed-receipt" }),
+        deployment({
+          id: "failed-receipt",
+          status: "failed",
+          deployedAt: null,
+        }),
+      ],
+      deploymentEnvironment: "production",
+    }),
+    /ambiguous latest deployment receipts/,
+  );
 });
 
 test("delivery join ages WIP at Plane observation time", () => {

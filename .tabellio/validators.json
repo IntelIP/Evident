@@ -248,13 +248,13 @@
       "summary": "Delivery claim joiner and repository checks"
     },
     "delivery-claims-schema": {
-      "commands": [["node", "--test", "--test-name-pattern", "schema requires|duplicate records|hyphenated Plane", "tests/delivery-evidence-joiner.test.mjs"]],
+      "commands": [["node", "--test", "--test-name-pattern", "schema requires|duplicate records|hyphenated Plane", "tests/delivery-evidence-joiner.test.mjs"], ["node", "--test", "--test-name-pattern", "analytics schema|v0.1 contract", "tests/analytics-core.test.mjs", "tests/portable-evidence.test.mjs"]],
       "metrics": [{"name": "delivery_claim_schema_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
       "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
       "summary": "Delivery snapshot structure and uniqueness contract"
     },
     "delivery-claims-semantic": {
-      "commands": [["node", "--test", "--test-name-pattern", "binds exact|binds CI|landed squash|containment-linked|earliest post-merge|release claims absent|skips an earlier|never ships an unmerged|never passes deployment|preserves failed deployment|shipment without merge identity", "tests/delivery-evidence-joiner.test.mjs"]],
+      "commands": [["node", "--test", "--test-name-pattern", "binds exact|binds CI|landed squash|containment-linked|earliest post-merge|equal release timestamps|release claims absent|skips an earlier|never ships an unmerged|never passes deployment|preserves failed deployment|equal-time deployment|shipment without merge identity", "tests/delivery-evidence-joiner.test.mjs"]],
       "metrics": [{"name": "delivery_claim_semantic_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
       "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
       "summary": "Exact CI, release, deployment, and squash-merge claims"

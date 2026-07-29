@@ -163,7 +163,7 @@ function providerSnapshot({
   if (releasedAt !== undefined) change.releasedAt = releasedAt;
   if (releaseCommit !== undefined) change.releaseCommit = releaseCommit;
   return {
-    schemaVersion: "tabellio-analytics-provider-snapshot/v0.1",
+    schemaVersion: "tabellio-analytics-provider-snapshot/v0.2",
     repository: "IntelIP/Tabellio",
     headCommit: HEAD,
     capturedAt,
