@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { copyFile, lstat, mkdtemp, readFile, readlink, realpath, rm } from "node:fs/promises";
+import { lstat, mkdtemp, readFile, readlink, realpath, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -130,7 +130,7 @@ async function readIndexFlags(root) {
   const directory = await mkdtemp(join(tmpdir(), "TabellioIndex-"));
   const copiedIndex = join(directory, "index");
   try {
-    await copyFile(resolve(root, indexPath), copiedIndex);
+    await writeFile(copiedIndex, await readFile(resolve(root, indexPath)), { mode: 0o600 });
     return await runGit({
       args: ["ls-files", "-v", "-z"],
       cwd: root,
