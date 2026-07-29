@@ -47,7 +47,10 @@ async function readPublishedTag({ root, remote, tag }) {
   });
   const refs = new Map(result.stdout.trim().split(/\r?\n/)
     .filter(Boolean)
-    .map((row) => row.split(/\s+/)));
+    .map((row) => {
+      const [oid, ref] = row.split(/\s+/);
+      return [ref, oid];
+    }));
   const direct = refs.get(directRef);
   const commit = refs.get(peeledRef);
   if (!direct || !commit) return null;

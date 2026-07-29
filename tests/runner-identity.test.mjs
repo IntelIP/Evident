@@ -165,6 +165,24 @@ test("runner release proof rejects local-only tags and binds published GitHub ev
       throw new Error("GitHub must not be queried without a published remote tag.");
     },
   }), false);
+  const remote = await temporaryDirectory(t, "TabellioReleaseRemote-");
+  await runGit({ args: ["init", "--bare"], cwd: remote });
+  await runGit({ args: ["tag", "--delete", "v0.6.0"], cwd: root });
+  await runGit({
+    args: ["tag", "--annotate", "v0.6.0", "--message", "Tabellio v0.6.0"],
+    cwd: root,
+    env: identityEnv(),
+  });
+  await runGit({ args: ["remote", "add", "origin", remote], cwd: root });
+  await runGit({ args: ["push", "origin", "v0.6.0"], cwd: root });
+  assert.equal(await verifyPublishedRunnerRelease({
+    root,
+    identity: await tabellioRunnerIdentity({ root }),
+    repositoryReader: async () => ({ fullName: "IntelIP/Tabellio" }),
+    commandRunner: async () => ({
+      stdout: JSON.stringify({ tagName: "v0.6.0", isDraft: false, isPrerelease: false }),
+    }),
+  }), true);
   assert.equal(await verifyPublishedRunnerRelease({
     root,
     identity,
