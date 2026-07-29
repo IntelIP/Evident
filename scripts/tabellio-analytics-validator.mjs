@@ -555,14 +555,20 @@ function providerBindingErrors(dataset, repository, snapshot, validationEvidence
 function deliveryTraceBindingErrors(dataset, repository, snapshot) {
   const expectedChanges = snapshot.deliveryChanges
     .filter((change) => deliveryChangeWithinWindow(change, dataset.window))
-    .map((change) => ({
-    ...structuredClone(change),
-    releasedAt: null,
-  })).sort(compareIds);
+    .map(normalizeProviderChange)
+    .sort(compareIds);
   const actualChanges = structuredClone(repository.deliveryChanges).sort(compareIds);
   return canonicalJson(actualChanges) === canonicalJson(expectedChanges)
     ? []
     : ["Dataset delivery traces do not match the provider snapshot."];
+}
+
+function normalizeProviderChange(change) {
+  const normalized = structuredClone(change);
+  delete normalized.mergeCommit;
+  delete normalized.releaseCommit;
+  normalized.releasedAt = null;
+  return normalized;
 }
 
 function validationEvidenceBindingErrors(dataset, repository, snapshot, evidence) {

@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "tabellio-analytics-provider-snapshot/v0.2",
+  "repository": "IntelIP/Tabellio",
+  "headCommit": "588f394f5603cacc23dc0d6a794966e08eae17ac",
+  "capturedAt": "2026-07-29T01:08:20.000Z",
+  "sources": {
+    "plane": {
+      "status": "available",
+      "version": "2026-07-29T01:04:00.000Z",
+      "workspace": "intelligent-intellectual-property"
+    },
+    "github": {
+      "status": "available",
+      "version": "2026-07-29T01:05:49.000Z"
+    },
+    "github-actions": {
+      "status": "available",
+      "version": "2026-07-29T01:04:13.000Z"
+    },
+    "buildkite": {
+      "status": "available",
+      "version": "2026-07-29T01:05:35.000Z"
+    }
+  },
+  "deliveryChanges": [
+    {
+      "id": "tabellio-pr-42",
+      "linkBasis": "explicit",
+      "linkEvidence": null,
+      "planeStoryId": "INTB-261",
+      "pullRequestNumber": 42,
+      "storyCreatedAt": null,
+      "firstActivityAt": "2026-07-29T01:03:41.000Z",
+      "mergedAt": "2026-07-29T01:05:49.000Z",
+      "releasedAt": null,
+      "headCommit": "588f394f5603cacc23dc0d6a794966e08eae17ac",
+      "mergeCommit": "588f394f5603cacc23dc0d6a794966e08eae17ac",
+      "releaseCommit": null,
+      "validationStatus": "unavailable",
+      "hostedStatus": "passed"
+    }
+  ]
+}

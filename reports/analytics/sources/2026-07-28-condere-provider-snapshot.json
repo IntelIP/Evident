@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "tabellio-analytics-provider-snapshot/v0.2",
+  "repository": "IntelIP/Condere",
+  "headCommit": "4ec36ff4ba24cfd4a92c525b77a0027a001033e9",
+  "capturedAt": "2026-07-29T01:08:20.000Z",
+  "sources": {
+    "plane": {
+      "status": "unavailable",
+      "version": null,
+      "reason": "Provider evidence was not collected for this baseline.",
+      "workspace": "intelligent-intellectual-property"
+    },
+    "github": {
+      "status": "unavailable",
+      "version": null,
+      "reason": "Provider evidence was not collected for this baseline."
+    },
+    "github-actions": {
+      "status": "unavailable",
+      "version": null,
+      "reason": "Provider evidence was not collected for this baseline."
+    },
+    "buildkite": {
+      "status": "unavailable",
+      "version": null,
+      "reason": "Provider evidence was not collected for this baseline."
+    }
+  },
+  "deliveryChanges": []
+}
