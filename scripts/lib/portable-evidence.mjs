@@ -83,34 +83,69 @@ export function validateEvidenceSource(source, {
   observedAt,
   allowWorkspace = false,
 } = {}) {
-  const errors = [];
   if (!isPlainObject(source)) return ["source must be an object"];
+  const errors = [];
   rejectUnknownFields(
     source,
     allowWorkspace ? new Set([...SOURCE_FIELDS, "workspace"]) : SOURCE_FIELDS,
     "source",
     errors,
   );
-  if (!SOURCE_STATES.has(source.status)) errors.push("source status is invalid");
-  if (!isSafeProviderVersion(source.version ?? null)) errors.push("source version is unsafe");
-  if (source.status === "available" && (typeof source.version !== "string" || !isSafeProviderVersion(source.version))) {
+  errors.push(...validateSourceStatus(source));
+  errors.push(...validateSourcePayload(source));
+  if (allowWorkspace) errors.push(...validateSourceWorkspace(source));
+  errors.push(...validateSourceObservationTime(source.version, observedAt));
+  return unique(errors);
+}
+
+function validateSourceStatus(source) {
+  return SOURCE_STATES.has(source.status)
+    ? []
+    : ["source status is invalid"];
+}
+
+function validateSourcePayload(source) {
+  const errors = [];
+  if (!isSafeProviderVersion(source.version ?? null)) {
+    errors.push("source version is unsafe");
+  }
+  errors.push(...(
+    source.status === "available"
+      ? validateAvailableSource(source)
+      : validateUnavailableSource(source)
+  ));
+  return errors;
+}
+
+function validateAvailableSource(source) {
+  const errors = [];
+  if (typeof source.version !== "string") {
     errors.push("available source requires a safe version");
   }
-  if (source.status !== "available" && !isSafeProviderText(source.reason)) {
-    errors.push("unavailable source requires a safe reason");
-  }
-  if (source.status !== "available" && source.version !== undefined && source.version !== null) {
-    errors.push("unavailable source cannot carry a version");
-  }
-  if (source.status === "available" && Object.hasOwn(source, "reason")) {
+  if (Object.hasOwn(source, "reason")) {
     errors.push("available source cannot carry a reason");
   }
-  if (allowWorkspace) errors.push(...validateSourceWorkspace(source));
-  const versionTimestamp = parseProviderVersionTimestamp(source.version);
-  if (versionTimestamp !== null && isDateTime(observedAt) && versionTimestamp > Date.parse(observedAt)) {
-    errors.push("source version is later than observation");
+  return errors;
+}
+
+function validateUnavailableSource(source) {
+  const errors = [];
+  if (!isSafeProviderText(source.reason)) {
+    errors.push("unavailable source requires a safe reason");
   }
-  return unique(errors);
+  if (source.version !== undefined && source.version !== null) {
+    errors.push("unavailable source cannot carry a version");
+  }
+  return errors;
+}
+
+function validateSourceObservationTime(version, observedAt) {
+  const versionTimestamp = parseProviderVersionTimestamp(version);
+  if (versionTimestamp === null) return [];
+  if (!isDateTime(observedAt)) return [];
+  return versionTimestamp > Date.parse(observedAt)
+    ? ["source version is later than observation"]
+    : [];
 }
 
 export function validateEvidenceBinding({ repository, headCommit, sourceRepository, sourceHeadCommit }) {

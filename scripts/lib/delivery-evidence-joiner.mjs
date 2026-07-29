@@ -296,18 +296,25 @@ function assertAvailableCollectorVersion(
   label,
   { allowOlder = false } = {},
 ) {
-  if (
-    providerSource.status !== "available"
-    || collectorSnapshot.status !== "available"
-  ) return;
+  if (!collectorVersionsComparable(providerSource, collectorSnapshot)) return;
   if (!isJsonDateTime(providerSource.version)) return;
-  const versionMatches = allowOlder
-    ? Date.parse(collectorSnapshot.capturedAt) <= Date.parse(providerSource.version)
-    : providerSource.version === collectorSnapshot.capturedAt;
   ensure(
-    versionMatches,
+    collectorVersionMatches(providerSource, collectorSnapshot, allowOlder),
     `${label} snapshot version does not match provider authority.`,
   );
+}
+
+function collectorVersionsComparable(providerSource, collectorSnapshot) {
+  if (providerSource.status !== "available") return false;
+  return collectorSnapshot.status === "available";
+}
+
+function collectorVersionMatches(providerSource, collectorSnapshot, allowOlder) {
+  if (!allowOlder) {
+    return providerSource.version === collectorSnapshot.capturedAt;
+  }
+  return Date.parse(collectorSnapshot.capturedAt)
+    <= Date.parse(providerSource.version);
 }
 
 function assertDeploymentBinding({
@@ -315,23 +322,11 @@ function assertDeploymentBinding({
   deploymentBlockedReason,
   deploymentEnvironment,
 }) {
-  if (deploymentBlockedReason !== null) {
-    ensure(
-      typeof deploymentBlockedReason === "string"
-        && SAFE_REASON.test(deploymentBlockedReason)
-        && isSafeProviderText(deploymentBlockedReason),
-      "Deployment blocked reason is invalid.",
-    );
-  }
-  if (deploymentEnvironment !== null) {
-    ensure(
-      ENVIRONMENT.test(deploymentEnvironment),
-      "Deployment environment is invalid.",
-    );
-  }
+  assertDeploymentBlockedReason(deploymentBlockedReason);
+  assertDeploymentEnvironment(deploymentEnvironment);
   ensure(
-    !(deploymentReceipts.length || deploymentBlockedReason !== null)
-      || deploymentEnvironment !== null,
+    !hasDeploymentEvidence(deploymentReceipts, deploymentBlockedReason)
+      || Boolean(deploymentEnvironment),
     "Deployment evidence requires a designated target environment.",
   );
   ensure(
@@ -351,6 +346,23 @@ function assertDeploymentBinding({
     ),
     deploymentBlockedReason,
   );
+}
+
+function assertDeploymentBlockedReason(reason) {
+  if (reason === null) return;
+  ensure(typeof reason === "string", "Deployment blocked reason is invalid.");
+  ensure(SAFE_REASON.test(reason), "Deployment blocked reason is invalid.");
+  ensure(isSafeProviderText(reason), "Deployment blocked reason is invalid.");
+}
+
+function assertDeploymentEnvironment(environment) {
+  if (environment === null) return;
+  ensure(ENVIRONMENT.test(environment), "Deployment environment is invalid.");
+}
+
+function hasDeploymentEvidence(receipts, blockedReason) {
+  if (receipts.length > 0) return true;
+  return blockedReason !== null;
 }
 
 function assertDeploymentCollectionConsistency(receipts, blockedReason) {
@@ -602,19 +614,8 @@ function releaseFollowsMerge(change, candidate) {
 }
 
 function latestReceiptFor(change, receipts, repository) {
-  const commits = changeCommits(change);
   const eligible = receipts.filter(
-    (receipt) =>
-      commits.includes(receipt.commit)
-      && sameRepository(receipt.repository, repository)
-      && (
-        receipt.status !== "passed"
-        || (
-          change.mergeCommit
-          && change.mergedAt
-          && receiptFollowsMerge(receipt, change.mergedAt)
-        )
-      ),
+    (receipt) => receiptEligible(change, repository, receipt),
   );
   const latestObservedAt = latestTimestampOrNull(
     eligible.map((receipt) => receipt.observedAt),
@@ -628,6 +629,19 @@ function latestReceiptFor(change, receipts, repository) {
     `Delivery change ${change.id} has ambiguous latest deployment receipts.`,
   );
   return latest[0];
+}
+
+function receiptEligible(change, repository, receipt) {
+  if (!changeCommits(change).includes(receipt.commit)) return false;
+  if (!sameRepository(receipt.repository, repository)) return false;
+  if (receipt.status !== "passed") return true;
+  return mergedReceiptEligible(change, receipt);
+}
+
+function mergedReceiptEligible(change, receipt) {
+  if (!change.mergeCommit) return false;
+  if (!change.mergedAt) return false;
+  return receiptFollowsMerge(receipt, change.mergedAt);
 }
 
 function receiptFollowsMerge(receipt, mergedAt) {
@@ -693,20 +707,7 @@ function deploymentObservation(receipt) {
 function aggregateBuildkite(snapshots, providerStatus) {
   const status = buildkiteEvidenceStatus(snapshots, providerStatus);
   if (status === "blocked") {
-    if (providerStatus === "available" && snapshots[0]?.status === "blocked") {
-      const snapshot = snapshots[0];
-      return blockedSource(snapshot.reason, [
-        observation(
-          boundedObservationId(
-            "buildkite",
-            `${snapshot.organization}/${snapshot.pipeline}`,
-          ),
-          snapshot.capturedAt,
-          snapshot,
-        ),
-      ]);
-    }
-    return unavailableSource("Buildkite evidence collection blocked.", "blocked");
+    return blockedBuildkiteSource(snapshots, providerStatus);
   }
   if (status === "unavailable") {
     return unavailableSource("No Buildkite snapshots collected.");
@@ -723,6 +724,26 @@ function aggregateBuildkite(snapshots, providerStatus) {
       pipeline: snapshot.pipeline,
     })),
   )));
+}
+
+function blockedBuildkiteSource(snapshots, providerStatus) {
+  const snapshot = snapshots[0];
+  if (providerStatus !== "available") {
+    return unavailableSource("Buildkite evidence collection blocked.", "blocked");
+  }
+  if (snapshot?.status !== "blocked") {
+    return unavailableSource("Buildkite evidence collection blocked.", "blocked");
+  }
+  return blockedSource(snapshot.reason, [
+    observation(
+      boundedObservationId(
+        "buildkite",
+        `${snapshot.organization}/${snapshot.pipeline}`,
+      ),
+      snapshot.capturedAt,
+      snapshot,
+    ),
+  ]);
 }
 
 function buildkiteEvidenceStatus(snapshots, providerStatus) {
@@ -993,42 +1014,44 @@ function releaseEvidenceContract(evidence, snapshot) {
 
 function deploymentEvidenceContract(evidence, snapshot) {
   if (evidence.schemaVersion === DEPLOYMENT_BLOCK_VERSION) {
-    ensure(
-      sameKeySet(evidence, [
-        "schemaVersion",
-        "repository",
-        "environment",
-        "capturedAt",
-        "status",
-        "reason",
-      ])
-        && sameRepository(evidence.repository, snapshot.repository)
-        && evidence.environment === snapshot.deploymentEnvironment
-        && isJsonDateTime(evidence.capturedAt)
-        && evidence.status === "blocked"
-        && SAFE_REASON.test(evidence.reason)
-        && isSafeProviderText(evidence.reason),
-      "Deployment block evidence is invalid or has an authority mismatch.",
-    );
-    return {
-      id: boundedObservationId(
-        "deployment-block",
-        `${evidence.repository}:${evidence.environment}`,
-      ),
-      version: evidence.capturedAt,
-      claims: [],
-    };
+    return deploymentBlockContract(evidence, snapshot);
   }
   validateDeploymentReceipt(evidence);
-  ensure(
-    sameRepository(evidence.repository, snapshot.repository)
-      && evidence.environment === snapshot.deploymentEnvironment,
-    "Deployment source evidence authority mismatch.",
-  );
+  ensure(sameRepository(evidence.repository, snapshot.repository),
+    "Deployment source evidence authority mismatch.");
+  ensure(evidence.environment === snapshot.deploymentEnvironment,
+    "Deployment source evidence authority mismatch.");
   return {
     id: boundedObservationId(`deployment:${evidence.provider}`, evidence.id),
     version: evidence.observedAt,
     claims: [deploymentClaim(evidence)],
+  };
+}
+
+function deploymentBlockContract(evidence, snapshot) {
+  const message =
+    "Deployment block evidence is invalid or has an authority mismatch.";
+  ensure(sameKeySet(evidence, [
+    "schemaVersion",
+    "repository",
+    "environment",
+    "capturedAt",
+    "status",
+    "reason",
+  ]), message);
+  ensure(sameRepository(evidence.repository, snapshot.repository), message);
+  ensure(evidence.environment === snapshot.deploymentEnvironment, message);
+  ensure(isJsonDateTime(evidence.capturedAt), message);
+  ensure(evidence.status === "blocked", message);
+  ensure(SAFE_REASON.test(evidence.reason), message);
+  ensure(isSafeProviderText(evidence.reason), message);
+  return {
+    id: boundedObservationId(
+      "deployment-block",
+      `${evidence.repository}:${evidence.environment}`,
+    ),
+    version: evidence.capturedAt,
+    claims: [],
   };
 }
 
@@ -1049,30 +1072,44 @@ function assertSourceState(name, source, capturedAt) {
     source.observations.every((item) => isPortableIdentifier(item.id)),
     `${name} source observation IDs must be portable identifiers.`,
   );
-  if (source.status === "available") {
-    ensure(
-      source.reason === null && source.observations.length > 0,
-      `Available ${name} source requires observations and no reason.`,
-    );
-  } else if (source.status === "blocked") {
-    ensure(
-      Boolean(source.reason),
-      `Blocked ${name} source requires a reason.`,
-    );
-  } else {
-    ensure(
-      Boolean(source.reason) && source.observations.length === 0,
-      `Unavailable ${name} source requires a reason and no observations.`,
-    );
-  }
+  assertSourceStatusState(name, source);
   ensure(
-    !source.observations.some(
-      (item) =>
-        isJsonDateTime(item.version)
-        && Date.parse(item.version) > Date.parse(capturedAt),
-    ),
+    !source.observations.some((item) => observationIsFuture(item, capturedAt)),
     `${name} source observation cannot be newer than the delivery snapshot.`,
   );
+}
+
+function assertSourceStatusState(name, source) {
+  const assertions = {
+    available: assertAvailableSourceState,
+    blocked: assertBlockedSourceState,
+    unavailable: assertUnavailableSourceState,
+  };
+  assertions[source.status](name, source);
+}
+
+function assertAvailableSourceState(name, source) {
+  ensure(source.reason === null,
+    `Available ${name} source requires observations and no reason.`);
+  ensure(source.observations.length > 0,
+    `Available ${name} source requires observations and no reason.`);
+}
+
+function assertBlockedSourceState(name, source) {
+  ensure(Boolean(source.reason),
+    `Blocked ${name} source requires a reason.`);
+}
+
+function assertUnavailableSourceState(name, source) {
+  ensure(Boolean(source.reason),
+    `Unavailable ${name} source requires a reason and no observations.`);
+  ensure(source.observations.length === 0,
+    `Unavailable ${name} source requires a reason and no observations.`);
+}
+
+function observationIsFuture(item, capturedAt) {
+  if (!isJsonDateTime(item.version)) return false;
+  return Date.parse(item.version) > Date.parse(capturedAt);
 }
 
 function assertWipRows(rows) {
@@ -1086,12 +1123,7 @@ function assertWipRows(rows) {
 }
 
 function assertDerivedEvidence(snapshot) {
-  ensure(
-    snapshot.sources.provider.status === "available"
-      && snapshot.sources.provider.reason === null
-      && snapshot.sources.provider.observations.length === 1,
-    "Provider source must remain available with one validated observation.",
-  );
+  assertDerivedProviderSource(snapshot.sources.provider);
   const providerSnapshot =
     snapshot.sources.provider.observations[0].evidence;
   const planeSnapshot = sourceSnapshotOrBlocked(
@@ -1106,17 +1138,8 @@ function assertDerivedEvidence(snapshot) {
     snapshot.sources.buildkite.observations.map((item) => item.evidence);
   const deploymentEvidence =
     snapshot.sources.deployment.observations.map((item) => item.evidence);
-  const deploymentReceipts = deploymentEvidence.filter(
-    (item) => item.schemaVersion !== DEPLOYMENT_BLOCK_VERSION,
-  );
-  const deploymentBlocks = deploymentEvidence.filter(
-    (item) => item.schemaVersion === DEPLOYMENT_BLOCK_VERSION,
-  );
-  ensure(
-    deploymentBlocks.length <= 1
-      && !(deploymentBlocks.length && deploymentReceipts.length),
-    "Deployment source evidence is ambiguous.",
-  );
+  const { deploymentReceipts, deploymentBlock } =
+    partitionDeploymentEvidence(deploymentEvidence);
   assertDerivedCollectorVersions(
     providerSnapshot,
     planeSnapshot,
@@ -1134,7 +1157,7 @@ function assertDerivedEvidence(snapshot) {
     providerSnapshot,
     buildkiteSnapshots,
     deploymentReceipts,
-    deploymentBlocks[0] ?? null,
+    deploymentBlock,
   );
   const context = recordContext({
     providerSnapshot,
@@ -1145,7 +1168,7 @@ function assertDerivedEvidence(snapshot) {
     releaseSnapshot,
     releaseSourceStatus: snapshot.sources.githubRelease.status,
     targetReceipts: deploymentReceipts,
-    deploymentBlockedReason: deploymentBlocks[0]?.reason ?? null,
+    deploymentBlockedReason: deploymentBlock?.reason ?? null,
     deploymentEnvironment: snapshot.deploymentEnvironment,
   });
   const expectedRecords = providerSnapshot.deliveryChanges.map(
@@ -1162,6 +1185,31 @@ function assertDerivedEvidence(snapshot) {
     ),
     "Delivery WIP rows do not match the validated Plane evidence.",
   );
+}
+
+function assertDerivedProviderSource(source) {
+  const message =
+    "Provider source must remain available with one validated observation.";
+  ensure(source.status === "available", message);
+  ensure(source.reason === null, message);
+  ensure(source.observations.length === 1, message);
+}
+
+function partitionDeploymentEvidence(evidence) {
+  const deploymentReceipts = evidence.filter(
+    (item) => item.schemaVersion !== DEPLOYMENT_BLOCK_VERSION,
+  );
+  const deploymentBlocks = evidence.filter(
+    (item) => item.schemaVersion === DEPLOYMENT_BLOCK_VERSION,
+  );
+  ensure(deploymentBlocks.length <= 1,
+    "Deployment source evidence is ambiguous.");
+  ensure(deploymentBlocks.length === 0 || deploymentReceipts.length === 0,
+    "Deployment source evidence is ambiguous.");
+  return {
+    deploymentReceipts,
+    deploymentBlock: deploymentBlocks[0] ?? null,
+  };
 }
 
 function assertDerivedCollectorVersions(
@@ -1202,8 +1250,7 @@ function assertDerivedCollectionStates(
     providerSnapshot.sources.buildkite.status,
   );
   ensure(
-    snapshot.sources.buildkite.status === expectedBuildkite.status
-      && snapshot.sources.buildkite.reason === expectedBuildkite.reason,
+    sameSourceState(snapshot.sources.buildkite, expectedBuildkite),
     "Buildkite source state does not match provider and collector evidence.",
   );
   const expectedDeployment = deploymentSource(
@@ -1214,8 +1261,7 @@ function assertDerivedCollectionStates(
     snapshot.capturedAt,
   );
   ensure(
-    snapshot.sources.deployment.status === expectedDeployment.status
-      && snapshot.sources.deployment.reason === expectedDeployment.reason,
+    sameSourceState(snapshot.sources.deployment, expectedDeployment),
     "Deployment source state does not match collection evidence.",
   );
 }
@@ -1226,14 +1272,14 @@ function assertDerivedAuthorityStates(
   planeSnapshot,
   releaseSnapshot,
 ) {
-  ensure(
-    providerSnapshot.sources.plane.status !== "available"
-      || snapshot.sources.plane.observations.length === 1,
+  ensureAuthorityObservation(
+    providerSnapshot.sources.plane,
+    snapshot.sources.plane,
     "Available Plane authority requires a validated collector observation.",
   );
-  ensure(
-    providerSnapshot.sources.github.status !== "available"
-      || snapshot.sources.githubRelease.observations.length === 1,
+  ensureAuthorityObservation(
+    providerSnapshot.sources.github,
+    snapshot.sources.githubRelease,
     "Available GitHub authority requires a validated release observation.",
   );
   const expectedPlane = authoritySourceState(
@@ -1249,14 +1295,24 @@ function assertDerivedAuthorityStates(
     "",
   );
   ensure(
-    snapshot.sources.plane.status === expectedPlane.status
-      && snapshot.sources.plane.reason === expectedPlane.reason,
+    sameSourceState(snapshot.sources.plane, expectedPlane),
     "Plane source state does not match provider authority evidence.",
   );
   ensure(
-    snapshot.sources.githubRelease.status === expectedRelease.status
-      && snapshot.sources.githubRelease.reason === expectedRelease.reason,
+    sameSourceState(snapshot.sources.githubRelease, expectedRelease),
     "GitHub Release source state does not match provider authority evidence.",
+  );
+}
+
+function ensureAuthorityObservation(authority, source, message) {
+  if (authority.status !== "available") return;
+  ensure(source.observations.length === 1, message);
+}
+
+function sameSourceState(actual, expected) {
+  return sameJson(
+    { status: actual.status, reason: actual.reason },
+    { status: expected.status, reason: expected.reason },
   );
 }
 
@@ -1700,11 +1756,15 @@ function blockedSource(reason, observations) {
 }
 
 function sameKeySet(value, keys) {
-  return Boolean(value)
-    && typeof value === "object"
-    && !Array.isArray(value)
-    && Object.keys(value).length === keys.length
-    && keys.every((key) => Object.hasOwn(value, key));
+  if (!isRecord(value)) return false;
+  if (Object.keys(value).length !== keys.length) return false;
+  return keys.every((key) => Object.hasOwn(value, key));
+}
+
+function isRecord(value) {
+  if (!value) return false;
+  if (typeof value !== "object") return false;
+  return !Array.isArray(value);
 }
 
 function sameRepository(left, right) {
