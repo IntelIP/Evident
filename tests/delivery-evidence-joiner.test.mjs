@@ -166,6 +166,21 @@ test("delivery join binds available collectors to provider source versions", () 
     providerSnapshot.sources[source].version = fixture.at;
     assert.throws(() => join({ providerSnapshot, ...input }), message);
   }
+
+  for (const [source, version, message] of [
+    ["plane", "2026-07-25T11:00:00.000Z", /Plane snapshot version/],
+    ["buildkite", "2026-07-25T11:00:00.000Z", /Buildkite snapshot version/],
+    ["github", "2026-07-25T11:00:00.000Z", /GitHub Release snapshot version/],
+  ]) {
+    const snapshot = join();
+    const providerObservation = snapshot.sources.provider.observations[0];
+    providerObservation.evidence.sources[source].version = version;
+    providerObservation.digest = digest(providerObservation.evidence);
+    assert.throws(
+      () => validateDeliveryEvidenceSnapshot(snapshot),
+      message,
+    );
+  }
 });
 
 test("delivery join accepts release evidence older than a preserved source version", () => {

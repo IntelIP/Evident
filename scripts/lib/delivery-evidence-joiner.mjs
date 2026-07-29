@@ -1093,6 +1093,12 @@ function assertDerivedEvidence(snapshot) {
       && !(deploymentBlocks.length && deploymentReceipts.length),
     "Deployment source evidence is ambiguous.",
   );
+  assertDerivedCollectorVersions(
+    providerSnapshot,
+    planeSnapshot,
+    buildkiteSnapshots,
+    releaseSnapshot,
+  );
   assertDerivedAuthorityStates(
     snapshot,
     providerSnapshot,
@@ -1131,6 +1137,32 @@ function assertDerivedEvidence(snapshot) {
       wipByProject(planeSnapshot, planeSnapshot.capturedAt),
     ),
     "Delivery WIP rows do not match the validated Plane evidence.",
+  );
+}
+
+function assertDerivedCollectorVersions(
+  providerSnapshot,
+  planeSnapshot,
+  buildkiteSnapshots,
+  releaseSnapshot,
+) {
+  assertAvailableCollectorVersion(
+    providerSnapshot.sources.plane,
+    planeSnapshot,
+    "Plane",
+  );
+  for (const buildkiteSnapshot of buildkiteSnapshots) {
+    assertAvailableCollectorVersion(
+      providerSnapshot.sources.buildkite,
+      buildkiteSnapshot,
+      "Buildkite",
+    );
+  }
+  assertAvailableCollectorVersion(
+    providerSnapshot.sources.github,
+    releaseSnapshot,
+    "GitHub Release",
+    { allowOlder: true },
   );
 }
 
