@@ -348,6 +348,42 @@
       "metrics": [{"name": "baseline_integration_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
       "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
       "summary": "Packaged artifact completeness and private-evidence boundaries"
+    },
+    "v060-identity-static": {
+      "commands": [["node", "--test", "tests/runner-identity.test.mjs", "tests/validation-runner.test.mjs"]],
+      "metrics": [{"name": "runner_identity_static_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Runner identity implementation and validation-result compatibility"
+    },
+    "v060-identity-schema": {
+      "commands": [["node", "--test", "--test-name-pattern", "runner identity schema|stable schema identifiers", "tests/runner-identity.test.mjs", "tests/context-and-evidence.test.mjs"]],
+      "metrics": [{"name": "runner_identity_schema_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "v0.4 validation result and runner identity schema"
+    },
+    "v060-identity-semantic": {
+      "commands": [["node", "--test", "--test-name-pattern", "runner identity schema binds|typed validators enforce", "tests/runner-identity.test.mjs", "tests/validation-runner.test.mjs"]],
+      "metrics": [{"name": "runner_identity_semantic_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Package version, source commit, cleanliness, tag, and typed evidence semantics"
+    },
+    "v060-identity-workflow": {
+      "commands": [["node", "--test", "--test-name-pattern", "runner identity CLI workflow|typed validation distinguishes", "tests/runner-identity.test.mjs", "tests/validation-runner.test.mjs"]],
+      "metrics": [{"name": "runner_identity_workflow_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Machine-readable version query and validation evidence workflow"
+    },
+    "v060-identity-operational": {
+      "commands": [["node", "--test", "--test-name-pattern", "runner identity operational lookup", "tests/runner-identity.test.mjs"]],
+      "metrics": [{"name": "runner_identity_10x_duration_ms", "unit": "milliseconds", "pattern": "runner_identity_10x_duration_ms=([0-9.]+)"}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Bounded local runner identity resolution"
+    },
+    "v060-identity-security": {
+      "commands": [["node", "--test", "--test-name-pattern", "runner identity security reports|runner identity CLI workflow", "tests/runner-identity.test.mjs"]],
+      "metrics": [{"name": "runner_identity_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "No private path disclosure and fail-closed expectation checks"
     }
   }
 }

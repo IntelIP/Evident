@@ -6,6 +6,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from "node:pat
 
 import { LedgerConflictError } from "./git-json-ledger.mjs";
 import { runGit } from "./git-process.mjs";
+import { tabellioRunnerState } from "./runner-identity.mjs";
 import { digestObject } from "./stack-operation.mjs";
 
 const VALIDATION_MANIFEST_SCHEMA_VERSION_V1 = "tabellio-validation/v0.1";
@@ -13,16 +14,19 @@ const VALIDATION_MANIFEST_SCHEMA_VERSION_V2 = "tabellio-validation/v0.2";
 const VALIDATION_RESULT_SCHEMA_VERSION_V1 = "tabellio-validation-result/v0.1";
 const VALIDATION_RESULT_SCHEMA_VERSION_V2 = "tabellio-validation-result/v0.2";
 const VALIDATION_RESULT_SCHEMA_VERSION_V3 = "tabellio-validation-result/v0.3";
+const VALIDATION_RESULT_SCHEMA_VERSION_V4 = "tabellio-validation-result/v0.4";
 const VALIDATOR_EVIDENCE_SCHEMA_VERSION = "tabellio-validator-evidence/v0.1";
 const VALIDATOR_TYPES = ["static", "schema", "semantic", "workflow", "visual", "operational", "security"];
+const SEMANTIC_VERSION = /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 const MAX_OUTPUT_TAIL_BYTES = 16 * 1024;
 const MAX_EVIDENCE_BYTES = 1024 * 1024;
 
 export class ValidationRunner {
-  constructor({ store, ledger, workspaceRoot = null }) {
+  constructor({ store, ledger, workspaceRoot = null, runnerIdentity = null, runnerState = null }) {
     this.store = store;
     this.ledger = ledger;
     this.workspaceRoot = workspaceRoot;
+    this.runnerState = resolveRunnerState(runnerIdentity, runnerState);
   }
 
   async run({
@@ -53,6 +57,8 @@ export class ValidationRunner {
     if (manifest.requireEntireCheckpoint && checkpoints.length === 0) {
       throw new Error(`Checkpoint range ${checkpointRevision.mergeBase}..${checkpointRevision.headCommit} has no Entire checkpoint.`);
     }
+    const initialRunnerState = await this.runnerState();
+    const runnerIdentity = initialRunnerState.identity;
 
     const runId = `validation-${randomUUID()}`;
     const common = await runGit({ args: ["rev-parse", "--git-common-dir"], cwd: this.store.repoPath });
@@ -90,6 +96,13 @@ export class ValidationRunner {
       }
     }
     const completedAt = new Date().toISOString();
+    const completedRunnerState = await this.runnerState();
+    if (
+      completedRunnerState.fingerprint !== initialRunnerState.fingerprint
+      || JSON.stringify(completedRunnerState.identity) !== JSON.stringify(runnerIdentity)
+    ) {
+      throw new Error("Tabellio runner identity changed during validation.");
+    }
     const result = buildValidationResult({
       manifest,
       definitions,
@@ -100,6 +113,7 @@ export class ValidationRunner {
       checkpointRevision,
       manifestPath,
       runnerId,
+      runnerIdentity,
       checkpoints,
       startedAt,
       completedAt,
@@ -110,6 +124,29 @@ export class ValidationRunner {
     const written = await writeResultWithRetry(this.ledger, path, result);
     return { result, path, version: written.version };
   }
+}
+
+function resolveRunnerState(runnerIdentity, runnerState) {
+  optionalFunction(runnerIdentity, "runnerIdentity");
+  optionalFunction(runnerState, "runnerState");
+  rejectCompetingRunnerSources(runnerIdentity, runnerState);
+  return runnerState ?? runnerStateFromIdentity(runnerIdentity);
+}
+
+function rejectCompetingRunnerSources(runnerIdentity, runnerState) {
+  if (runnerIdentity !== null && runnerState !== null) throw new TypeError("Supply runnerIdentity or runnerState, not both.");
+}
+
+function runnerStateFromIdentity(runnerIdentity) {
+  if (runnerIdentity === null) return tabellioRunnerState;
+  return async () => {
+    const identity = await runnerIdentity();
+    return { identity, fingerprint: digestObject(identity) };
+  };
+}
+
+function optionalFunction(value, label) {
+  if (value !== null && typeof value !== "function") throw new TypeError(`${label} must be a function.`);
 }
 
 async function registeredWorktree(repoPath, workspace) {
@@ -229,6 +266,7 @@ function buildValidationResult({
   checkpointRevision,
   manifestPath,
   runnerId,
+  runnerIdentity,
   checkpoints,
   startedAt,
   completedAt,
@@ -237,7 +275,7 @@ function buildValidationResult({
   const decision = typed ? validationDecision(execution.validators) : null;
   const requiredFailed = execution.commands.some((command, index) => definitions[index].required && command.status !== "passed");
   const result = {
-    schemaVersion: typed ? VALIDATION_RESULT_SCHEMA_VERSION_V3 : VALIDATION_RESULT_SCHEMA_VERSION_V2,
+    schemaVersion: typed ? VALIDATION_RESULT_SCHEMA_VERSION_V4 : VALIDATION_RESULT_SCHEMA_VERSION_V2,
     runId,
     repository: { id: repositoryId },
     revision,
@@ -247,7 +285,11 @@ function buildValidationResult({
       manifestPath,
       manifestDigest: digestObject(manifest),
     },
-    runner: { id: runnerId, runtime: `node-${process.version}` },
+    runner: typed ? {
+      id: runnerId,
+      runtime: `node-${process.version}`,
+      ...runnerIdentity,
+    } : { id: runnerId, runtime: `node-${process.version}` },
     status: decision?.status ?? (requiredFailed ? "failed" : "passed"),
     checkpoints,
     commands: execution.commands,
@@ -359,7 +401,12 @@ export function validateValidationResult(value) {
   object(value, "validation result");
   member(
     value.schemaVersion,
-    [VALIDATION_RESULT_SCHEMA_VERSION_V1, VALIDATION_RESULT_SCHEMA_VERSION_V2, VALIDATION_RESULT_SCHEMA_VERSION_V3],
+    [
+      VALIDATION_RESULT_SCHEMA_VERSION_V1,
+      VALIDATION_RESULT_SCHEMA_VERSION_V2,
+      VALIDATION_RESULT_SCHEMA_VERSION_V3,
+      VALIDATION_RESULT_SCHEMA_VERSION_V4,
+    ],
     "validation result.schemaVersion",
   );
   exactKeys(value, validationResultKeys(value.schemaVersion), "validation result");
@@ -374,13 +421,10 @@ export function validateValidationResult(value) {
   requiredString(value.suite.id, "validation result.suite.id");
   validateRelativePath(value.suite.manifestPath, "validation result.suite.manifestPath");
   sha256(value.suite.manifestDigest, "validation result.suite.manifestDigest");
-  object(value.runner, "validation result.runner");
-  exactKeys(value.runner, ["id", "runtime"], "validation result.runner");
-  requiredString(value.runner.id, "validation result.runner.id");
-  requiredString(value.runner.runtime, "validation result.runner.runtime");
+  validateResultRunner(value.runner, value.schemaVersion);
   member(
     value.status,
-    value.schemaVersion === VALIDATION_RESULT_SCHEMA_VERSION_V3 ? ["passed", "failed", "blocked"] : ["passed", "failed"],
+    isTypedValidationResult(value.schemaVersion) ? ["passed", "failed", "blocked"] : ["passed", "failed"],
     "validation result.status",
   );
   stringArray(value.checkpoints, "validation result.checkpoints");
@@ -393,19 +437,8 @@ export function validateValidationResult(value) {
   equals(value.integrity.algorithm, "sha256", "validation result.integrity.algorithm");
   sha256(value.integrity.digest, "validation result.integrity.digest");
   if (validationResultDigest(value) !== value.integrity.digest) throw new Error("validation result integrity digest does not match.");
-  if (value.schemaVersion === VALIDATION_RESULT_SCHEMA_VERSION_V3) {
-    validateAcceptanceResult(value.acceptance);
-    if (!Array.isArray(value.validators) || value.validators.length === 0) {
-      throw new Error("validation result.validators must be a non-empty array.");
-    }
-    value.validators.forEach((validator, index) => validateValidatorResult(validator, `validation result.validators[${index}]`));
-    const commandIds = value.commands.map((command) => command.id);
-    const validatorIds = value.validators.map((validator) => validator.id);
-    if (JSON.stringify(commandIds) !== JSON.stringify(validatorIds)) {
-      throw new Error("validation result validators must align with command ids and order.");
-    }
-    validateValidationDecision(value.decision, value.validators);
-    if (value.status !== value.decision.status) throw new Error("validation result status does not match decision status.");
+  if (isTypedValidationResult(value.schemaVersion)) {
+    validateTypedValidationResult(value);
     return value;
   }
   const expectedStatus = value.commands.some((command) => command.required && command.status !== "passed") ? "failed" : "passed";
@@ -415,16 +448,83 @@ export function validateValidationResult(value) {
 
 function validationResultKeys(schemaVersion) {
   const keys = ["schemaVersion", "runId", "repository", "revision", "suite", "runner", "status", "checkpoints", "commands", "startedAt", "completedAt", "integrity"];
-  if (schemaVersion === VALIDATION_RESULT_SCHEMA_VERSION_V3) {
+  if (isTypedValidationResult(schemaVersion)) {
     return [...keys, "checkpointRevision", "acceptance", "validators", "decision"];
   }
   return schemaVersion === VALIDATION_RESULT_SCHEMA_VERSION_V2 ? [...keys, "checkpointRevision"] : keys;
 }
 
 function validateCheckpointRevision(value) {
-  if ([VALIDATION_RESULT_SCHEMA_VERSION_V2, VALIDATION_RESULT_SCHEMA_VERSION_V3].includes(value.schemaVersion)) {
+  if ([
+    VALIDATION_RESULT_SCHEMA_VERSION_V2,
+    VALIDATION_RESULT_SCHEMA_VERSION_V3,
+    VALIDATION_RESULT_SCHEMA_VERSION_V4,
+  ].includes(value.schemaVersion)) {
     validateRevision(value.checkpointRevision, "validation result.checkpointRevision");
   }
+}
+
+function isTypedValidationResult(schemaVersion) {
+  return [VALIDATION_RESULT_SCHEMA_VERSION_V3, VALIDATION_RESULT_SCHEMA_VERSION_V4].includes(schemaVersion);
+}
+
+function validateResultRunner(value, schemaVersion) {
+  object(value, "validation result.runner");
+  const runnerKeys = schemaVersion === VALIDATION_RESULT_SCHEMA_VERSION_V4
+    ? ["id", "runtime", "packageName", "packageVersion", "sourceCommit", "sourceDirty", "releaseTag"]
+    : ["id", "runtime"];
+  exactKeys(value, runnerKeys, "validation result.runner");
+  requiredString(value.id, "validation result.runner.id");
+  requiredString(value.runtime, "validation result.runner.runtime");
+  if (schemaVersion === VALIDATION_RESULT_SCHEMA_VERSION_V4) validateRunnerIdentity(value);
+}
+
+function validateRunnerIdentity(value) {
+  equals(value.packageName, "@intelip/tabellio", "validation result.runner.packageName");
+  if (typeof value.packageVersion !== "string" || !SEMANTIC_VERSION.test(value.packageVersion)) {
+    throw new Error("validation result.runner.packageVersion must be a semantic version.");
+  }
+  validateRunnerSource(value);
+  validateRunnerReleaseTag(value);
+}
+
+function validateRunnerSource(value) {
+  nullable(value.sourceCommit, (sourceCommit) => oid(sourceCommit, "validation result.runner.sourceCommit"));
+  nullable(value.sourceDirty, (sourceDirty) => boolean(sourceDirty, "validation result.runner.sourceDirty"));
+  if ((value.sourceCommit === null) !== (value.sourceDirty === null)) {
+    throw new Error("validation result.runner sourceCommit and sourceDirty must be available together.");
+  }
+}
+
+function validateRunnerReleaseTag(value) {
+  if (value.releaseTag === null) return;
+  equals(value.releaseTag, `v${value.packageVersion}`, "validation result.runner.releaseTag");
+  if (value.sourceCommit === null) {
+    throw new Error("validation result.runner releaseTag requires a source commit.");
+  }
+}
+
+function validateTypedValidationResult(value) {
+  validateAcceptanceResult(value.acceptance);
+  if (!Array.isArray(value.validators) || value.validators.length === 0) {
+    throw new Error("validation result.validators must be a non-empty array.");
+  }
+  value.validators.forEach((validator, index) => validateValidatorResult(validator, `validation result.validators[${index}]`));
+  validateValidatorAlignment(value.commands, value.validators);
+  validateValidationDecision(value.decision, value.validators);
+  equals(value.status, value.decision.status, "validation result status");
+}
+
+function validateValidatorAlignment(commands, validators) {
+  const commandIds = commands.map((command) => command.id);
+  const validatorIds = validators.map((validator) => validator.id);
+  if (JSON.stringify(commandIds) !== JSON.stringify(validatorIds)) {
+    throw new Error("validation result validators must align with command ids and order.");
+  }
+}
+
+function nullable(value, validate) {
+  if (value !== null) validate(value);
 }
 
 function validateRevision(value, path) {

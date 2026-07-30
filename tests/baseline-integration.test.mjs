@@ -33,6 +33,7 @@ test("npm package includes every baseline validation input", async () => {
   });
   const files = new Set(JSON.parse(stdout)[0].files.map((file) => file.path));
   const required = [
+    ".tabellio/validators.json",
     datasetPath,
     reportPath,
     "reports/analytics/sources/2026-07-28-condere-provider-snapshot.json",

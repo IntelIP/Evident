@@ -6,6 +6,7 @@ import test from "node:test";
 import { GitJsonLedger } from "../scripts/lib/git-json-ledger.mjs";
 import { runGit } from "../scripts/lib/git-process.mjs";
 import { repositoryIdentity } from "../scripts/lib/repository-identity.mjs";
+import { digestObject } from "../scripts/lib/stack-operation.mjs";
 import {
   latestValidationResult,
   ValidationRunner,
@@ -68,6 +69,49 @@ test("validation runner executes exact committed manifests and stores bounded re
   assert.equal(passed.result.commands[4].status, "passed");
   assert.equal(validateValidationResult(passed.result), passed.result);
   assert.deepEqual(await latestValidationResult(ledger, passingHead), passed.result);
+  let identityRead = 0;
+  const stableIdentity = {
+    packageName: "@intelip/tabellio",
+    packageVersion: "0.6.0",
+    sourceCommit: "a".repeat(40),
+    sourceDirty: false,
+    releaseTag: null,
+  };
+  const driftingRunner = new ValidationRunner({
+    store,
+    ledger,
+    runnerIdentity: async () => ({
+      ...stableIdentity,
+      sourceCommit: (identityRead++ === 0 ? "a" : "b").repeat(40),
+    }),
+  });
+  await assert.rejects(
+    driftingRunner.run({
+      repositoryId,
+      commit: passingHead,
+      base: "main",
+      runnerId: "drift-test",
+    }),
+    /runner identity changed during validation/,
+  );
+  let stateRead = 0;
+  const dirtyStateRunner = new ValidationRunner({
+    store,
+    ledger,
+    runnerState: async () => ({
+      identity: { ...stableIdentity, sourceDirty: true },
+      fingerprint: stateRead++ === 0 ? "dirty-state-before" : "dirty-state-after",
+    }),
+  });
+  await assert.rejects(
+    dirtyStateRunner.run({
+      repositoryId,
+      commit: passingHead,
+      base: "main",
+      runnerId: "dirty-state-drift-test",
+    }),
+    /runner identity changed during validation/,
+  );
   const otherRepository = await runner.run({
     repositoryId: "other/repository",
     commit: passingHead,
@@ -332,14 +376,29 @@ test("typed validators enforce semantic metrics and cost budgets with durable ev
 
   const store = await NativeGitStore.open(fixture.seed);
   const ledger = await GitJsonLedger.open({ repoPath: fixture.seed, ref: "refs/tabellio/validations" });
-  const result = await new ValidationRunner({ store, ledger }).run({
+  const result = await new ValidationRunner({
+    store,
+    ledger,
+    runnerIdentity: async () => ({
+      packageName: "@intelip/tabellio",
+      packageVersion: "0.6.0",
+      sourceCommit: "a".repeat(40),
+      sourceDirty: false,
+      releaseTag: null,
+    }),
+  }).run({
     repositoryId: "example/repository",
     commit: "HEAD",
     base: "main",
     runnerId: "product-validator",
   });
 
-  assert.equal(result.result.schemaVersion, "tabellio-validation-result/v0.3");
+  assert.equal(result.result.schemaVersion, "tabellio-validation-result/v0.4");
+  assert.equal(result.result.runner.packageName, "@intelip/tabellio");
+  assert.equal(result.result.runner.packageVersion, "0.6.0");
+  assert.equal(result.result.runner.sourceCommit, "a".repeat(40));
+  assert.equal(result.result.runner.sourceDirty, false);
+  assert.equal(result.result.runner.releaseTag, null);
   assert.equal(result.result.status, "passed");
   assert.equal(result.result.acceptance.id, "PLANE-101");
   assert.deepEqual(result.result.acceptance.requiredValidatorTypes, ["semantic", "operational"]);
@@ -352,6 +411,23 @@ test("typed validators enforce semantic metrics and cost budgets with durable ev
   assert.equal(result.result.decision.totalCostUsd, 0.11);
   assert.equal(result.result.decision.costTelemetryComplete, true);
   assert.equal(validateValidationResult(result.result), result.result);
+
+  for (const [field, invalid, message] of [
+    ["packageName", "@example/not-tabellio", /packageName must be/],
+    ["packageVersion", "1.0.0-alpha..1", /packageVersion must be a semantic version/],
+  ]) {
+    const malformed = structuredClone(result.result);
+    malformed.runner[field] = invalid;
+    const { integrity: _integrity, ...unsigned } = malformed;
+    malformed.integrity.digest = digestObject(unsigned);
+    assert.throws(() => validateValidationResult(malformed), message);
+  }
+
+  const buildMetadata = structuredClone(result.result);
+  buildMetadata.runner.packageVersion = "0.6.1+build.7";
+  const { integrity: _integrity, ...unsigned } = buildMetadata;
+  buildMetadata.integrity.digest = digestObject(unsigned);
+  assert.equal(validateValidationResult(buildMetadata), buildMetadata);
 });
 
 test("typed validation distinguishes product failure from blocked evidence", async (t) => {

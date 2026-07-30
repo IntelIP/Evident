@@ -73,6 +73,16 @@ node scripts/tabellio-control-ref.mjs plan \
 
 ## Preflight And Release
 
+Inspect the local runner identity before trusting a version claim:
+
+```bash
+npm run tabellio:version -- \
+  --expect-version 0.6.0 \
+  --expect-ref HEAD
+```
+
+Add `--require-clean` for an immutable candidate and `--require-release-tag` only after the approved, non-draft GitHub Release exists. The release check requires an annotated `origin` tag at the exact source commit; a local-only tag is insufficient.
+
 Run preflight before agent work and again from clean merged `main`:
 
 ```bash
@@ -104,8 +114,8 @@ node scripts/tabellio-release.mjs plan \
   --owner example \
   --remote-repo repository \
   --number 42 \
-  --version 0.5.0 \
-  --notes docs/releases/v0.5.0.md \
+  --version 0.6.0 \
+  --notes docs/releases/v0.6.0.md \
   --out /tmp/tabellio-release-intent.json
 ```
 

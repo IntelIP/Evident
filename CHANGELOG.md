@@ -4,6 +4,25 @@ All notable changes to Tabellio are recorded here.
 
 ## Unreleased
 
+## 0.6.0 - release candidate
+
+### Added
+
+- Machine-readable `tabellio-version` identity reporting for package version, exact source commit, source cleanliness, and matching release tag.
+- Validation-result v0.4 runner provenance and focused INTB-279 product-validation evidence.
+
+### Changed
+
+- Typed validation evidence now binds the Tabellio package and exact runner source while retaining v0.1 through v0.3 reader compatibility.
+
+### Release Gates
+
+- `tabellio-preflight --profile release`
+- `npm run check`
+- Fallow whole-repository and changed-code scans
+- `npm pack --dry-run --json`
+- Exact candidate and merged-head Tabellio validation
+
 ## 0.5.0 - 2026-07-20
 
 This is the first publication candidate after v0.2.0. Versions 0.3.0 and 0.4.0 were development milestones and were not tagged, released on GitHub, or published to npm.
