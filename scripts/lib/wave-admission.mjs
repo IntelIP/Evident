@@ -39,99 +39,16 @@ export function admitWave(value) {
   const manifest = validateWaveManifest(value);
   const mappingById = new Map(manifest.mappings.map((mapping) => [mapping.id, mapping]));
   const reasonsByLane = new Map(manifest.lanes.map((lane) => [lane.id, []]));
-  const waveReasons = [];
-
-  duplicateValues(manifest.mappings.map((mapping) => mapping.id)).forEach((id) =>
-    waveReasons.push(reason(REASON_CODES.DUPLICATE_IDENTITY, `Mapping id ${id} is duplicated.`))
+  const waveReasons = [
+    ...duplicateIdentityReasons(manifest),
+    ...integratorReasons(manifest, mappingById)
+  ];
+  applyWipReasons(manifest, reasonsByLane);
+  applyLaneReasons(manifest, mappingById, reasonsByLane);
+  applyOverlapReasons(manifest, mappingById, reasonsByLane);
+  const lanes = manifest.lanes.map((lane) =>
+    laneDecision(lane, waveReasons, reasonsByLane.get(lane.id))
   );
-  duplicateValues(manifest.mappings.map((mapping) => mapping.taskId)).forEach((taskId) =>
-    waveReasons.push(reason(REASON_CODES.DUPLICATE_IDENTITY, `Task id ${taskId} is duplicated.`))
-  );
-  duplicateValues(manifest.lanes.map((lane) => lane.id)).forEach((id) =>
-    waveReasons.push(reason(REASON_CODES.DUPLICATE_IDENTITY, `Lane id ${id} is duplicated.`))
-  );
-  duplicateValues(manifest.lanes.map((lane) => lane.storyId)).forEach((storyId) =>
-    waveReasons.push(reason(REASON_CODES.DUPLICATE_IDENTITY, `Story id ${storyId} is duplicated.`))
-  );
-
-  const integratorMapping = mappingById.get(manifest.finalIntegrator.mappingId);
-  if (!integratorMapping || manifest.finalIntegrator.owner.trim() === "") {
-    waveReasons.push(reason(
-      REASON_CODES.INTEGRATOR_MISSING,
-      "Final integration ownership does not resolve to a declared mapping."
-    ));
-  }
-
-  const requestedSlots = manifest.lanes.reduce((sum, lane) => sum + lane.wipSlots, 0);
-  if (manifest.wip.started + requestedSlots > manifest.wip.limit) {
-    const message = `Wave requests ${requestedSlots} slot(s) with ${manifest.wip.started} already started; limit is ${manifest.wip.limit}.`;
-    for (const lane of manifest.lanes) {
-      reasonsByLane.get(lane.id).push(reason(REASON_CODES.WIP_LIMIT_EXCEEDED, message));
-    }
-  }
-
-  for (const lane of manifest.lanes) {
-    const laneReasons = reasonsByLane.get(lane.id);
-    if (!mappingById.has(lane.mappingId)) {
-      laneReasons.push(reason(
-        REASON_CODES.MAPPING_MISSING,
-        `Lane ${lane.id} does not resolve to a declared Plane/repository/task mapping.`
-      ));
-    }
-    if (lane.state !== "Ready") {
-      laneReasons.push(reason(
-        REASON_CODES.LANE_NOT_READY,
-        `Story ${lane.storyId} is ${lane.state}; Ready is required.`
-      ));
-    }
-    if (lane.baseCommit !== lane.observedBaseCommit) {
-      laneReasons.push(reason(
-        REASON_CODES.STALE_BASE,
-        `Story ${lane.storyId} base commit differs from current repository evidence.`
-      ));
-    }
-    for (const dependency of lane.dependencies) {
-      if (dependency.status !== "completed") {
-        laneReasons.push(reason(
-          REASON_CODES.DEPENDENCY_INCOMPLETE,
-          `Story ${lane.storyId} dependency ${dependency.storyId} is incomplete.`
-        ));
-      }
-    }
-    for (const surface of lane.ownedSurfaces) {
-      if (!safeSurface(surface)) {
-        laneReasons.push(reason(
-          REASON_CODES.SURFACE_INVALID,
-          `Story ${lane.storyId} owned surface is not a safe repository-relative pattern.`
-        ));
-      }
-    }
-  }
-
-  for (let leftIndex = 0; leftIndex < manifest.lanes.length; leftIndex += 1) {
-    for (let rightIndex = leftIndex + 1; rightIndex < manifest.lanes.length; rightIndex += 1) {
-      const left = manifest.lanes[leftIndex];
-      const right = manifest.lanes[rightIndex];
-      const leftMapping = mappingById.get(left.mappingId);
-      const rightMapping = mappingById.get(right.mappingId);
-      if (!leftMapping || !rightMapping || leftMapping.repository !== rightMapping.repository) continue;
-      const overlap = firstOverlap(left.ownedSurfaces, right.ownedSurfaces);
-      if (!overlap) continue;
-      const message = `Stories ${left.storyId} and ${right.storyId} overlap in ${leftMapping.repository}: ${overlap[0]} <> ${overlap[1]}.`;
-      reasonsByLane.get(left.id).push(reason(REASON_CODES.SURFACE_OVERLAP, message));
-      reasonsByLane.get(right.id).push(reason(REASON_CODES.SURFACE_OVERLAP, message));
-    }
-  }
-
-  const lanes = manifest.lanes.map((lane) => {
-    const reasons = stableReasons([...waveReasons, ...reasonsByLane.get(lane.id)]);
-    return {
-      id: lane.id,
-      storyId: lane.storyId,
-      decision: reasons.length === 0 ? "accepted" : "rejected",
-      reasons
-    };
-  });
   const accepted = lanes.filter((lane) => lane.decision === "accepted").length;
   const rejected = lanes.length - accepted;
   return {
@@ -140,6 +57,146 @@ export function admitWave(value) {
     decision: rejected === 0 ? "accepted" : "rejected",
     summary: `${accepted} lane(s) accepted; ${rejected} lane(s) rejected.`,
     lanes
+  };
+}
+
+function duplicateIdentityReasons(manifest) {
+  const identities = [
+    ["Mapping id", manifest.mappings.map((mapping) => mapping.id)],
+    ["Task id", manifest.mappings.map((mapping) => mapping.taskId)],
+    ["Lane id", manifest.lanes.map((lane) => lane.id)],
+    ["Story id", manifest.lanes.map((lane) => lane.storyId)]
+  ];
+  return identities.flatMap(([label, values]) =>
+    duplicateValues(values).map((value) =>
+      reason(REASON_CODES.DUPLICATE_IDENTITY, `${label} ${value} is duplicated.`)
+    )
+  );
+}
+
+function integratorReasons(manifest, mappingById) {
+  const mappingExists = mappingById.has(manifest.finalIntegrator.mappingId);
+  const ownerExists = manifest.finalIntegrator.owner.trim() !== "";
+  return mappingExists && ownerExists
+    ? []
+    : [reason(
+      REASON_CODES.INTEGRATOR_MISSING,
+      "Final integration ownership does not resolve to a declared mapping."
+    )];
+}
+
+function applyWipReasons(manifest, reasonsByLane) {
+  const requestedSlots = manifest.lanes.reduce((sum, lane) => sum + lane.wipSlots, 0);
+  if (manifest.wip.started + requestedSlots <= manifest.wip.limit) return;
+  const message = `Wave requests ${requestedSlots} slot(s) with ${manifest.wip.started} already started; limit is ${manifest.wip.limit}.`;
+  for (const lane of manifest.lanes) {
+    reasonsByLane.get(lane.id).push(reason(REASON_CODES.WIP_LIMIT_EXCEEDED, message));
+  }
+}
+
+function applyLaneReasons(manifest, mappingById, reasonsByLane) {
+  for (const lane of manifest.lanes) {
+    reasonsByLane.get(lane.id).push(...laneReasons(lane, mappingById));
+  }
+}
+
+function laneReasons(lane, mappingById) {
+  return [
+    ...mappingReasons(lane, mappingById),
+    ...readinessReasons(lane),
+    ...baseReasons(lane),
+    ...dependencyReasons(lane),
+    ...surfaceReasons(lane)
+  ];
+}
+
+function mappingReasons(lane, mappingById) {
+  return mappingById.has(lane.mappingId)
+    ? []
+    : [reason(
+      REASON_CODES.MAPPING_MISSING,
+      `Lane ${lane.id} does not resolve to a declared Plane/repository/task mapping.`
+    )];
+}
+
+function readinessReasons(lane) {
+  return lane.state === "Ready"
+    ? []
+    : [reason(
+      REASON_CODES.LANE_NOT_READY,
+      `Story ${lane.storyId} is ${lane.state}; Ready is required.`
+    )];
+}
+
+function baseReasons(lane) {
+  return lane.baseCommit === lane.observedBaseCommit
+    ? []
+    : [reason(
+      REASON_CODES.STALE_BASE,
+      `Story ${lane.storyId} base commit differs from current repository evidence.`
+    )];
+}
+
+function dependencyReasons(lane) {
+  return lane.dependencies
+    .filter((dependency) => dependency.status !== "completed")
+    .map((dependency) => reason(
+      REASON_CODES.DEPENDENCY_INCOMPLETE,
+      `Story ${lane.storyId} dependency ${dependency.storyId} is incomplete.`
+    ));
+}
+
+function surfaceReasons(lane) {
+  return lane.ownedSurfaces
+    .filter((surface) => !safeSurface(surface))
+    .map(() => reason(
+      REASON_CODES.SURFACE_INVALID,
+      `Story ${lane.storyId} owned surface is not a safe repository-relative pattern.`
+    ));
+}
+
+function applyOverlapReasons(manifest, mappingById, reasonsByLane) {
+  for (const [left, right] of lanePairs(manifest.lanes)) {
+    const overlap = laneOverlap(left, right, mappingById);
+    if (!overlap) continue;
+    const message = `Stories ${left.storyId} and ${right.storyId} overlap in ${overlap.repository}: ${overlap.surfaces[0]} <> ${overlap.surfaces[1]}.`;
+    reasonsByLane.get(left.id).push(reason(REASON_CODES.SURFACE_OVERLAP, message));
+    reasonsByLane.get(right.id).push(reason(REASON_CODES.SURFACE_OVERLAP, message));
+  }
+}
+
+function lanePairs(lanes) {
+  const pairs = [];
+  for (let left = 0; left < lanes.length; left += 1) {
+    for (let right = left + 1; right < lanes.length; right += 1) {
+      pairs.push([lanes[left], lanes[right]]);
+    }
+  }
+  return pairs;
+}
+
+function laneOverlap(left, right, mappingById) {
+  const leftMapping = mappingById.get(left.mappingId);
+  const rightMapping = mappingById.get(right.mappingId);
+  const repository = sharedRepository(leftMapping, rightMapping);
+  if (!repository) return null;
+  const surfaces = firstOverlap(left.ownedSurfaces, right.ownedSurfaces);
+  return surfaces ? {repository, surfaces} : null;
+}
+
+function sharedRepository(leftMapping, rightMapping) {
+  if (!leftMapping) return null;
+  if (!rightMapping) return null;
+  return leftMapping.repository === rightMapping.repository ? leftMapping.repository : null;
+}
+
+function laneDecision(lane, waveReasons, laneSpecificReasons) {
+  const reasons = stableReasons([...waveReasons, ...laneSpecificReasons]);
+  return {
+    id: lane.id,
+    storyId: lane.storyId,
+    decision: reasons.length === 0 ? "accepted" : "rejected",
+    reasons
   };
 }
 
@@ -199,33 +256,52 @@ function validateLane(value, index) {
 }
 
 function safeSurface(value) {
-  if (typeof value !== "string" || value === "" || value.includes("\\")) return false;
-  if (value.startsWith("/") || value.endsWith("/") || /[\0\r\n]/.test(value)) return false;
-  const plain = value.endsWith("/**") ? value.slice(0, -3) : value;
-  if (plain === "" || plain.startsWith("./") || plain.includes("//")) return false;
-  return plain.split("/").every((part) => part !== "" && part !== "." && part !== "..");
+  if (typeof value !== "string") return false;
+  const invalidShape = [
+    value === "",
+    value.includes("\\"),
+    value.startsWith("/"),
+    value.endsWith("/"),
+    /[\0\r\n]/.test(value)
+  ];
+  if (invalidShape.includes(true)) return false;
+  const plain = stripSurfaceGlob(value);
+  const invalidPlain = [plain === "", plain.startsWith("./"), plain.includes("//")];
+  if (invalidPlain.includes(true)) return false;
+  return plain.split("/").every((part) => !["", ".", ".."].includes(part));
+}
+
+function stripSurfaceGlob(value) {
+  return value.endsWith("/**") ? value.slice(0, -3) : value;
 }
 
 function firstOverlap(leftSurfaces, rightSurfaces) {
-  for (const left of leftSurfaces) {
-    if (!safeSurface(left)) continue;
-    for (const right of rightSurfaces) {
-      if (!safeSurface(right)) continue;
-      if (surfacesOverlap(left, right)) return [left, right];
-    }
-  }
-  return null;
+  return surfacePairs(leftSurfaces, rightSurfaces).find(([left, right]) =>
+    safeSurface(left) && safeSurface(right) && surfacesOverlap(left, right)
+  ) ?? null;
+}
+
+function surfacePairs(leftSurfaces, rightSurfaces) {
+  return leftSurfaces.flatMap((left) =>
+    rightSurfaces.map((right) => [left, right])
+  );
 }
 
 function surfacesOverlap(left, right) {
-  const leftPrefix = left.endsWith("/**");
-  const rightPrefix = right.endsWith("/**");
-  const leftPath = leftPrefix ? left.slice(0, -3) : left;
-  const rightPath = rightPrefix ? right.slice(0, -3) : right;
-  if (leftPath === rightPath) return true;
-  if (leftPrefix && rightPath.startsWith(`${leftPath}/`)) return true;
-  if (rightPrefix && leftPath.startsWith(`${rightPath}/`)) return true;
-  return false;
+  const leftSurface = normalizedSurface(left);
+  const rightSurface = normalizedSurface(right);
+  return leftSurface.path === rightSurface.path ||
+    parentSurfaceContains(leftSurface, rightSurface.path) ||
+    parentSurfaceContains(rightSurface, leftSurface.path);
+}
+
+function parentSurfaceContains(surface, path) {
+  return surface.prefix && path.startsWith(`${surface.path}/`);
+}
+
+function normalizedSurface(value) {
+  const prefix = value.endsWith("/**");
+  return {path: stripSurfaceGlob(value), prefix};
 }
 
 function stableReasons(values) {
@@ -247,11 +323,11 @@ function duplicateValues(values) {
 }
 
 function exactKeys(value, expected, path) {
-  const actual = Object.keys(value).sort();
-  const wanted = [...expected].sort();
-  if (JSON.stringify(actual) !== JSON.stringify(wanted)) {
-    throw new Error(`${path} must contain exactly: ${wanted.join(", ")}.`);
-  }
+  const actual = Object.keys(value);
+  const missing = expected.filter((key) => !actual.includes(key));
+  const unexpected = actual.filter((key) => !expected.includes(key));
+  if (missing.length + unexpected.length === 0) return;
+  throw new Error(`${path} must contain exactly: ${[...expected].sort().join(", ")}.`);
 }
 
 function object(value, path) {
@@ -267,9 +343,9 @@ function array(value, path, minimum, maximum) {
 }
 
 function string(value, path, maximum) {
-  if (typeof value !== "string" || value === "" || value.length > maximum || /[\0\r\n]/.test(value)) {
-    throw new Error(`${path} must be a non-empty single-line string up to ${maximum} characters.`);
-  }
+  const invalid = [typeof value !== "string", value === "", value.length > maximum, /[\0\r\n]/.test(value)];
+  if (!invalid.includes(true)) return;
+  throw new Error(`${path} must be a non-empty single-line string up to ${maximum} characters.`);
 }
 
 function match(value, pattern, path) {

@@ -29,8 +29,7 @@ function containedPath(root, input, label) {
   if (isAbsolute(input)) throw new Error(`${label} must be repository-relative.`);
   const target = resolve(root, input);
   const rel = relative(root, target);
-  if (rel === "" || rel.startsWith("..") || isAbsolute(rel)) {
-    throw new Error(`${label} must stay inside the repository.`);
-  }
+  const escapesRepository = [rel === "", rel.startsWith(".."), isAbsolute(rel)].includes(true);
+  if (escapesRepository) throw new Error(`${label} must stay inside the repository.`);
   return target;
 }
