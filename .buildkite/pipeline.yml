@@ -9,7 +9,7 @@ steps:
   - label: ":git: Git 2.50.1"
     key: "git-toolchain"
     command: "bash .buildkite/scripts/build-modern-git.sh"
-    if: build.pull_request.id != null || build.env("TABELLIO_BUILD_CONTEXT") == "preflight" || build.branch == pipeline.default_branch
+    if: build.env("TABELLIO_BUILD_CONTEXT") == "preflight" || build.branch == pipeline.default_branch || build.pull_request.id != null
     timeout_in_minutes: 15
     artifact_paths:
       - ".artifacts/toolchain/git-2.50.1-linux-amd64.tar.gz"
@@ -18,7 +18,7 @@ steps:
     key: "repository-check"
     command: "bash .buildkite/scripts/tests.sh"
     depends_on: "git-toolchain"
-    if: build.pull_request.id != null || build.env("TABELLIO_BUILD_CONTEXT") == "preflight" || build.branch == pipeline.default_branch
+    if: build.env("TABELLIO_BUILD_CONTEXT") == "preflight" || build.branch == pipeline.default_branch || build.pull_request.id != null
     timeout_in_minutes: 10
     artifact_paths:
       - "tabellio-pr-evidence.json"
@@ -30,7 +30,7 @@ steps:
     key: "fallow"
     command: "bash .buildkite/scripts/fallow.sh"
     depends_on: "git-toolchain"
-    if: build.pull_request.id != null || build.env("TABELLIO_BUILD_CONTEXT") == "preflight" || build.branch == pipeline.default_branch
+    if: build.env("TABELLIO_BUILD_CONTEXT") == "preflight" || build.branch == pipeline.default_branch || build.pull_request.id != null
     timeout_in_minutes: 10
     artifact_paths:
       - "fallow-audit.json"
@@ -41,7 +41,7 @@ steps:
   - label: ":package: Package dry-run"
     key: "package"
     command: "bash .buildkite/scripts/package.sh"
-    if: build.pull_request.id != null || build.env("TABELLIO_BUILD_CONTEXT") == "preflight" || build.branch == pipeline.default_branch
+    if: build.env("TABELLIO_BUILD_CONTEXT") == "preflight" || build.branch == pipeline.default_branch || build.pull_request.id != null
     timeout_in_minutes: 10
     artifact_paths:
       - "package-dry-run.json"
@@ -53,7 +53,7 @@ steps:
     key: "product-validation"
     command: "bash .buildkite/scripts/product-validation.sh"
     depends_on: "git-toolchain"
-    if: build.pull_request.id != null || build.env("TABELLIO_BUILD_CONTEXT") == "preflight" || build.branch == pipeline.default_branch
+    if: build.env("TABELLIO_BUILD_CONTEXT") == "preflight" || build.branch == pipeline.default_branch || build.pull_request.id != null
     timeout_in_minutes: 50
     artifact_paths:
       - "tabellio-validation-result.json"
