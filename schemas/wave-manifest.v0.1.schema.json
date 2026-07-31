@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://intelip.co/tabellio/schemas/wave-manifest.v0.1.schema.json",
+  "title": "Tabellio Wave Manifest v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "capturedAt", "wip", "finalIntegrator", "mappings", "lanes"],
+  "properties": {
+    "schemaVersion": {"const": "tabellio-wave-manifest/v0.1"},
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "capturedAt": {"type": "string", "format": "date-time"},
+    "wip": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["limit", "started"],
+      "properties": {
+        "limit": {"type": "integer", "minimum": 1, "maximum": 3},
+        "started": {"type": "integer", "minimum": 0, "maximum": 3}
+      }
+    },
+    "finalIntegrator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mappingId", "owner"],
+      "properties": {
+        "mappingId": {"type": "string", "minLength": 1, "maxLength": 128},
+        "owner": {"type": "string", "minLength": 1, "maxLength": 200}
+      }
+    },
+    "mappings": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "planeProject", "repository", "taskId"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1, "maxLength": 128},
+          "planeProject": {"type": "string", "pattern": "^[A-Z][A-Z0-9]{1,9}$"},
+          "repository": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
+          "taskId": {"type": "string", "minLength": 1, "maxLength": 200}
+        }
+      }
+    },
+    "lanes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "mappingId", "storyId", "state", "baseCommit", "observedBaseCommit", "ownedSurfaces", "dependencies", "wipSlots"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1, "maxLength": 128},
+          "mappingId": {"type": "string", "minLength": 1, "maxLength": 128},
+          "storyId": {"type": "string", "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]*$"},
+          "state": {"type": "string", "minLength": 1, "maxLength": 64},
+          "baseCommit": {"type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"},
+          "observedBaseCommit": {"type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"},
+          "ownedSurfaces": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {"type": "string", "minLength": 1, "maxLength": 500}
+          },
+          "dependencies": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["storyId", "status"],
+              "properties": {
+                "storyId": {"type": "string", "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]*$"},
+                "status": {"enum": ["completed", "incomplete"]}
+              }
+            }
+          },
+          "wipSlots": {"type": "integer", "minimum": 1, "maximum": 3}
+        }
+      }
+    }
+  }
+}

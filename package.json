@@ -30,6 +30,7 @@
     "tabellio-github-releases": "scripts/tabellio-github-releases.mjs",
     "tabellio-analytics-releases": "scripts/tabellio-analytics-releases.mjs",
     "tabellio-plane-work-items": "scripts/tabellio-plane-work-items.mjs",
+    "tabellio-wave-admit": "scripts/tabellio-wave-admit.mjs",
     "tabellio-deployment-check": "scripts/check-tabellio-deployment-receipt.mjs",
     "tabellio-cloud-run-deployment": "scripts/tabellio-cloud-run-deployment.mjs",
     "tabellio-vercel-deployment": "scripts/tabellio-vercel-deployment.mjs"

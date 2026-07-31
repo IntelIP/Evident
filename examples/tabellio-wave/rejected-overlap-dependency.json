@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "tabellio-wave-manifest/v0.1",
+  "id": "intb-282-rejected-demo",
+  "capturedAt": "2026-07-31T18:00:00Z",
+  "wip": {"limit": 3, "started": 0},
+  "finalIntegrator": {"mappingId": "tabellio", "owner": "Tabellio repository owner"},
+  "mappings": [
+    {"id": "tabellio", "planeProject": "INTB", "repository": "IntelIP/Tabellio", "taskId": "task-tabellio"},
+    {"id": "contexenda", "planeProject": "CTX", "repository": "IntelIP/Contexenda", "taskId": "task-contexenda"},
+    {"id": "vaticor", "planeProject": "VATI", "repository": "IntelIP/vaticor", "taskId": "task-vaticor"}
+  ],
+  "lanes": [
+    {
+      "id": "wave-admission",
+      "mappingId": "tabellio",
+      "storyId": "INTB-282",
+      "state": "Ready",
+      "baseCommit": "1111111111111111111111111111111111111111",
+      "observedBaseCommit": "1111111111111111111111111111111111111111",
+      "ownedSurfaces": ["scripts/lib/**"],
+      "dependencies": [],
+      "wipSlots": 1
+    },
+    {
+      "id": "surface-lease",
+      "mappingId": "tabellio",
+      "storyId": "INTB-283",
+      "state": "Ready",
+      "baseCommit": "1111111111111111111111111111111111111111",
+      "observedBaseCommit": "1111111111111111111111111111111111111111",
+      "ownedSurfaces": ["scripts/lib/surface-lease.mjs"],
+      "dependencies": [{"storyId": "INTB-282", "status": "incomplete"}],
+      "wipSlots": 1
+    },
+    {
+      "id": "paper-eval",
+      "mappingId": "vaticor",
+      "storyId": "VATI-12",
+      "state": "Ready",
+      "baseCommit": "3333333333333333333333333333333333333333",
+      "observedBaseCommit": "3333333333333333333333333333333333333333",
+      "ownedSurfaces": ["evals/paper/**"],
+      "dependencies": [],
+      "wipSlots": 1
+    }
+  ]
+}
