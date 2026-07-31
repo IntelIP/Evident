@@ -21,12 +21,13 @@ test("Buildkite adds bounded pull-request quality gates without CI cutover", asy
   assert.match(pipeline, /key: "product-validation"/);
   assert.doesNotMatch(pipeline, /BUILDKITE_GITHUB_EVENT/);
   assert.equal(
-    pipeline.match(/build\.pull_request\.id != null/g)?.length,
+    pipeline.match(/build\.pull_request != null/g)?.length,
     5,
   );
+  assert.doesNotMatch(pipeline, /build\.pull_request\.id/);
   assert.equal(
     pipeline.match(
-      /if: build\.env\("TABELLIO_BUILD_CONTEXT"\) == "preflight" \|\| build\.branch == pipeline\.default_branch \|\| build\.pull_request\.id != null/g,
+      /if: build\.env\("TABELLIO_BUILD_CONTEXT"\) == "preflight" \|\| build\.branch == pipeline\.default_branch \|\| build\.pull_request != null/g,
     )?.length,
     5,
   );
