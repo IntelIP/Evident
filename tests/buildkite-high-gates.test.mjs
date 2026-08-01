@@ -20,17 +20,9 @@ test("Buildkite adds bounded pull-request quality gates without CI cutover", asy
   assert.match(pipeline, /key: "package"/);
   assert.match(pipeline, /key: "product-validation"/);
   assert.doesNotMatch(pipeline, /BUILDKITE_GITHUB_EVENT/);
-  assert.equal(
-    pipeline.match(/build\.source == "webhook"/g)?.length,
-    5,
-  );
   assert.doesNotMatch(pipeline, /build\.pull_request\.id/);
   assert.doesNotMatch(pipeline, /build\.env\("BUILDKITE_PULL_REQUEST"\)/);
-  assert.match(
-    pipeline,
-    /build\.env\("TABELLIO_BUILD_CONTEXT"\) == "preflight"/,
-  );
-  assert.match(pipeline, /build\.branch == pipeline\.default_branch/);
+  assert.doesNotMatch(pipeline, /^\s+if:/m);
 
   assert.doesNotMatch(productValidation, /git show -s --format=%s/);
   assertMatches(productValidation, [
