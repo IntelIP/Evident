@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 
-import {readFile} from "node:fs/promises";
+import {readFile, realpath} from "node:fs/promises";
 import {isAbsolute, relative, resolve} from "node:path";
 
 import {admitWave} from "./lib/wave-admission.mjs";
 
 try {
   const options = parseOptions(process.argv.slice(2));
-  const root = process.cwd();
-  const manifestPath = containedPath(root, options.manifest, "manifest");
+  const root = await realpath(process.cwd());
+  const manifestPath = await containedPath(root, options.manifest, "manifest");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   const report = admitWave(manifest);
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
@@ -25,9 +25,13 @@ function parseOptions(args) {
   return {manifest: args[1]};
 }
 
-function containedPath(root, input, label) {
+async function containedPath(root, input, label) {
   if (isAbsolute(input)) throw new Error(`${label} must be repository-relative.`);
-  const target = resolve(root, input);
+  const lexicalTarget = resolve(root, input);
+  const lexicalRel = relative(root, lexicalTarget);
+  const lexicalEscape = [lexicalRel === "", lexicalRel.startsWith(".."), isAbsolute(lexicalRel)].includes(true);
+  if (lexicalEscape) throw new Error(`${label} must stay inside the repository.`);
+  const target = await realpath(lexicalTarget);
   const rel = relative(root, target);
   const escapesRepository = [rel === "", rel.startsWith(".."), isAbsolute(rel)].includes(true);
   if (escapesRepository) throw new Error(`${label} must stay inside the repository.`);

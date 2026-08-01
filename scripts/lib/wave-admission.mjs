@@ -45,6 +45,7 @@ export function admitWave(value) {
   ];
   applyWipReasons(manifest, reasonsByLane);
   applyLaneReasons(manifest, mappingById, reasonsByLane);
+  applyRepositoryBaseReasons(manifest, mappingById, reasonsByLane);
   applyOverlapReasons(manifest, mappingById, reasonsByLane);
   const lanes = manifest.lanes.map((lane) =>
     laneDecision(lane, waveReasons, reasonsByLane.get(lane.id))
@@ -95,23 +96,26 @@ function applyWipReasons(manifest, reasonsByLane) {
 }
 
 function applyLaneReasons(manifest, mappingById, reasonsByLane) {
+  const laneByStoryId = new Map(manifest.lanes.map((lane) => [lane.storyId, lane]));
   for (const lane of manifest.lanes) {
-    reasonsByLane.get(lane.id).push(...laneReasons(lane, mappingById));
+    reasonsByLane.get(lane.id).push(...laneReasons(lane, mappingById, laneByStoryId));
   }
 }
 
-function laneReasons(lane, mappingById) {
+function laneReasons(lane, mappingById, laneByStoryId) {
   return [
     ...mappingReasons(lane, mappingById),
     ...readinessReasons(lane),
     ...baseReasons(lane),
-    ...dependencyReasons(lane),
+    ...dependencyReasons(lane, laneByStoryId),
     ...surfaceReasons(lane)
   ];
 }
 
 function mappingReasons(lane, mappingById) {
-  return mappingById.has(lane.mappingId)
+  const mapping = mappingById.get(lane.mappingId);
+  const storyProject = lane.storyId.split("-", 1)[0];
+  return mapping && mapping.planeProject === storyProject
     ? []
     : [reason(
       REASON_CODES.MAPPING_MISSING,
@@ -137,9 +141,14 @@ function baseReasons(lane) {
     )];
 }
 
-function dependencyReasons(lane) {
+function dependencyReasons(lane, laneByStoryId) {
   return lane.dependencies
-    .filter((dependency) => dependency.status !== "completed")
+    .filter((dependency) => {
+      const dependencyLane = laneByStoryId.get(dependency.storyId);
+      const dependencyIsInFlight = dependencyLane &&
+        !["Completed", "Done"].includes(dependencyLane.state);
+      return dependency.status !== "completed" || dependencyIsInFlight;
+    })
     .map((dependency) => reason(
       REASON_CODES.DEPENDENCY_INCOMPLETE,
       `Story ${lane.storyId} dependency ${dependency.storyId} is incomplete.`
@@ -153,6 +162,25 @@ function surfaceReasons(lane) {
       REASON_CODES.SURFACE_INVALID,
       `Story ${lane.storyId} owned surface is not a safe repository-relative pattern.`
     ));
+}
+
+function applyRepositoryBaseReasons(manifest, mappingById, reasonsByLane) {
+  const lanesByRepository = new Map();
+  for (const lane of manifest.lanes) {
+    const mapping = mappingById.get(lane.mappingId);
+    if (!mapping) continue;
+    const repository = canonicalRepository(mapping.repository);
+    const lanes = lanesByRepository.get(repository) ?? [];
+    lanes.push(lane);
+    lanesByRepository.set(repository, lanes);
+  }
+  for (const [repository, lanes] of lanesByRepository) {
+    if (new Set(lanes.map((lane) => lane.observedBaseCommit)).size <= 1) continue;
+    const message = `Repository ${repository} has conflicting current base evidence in this wave.`;
+    for (const lane of lanes) {
+      reasonsByLane.get(lane.id).push(reason(REASON_CODES.STALE_BASE, message));
+    }
+  }
 }
 
 function applyOverlapReasons(manifest, mappingById, reasonsByLane) {
@@ -187,7 +215,13 @@ function laneOverlap(left, right, mappingById) {
 function sharedRepository(leftMapping, rightMapping) {
   if (!leftMapping) return null;
   if (!rightMapping) return null;
-  return leftMapping.repository === rightMapping.repository ? leftMapping.repository : null;
+  const leftRepository = canonicalRepository(leftMapping.repository);
+  const rightRepository = canonicalRepository(rightMapping.repository);
+  return leftRepository === rightRepository ? leftRepository : null;
+}
+
+function canonicalRepository(value) {
+  return value.toLowerCase();
 }
 
 function laneDecision(lane, waveReasons, laneSpecificReasons) {
@@ -266,7 +300,12 @@ function safeSurface(value) {
   ];
   if (invalidShape.includes(true)) return false;
   const plain = stripSurfaceGlob(value);
-  const invalidPlain = [plain === "", plain.startsWith("./"), plain.includes("//")];
+  const invalidPlain = [
+    plain === "",
+    plain.startsWith("./"),
+    plain.includes("//"),
+    /[*?[\]{}]/.test(plain)
+  ];
   if (invalidPlain.includes(true)) return false;
   return plain.split("/").every((part) => !["", ".", ".."].includes(part));
 }

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import {execFile} from "node:child_process";
-import {readFile} from "node:fs/promises";
+import {mkdtemp, readFile, rm, symlink, writeFile} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
 import {promisify} from "node:util";
 import test from "node:test";
 
@@ -67,6 +69,46 @@ test("negative matrix rejects non-Ready, WIP, missing mapping, stale base, and a
   );
 });
 
+test("repository identity is case-insensitive for overlap and base consistency", async () => {
+  const overlapManifest = await fixture("accepted-three-repository.json");
+  overlapManifest.mappings[1].repository = "intelip/tabellio";
+  overlapManifest.lanes[1].ownedSurfaces = ["scripts/lib/**"];
+  const overlapReport = admitWave(overlapManifest);
+  assert.ok(overlapReport.lanes[0].reasons.some((item) => item.code === REASON_CODES.SURFACE_OVERLAP));
+  assert.ok(overlapReport.lanes[1].reasons.some((item) => item.code === REASON_CODES.SURFACE_OVERLAP));
+
+  const baseManifest = await fixture("accepted-three-repository.json");
+  baseManifest.mappings[1].repository = "intelip/tabellio";
+  const baseReport = admitWave(baseManifest);
+  assert.ok(baseReport.lanes[0].reasons.some((item) => item.code === REASON_CODES.STALE_BASE));
+  assert.ok(baseReport.lanes[1].reasons.some((item) => item.code === REASON_CODES.STALE_BASE));
+});
+
+test("mapping, glob, and in-wave dependency identity fail closed", async () => {
+  const manifest = await fixture("accepted-three-repository.json");
+  manifest.mappings[0].planeProject = "CTX";
+  manifest.lanes[0].ownedSurfaces = ["scripts/*.mjs"];
+  manifest.lanes[0].dependencies = [{
+    storyId: manifest.lanes[1].storyId,
+    status: "completed"
+  }];
+  const report = admitWave(manifest);
+  const codes = report.lanes[0].reasons.map((item) => item.code);
+  assert.ok(codes.includes(REASON_CODES.MAPPING_MISSING));
+  assert.ok(codes.includes(REASON_CODES.SURFACE_INVALID));
+  assert.ok(codes.includes(REASON_CODES.DEPENDENCY_INCOMPLETE));
+});
+
+test("schema and runtime both require UTC Z timestamps", async () => {
+  const manifest = await fixture("accepted-three-repository.json");
+  const schema = JSON.parse(await readFile(
+    new URL("../schemas/wave-manifest.v0.1.schema.json", import.meta.url)
+  ));
+  manifest.capturedAt = "2026-07-31T18:00:00+00:00";
+  assert.notDeepEqual(validateJsonSchema(manifest, schema), []);
+  assert.throws(() => validateWaveManifest(manifest), /UTC RFC 3339/);
+});
+
 test("security rejects unsafe owned surfaces and repository-external CLI inputs", async () => {
   const manifest = await fixture("accepted-three-repository.json");
   manifest.lanes[0].ownedSurfaces = ["../secrets"];
@@ -76,6 +118,26 @@ test("security rejects unsafe owned surfaces and repository-external CLI inputs"
     execFileAsync(process.execPath, ["scripts/tabellio-wave-admit.mjs", "--manifest", "../outside.json"]),
     (error) => error.code === 2 && error.stderr.includes("manifest must stay inside the repository")
   );
+
+  const externalRoot = await mkdtemp(join(tmpdir(), "tabellio-wave-external-"));
+  const linkRoot = await mkdtemp(join(process.cwd(), ".tabellio-wave-link-"));
+  const externalManifest = join(externalRoot, "manifest.json");
+  const manifestLink = join(linkRoot, "manifest.json");
+  try {
+    await writeFile(externalManifest, "{}\n");
+    await symlink(externalManifest, manifestLink);
+    await assert.rejects(
+      execFileAsync(process.execPath, [
+        "scripts/tabellio-wave-admit.mjs",
+        "--manifest",
+        manifestLink.slice(process.cwd().length + 1)
+      ]),
+      (error) => error.code === 2 && error.stderr.includes("manifest must stay inside the repository")
+    );
+  } finally {
+    await rm(linkRoot, {recursive: true, force: true});
+    await rm(externalRoot, {recursive: true, force: true});
+  }
 });
 
 test("CLI renders business-readable accepted and rejected reports without external action", async () => {
