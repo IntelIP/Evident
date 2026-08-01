@@ -14,7 +14,7 @@ if [[ "$pull_request" == "false" && "$build_context" != "preflight" && "$default
   exit 2
 fi
 
-. .buildkite/scripts/use-modern-git.sh
+. .buildkite/scripts/verify-git-toolchain.sh
 
 candidate="${BUILDKITE_COMMIT:-HEAD}"
 base_branch="${BUILDKITE_PULL_REQUEST_BASE_BRANCH:-${TABELLIO_BASE_BRANCH:-main}}"

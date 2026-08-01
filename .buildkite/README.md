@@ -3,6 +3,11 @@
 Buildkite runs repository checks on pull requests and the default branch.
 Pull-request builds also run changed-code Fallow, package inspection, and
 exact-head product validation.
+OS-neutral gates run on the included `macos-medium` M4 queue. Each Git-using
+step fails closed unless the hosted image supplies the repository-pinned Git
+version; CI does not build or download an architecture-specific Git artifact.
+Linux queues are reserved for an explicit published-artifact compatibility
+contract and are not used by this pipeline.
 The product-validation step exports the Git validation ref as a portable bundle
 instead of treating an internal `.git` ref as a workspace artifact.
 

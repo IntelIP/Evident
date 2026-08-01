@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-. .buildkite/scripts/use-modern-git.sh
+. .buildkite/scripts/verify-git-toolchain.sh
 
 build_context="${TABELLIO_BUILD_CONTEXT:-provider}"
 if [[ "${BUILDKITE_PULL_REQUEST:-false}" == "false" && "$build_context" != "preflight" ]]; then
