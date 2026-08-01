@@ -10,11 +10,11 @@ if [[ "$pull_request" == "false" && "$pipeline_branch" == "$default_branch" ]]; 
   default_branch_build=true
 fi
 if [[ "$pull_request" == "false" && "$build_context" != "preflight" && "$default_branch_build" != "true" ]]; then
-  printf '%s\n' "Buildkite product validation requires a pull request, default-branch build, or explicit preflight build." >&2
-  exit 2
+  printf '%s\n' '{"decision":"not_required","reason":"product validation runs on pull requests, the default branch, or explicit preflight builds."}' > tabellio-validation-result.json
+  exit 0
 fi
 
-. .buildkite/scripts/use-modern-git.sh
+. .buildkite/scripts/verify-git-toolchain.sh
 
 candidate="${BUILDKITE_COMMIT:-HEAD}"
 base_branch="${BUILDKITE_PULL_REQUEST_BASE_BRANCH:-${TABELLIO_BASE_BRANCH:-main}}"

@@ -348,6 +348,30 @@
       "metrics": [{"name": "baseline_integration_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
       "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
       "summary": "Packaged artifact completeness and private-evidence boundaries"
+    },
+    "wave-admission-schema": {
+      "commands": [["node", "--test", "--test-name-pattern", "^schema accepts", "tests/wave-admission.test.mjs"]],
+      "metrics": [{"name": "wave_admission_schema_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Wave manifest structure and bounded identity contract"
+    },
+    "wave-admission-semantic": {
+      "commands": [["node", "--test", "--test-name-pattern", "^negative matrix", "tests/wave-admission.test.mjs"]],
+      "metrics": [{"name": "wave_admission_negative_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Stable fail-closed admission reasons"
+    },
+    "wave-admission-workflow": {
+      "commands": [["node", "--test", "--test-name-pattern", "workflow accepts|CLI renders", "tests/wave-admission.test.mjs"]],
+      "metrics": [{"name": "wave_admission_workflow_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Three-repository admission and rejection demo"
+    },
+    "wave-admission-security": {
+      "commands": [["node", "--test", "--test-name-pattern", "^security rejects", "tests/wave-admission.test.mjs"]],
+      "metrics": [{"name": "wave_admission_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
+      "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
+      "summary": "Repository path safety and no-external-action boundary"
     }
   }
 }
