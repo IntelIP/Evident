@@ -165,15 +165,7 @@ function surfaceReasons(lane) {
 }
 
 function applyRepositoryBaseReasons(manifest, mappingById, reasonsByLane) {
-  const lanesByRepository = new Map();
-  for (const lane of manifest.lanes) {
-    const mapping = mappingById.get(lane.mappingId);
-    if (!mapping) continue;
-    const repository = canonicalRepository(mapping.repository);
-    const lanes = lanesByRepository.get(repository) ?? [];
-    lanes.push(lane);
-    lanesByRepository.set(repository, lanes);
-  }
+  const lanesByRepository = groupLanesByRepository(manifest.lanes, mappingById);
   for (const [repository, lanes] of lanesByRepository) {
     if (new Set(lanes.map((lane) => lane.observedBaseCommit)).size <= 1) continue;
     const message = `Repository ${repository} has conflicting current base evidence in this wave.`;
@@ -181,6 +173,19 @@ function applyRepositoryBaseReasons(manifest, mappingById, reasonsByLane) {
       reasonsByLane.get(lane.id).push(reason(REASON_CODES.STALE_BASE, message));
     }
   }
+}
+
+function groupLanesByRepository(lanes, mappingById) {
+  const lanesByRepository = new Map();
+  for (const lane of lanes) {
+    const mapping = mappingById.get(lane.mappingId);
+    if (!mapping) continue;
+    const repository = canonicalRepository(mapping.repository);
+    const repositoryLanes = lanesByRepository.get(repository) ?? [];
+    repositoryLanes.push(lane);
+    lanesByRepository.set(repository, repositoryLanes);
+  }
+  return lanesByRepository;
 }
 
 function applyOverlapReasons(manifest, mappingById, reasonsByLane) {
