@@ -6,10 +6,12 @@ agents:
   queue: "macos-medium"
 
 steps:
-  - label: ":git: Git 2.50.1"
+  - label: ":git: Supported Git"
     key: "git-toolchain"
     command: "bash .buildkite/scripts/verify-git-toolchain.sh"
     timeout_in_minutes: 2
+    artifact_paths:
+      - "tabellio-git-toolchain.json"
 
   - label: ":test_tube: Repository check"
     key: "repository-check"

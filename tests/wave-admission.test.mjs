@@ -109,6 +109,26 @@ test("schema and runtime both require UTC Z timestamps", async () => {
   assert.throws(() => validateWaveManifest(manifest), /UTC RFC 3339/);
 });
 
+test("schema and runtime reject normalized invalid capture dates", async () => {
+  const manifest = await fixture("accepted-three-repository.json");
+  const schema = JSON.parse(await readFile(
+    new URL("../schemas/wave-manifest.v0.1.schema.json", import.meta.url)
+  ));
+  manifest.capturedAt = "2026-02-30T00:00:00Z";
+  assert.notDeepEqual(validateJsonSchema(manifest, schema), []);
+  assert.throws(() => validateWaveManifest(manifest), /UTC RFC 3339/);
+});
+
+test("schema and runtime reject multiline bounded strings", async () => {
+  const manifest = await fixture("accepted-three-repository.json");
+  const schema = JSON.parse(await readFile(
+    new URL("../schemas/wave-manifest.v0.1.schema.json", import.meta.url)
+  ));
+  manifest.finalIntegrator.owner = "owner\nname";
+  assert.notDeepEqual(validateJsonSchema(manifest, schema), []);
+  assert.throws(() => validateWaveManifest(manifest), /single-line/);
+});
+
 test("security rejects unsafe owned surfaces and repository-external CLI inputs", async () => {
   const manifest = await fixture("accepted-three-repository.json");
   manifest.lanes[0].ownedSurfaces = ["../secrets"];

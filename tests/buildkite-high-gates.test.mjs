@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 async function repositoryFile(path) {
   return readFile(new URL(`../${path}`, import.meta.url), "utf8");
@@ -20,6 +26,7 @@ test("Buildkite adds bounded pull-request quality gates without CI cutover", asy
   assert.match(pipeline, /key: "fallow"/);
   assert.match(pipeline, /key: "package"/);
   assert.match(pipeline, /key: "product-validation"/);
+  assert.match(pipeline, /tabellio-git-toolchain\.json/);
   assert.match(pipeline, /^agents:\n  queue: "macos-medium"$/m);
   assert.doesNotMatch(pipeline, /queue: "linux-small"/);
   assert.doesNotMatch(pipeline, /linux-amd64/);
@@ -32,11 +39,12 @@ test("Buildkite adds bounded pull-request quality gates without CI cutover", asy
   assert.doesNotMatch(productValidation, /git show -s --format=%s/);
   assertMatches(productValidation, [
     /BUILDKITE_COMMIT:-HEAD/,
-    /default-branch build/,
+    /default branch/,
     /TABELLIO_BUILD_CONTEXT:-provider/,
     /TABELLIO_BASE_BRANCH:-main/,
     /set -euo pipefail/,
-    /exit 2/,
+    /decision":"not_required"/,
+    /exit 0/,
     /test "\$\(git rev-parse HEAD\^\{commit\}\)"/,
     /git bundle create .*validation-ref\.bundle/,
     /git bundle verify .*validation-ref\.bundle/,
@@ -62,10 +70,16 @@ test("Buildkite adds bounded pull-request quality gates without CI cutover", asy
   assert.match(productValidation, /\.buildkite\/scripts\/verify-git-toolchain\.sh/);
   assert.match(packageCheck, /npm pack --dry-run --json/);
   assert.match(packageCheck, /forgejo\|change-request-provider/);
-  assert.match(gitToolchain, /required_version="2\.50\.1"/);
+  assert.match(gitToolchain, /minimum_version="2\.50\.1"/);
+  assert.match(gitToolchain, /maximum_version="3\.0\.0"/);
   assert.match(gitToolchain, /actual_version="\$\(git version \| awk/);
-  assert.match(gitToolchain, /actual_version.*required_version/);
-  assert.doesNotMatch(gitToolchain, /apt-get|dpkg-query|linux-amd64|uname/);
+  assert.match(gitToolchain, /git bundle create/);
+  assert.match(gitToolchain, /git bundle verify/);
+  assert.match(gitToolchain, /git merge-base --is-ancestor/);
+  assert.match(gitToolchain, /git rev-parse --verify/);
+  assert.match(gitToolchain, /architecture/);
+  assert.match(gitToolchain, /operating_system/);
+  assert.doesNotMatch(gitToolchain, /apt-get|dpkg-query|linux-amd64/);
 });
 
 function assertMatches(value, patterns) {
@@ -78,4 +92,40 @@ test("GitHub merged-head validation remains during Buildkite migration", async (
   assert.match(workflow, /commits\/\$MERGED_COMMIT\/pulls/);
   assert.match(workflow, /pull-requests: read/);
   assert.match(workflow, /scripts\/resolve-merged-checkpoint\.mjs/);
+});
+
+test("Git capability gate accepts the supported range and rejects unsafe bounds", async () => {
+  const script = new URL("../.buildkite/scripts/verify-git-toolchain.sh", import.meta.url);
+  await execFileAsync("bash", [script.pathname, "--check-version", "2.50.1"]);
+  await execFileAsync("bash", [script.pathname, "--check-version", "2.52.0"]);
+  await assert.rejects(
+    execFileAsync("bash", [script.pathname, "--check-version", "2.49.9"]),
+    (error) => error.code === 1 && error.stderr.includes(">=2.50.1 and <3.0.0")
+  );
+  await assert.rejects(
+    execFileAsync("bash", [script.pathname, "--check-version", "3.0.0"]),
+    (error) => error.code === 1 && error.stderr.includes(">=2.50.1 and <3.0.0")
+  );
+});
+
+test("Git capability gate records the actual toolchain and exercised features", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tabellio-git-toolchain-"));
+  const evidence = join(directory, "evidence.json");
+  try {
+    await execFileAsync("bash", [".buildkite/scripts/verify-git-toolchain.sh"], {
+      cwd: new URL("..", import.meta.url),
+      env: {...process.env, TABELLIO_GIT_EVIDENCE_PATH: evidence}
+    });
+    const record = JSON.parse(await readFile(evidence, "utf8"));
+    assert.match(record.gitVersion, /^\d+\.\d+\.\d+$/);
+    assert.match(record.architecture, /^[A-Za-z0-9._-]+$/);
+    assert.match(record.os, /^[A-Za-z0-9._-]+$/);
+    assert.deepEqual(record.capabilities, [
+      "bundle-create-verify",
+      "merge-base-is-ancestor",
+      "rev-parse-commit"
+    ]);
+  } finally {
+    await rm(directory, {recursive: true, force: true});
+  }
 });

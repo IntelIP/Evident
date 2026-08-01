@@ -27,8 +27,8 @@
       "additionalProperties": false,
       "required": ["mappingId", "owner"],
       "properties": {
-        "mappingId": {"type": "string", "minLength": 1, "maxLength": 128},
-        "owner": {"type": "string", "minLength": 1, "maxLength": 200}
+        "mappingId": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\\u0000\\r\\n]+$"},
+        "owner": {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[^\\u0000\\r\\n]+$"}
       }
     },
     "mappings": {
@@ -40,10 +40,10 @@
         "additionalProperties": false,
         "required": ["id", "planeProject", "repository", "taskId"],
         "properties": {
-          "id": {"type": "string", "minLength": 1, "maxLength": 128},
+          "id": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\\u0000\\r\\n]+$"},
           "planeProject": {"type": "string", "pattern": "^[A-Z][A-Z0-9]{1,9}$"},
           "repository": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
-          "taskId": {"type": "string", "minLength": 1, "maxLength": 200}
+          "taskId": {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[^\\u0000\\r\\n]+$"}
         }
       }
     },
@@ -56,17 +56,17 @@
         "additionalProperties": false,
         "required": ["id", "mappingId", "storyId", "state", "baseCommit", "observedBaseCommit", "ownedSurfaces", "dependencies", "wipSlots"],
         "properties": {
-          "id": {"type": "string", "minLength": 1, "maxLength": 128},
-          "mappingId": {"type": "string", "minLength": 1, "maxLength": 128},
+          "id": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\\u0000\\r\\n]+$"},
+          "mappingId": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\\u0000\\r\\n]+$"},
           "storyId": {"type": "string", "pattern": "^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]*$"},
-          "state": {"type": "string", "minLength": 1, "maxLength": 64},
+          "state": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[^\\u0000\\r\\n]+$"},
           "baseCommit": {"type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"},
           "observedBaseCommit": {"type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"},
           "ownedSurfaces": {
             "type": "array",
             "minItems": 1,
             "maxItems": 100,
-            "items": {"type": "string", "minLength": 1, "maxLength": 500}
+            "items": {"type": "string", "minLength": 1, "maxLength": 500, "pattern": "^[^\\u0000\\r\\n]+$"}
           },
           "dependencies": {
             "type": "array",

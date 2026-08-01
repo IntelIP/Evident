@@ -408,7 +408,16 @@ function integer(value, path, minimum, maximum) {
 
 function dateTime(value, path) {
   string(value, path, 64);
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value) || !Number.isFinite(Date.parse(value))) {
+  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?Z$/.exec(value);
+  const parsed = new Date(value);
+  const exact = parts &&
+    parsed.getUTCFullYear() === Number(parts[1]) &&
+    parsed.getUTCMonth() + 1 === Number(parts[2]) &&
+    parsed.getUTCDate() === Number(parts[3]) &&
+    parsed.getUTCHours() === Number(parts[4]) &&
+    parsed.getUTCMinutes() === Number(parts[5]) &&
+    parsed.getUTCSeconds() === Number(parts[6]);
+  if (!Number.isFinite(parsed.getTime()) || !exact) {
     throw new Error(`${path} must be a UTC RFC 3339 timestamp.`);
   }
 }
