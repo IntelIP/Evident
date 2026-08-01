@@ -41,10 +41,12 @@ check_supported_version "$actual_version"
 head_commit="$(git rev-parse --verify 'HEAD^{commit}')"
 git merge-base --is-ancestor "$head_commit" "$head_commit"
 
-temporary_dir="$(mktemp -d)"
-trap 'rm -rf "$temporary_dir"' EXIT
-git bundle create "$temporary_dir/capability.bundle" --all
-git bundle verify "$temporary_dir/capability.bundle" >/dev/null
+(
+  temporary_dir="$(mktemp -d)"
+  trap 'rm -rf "$temporary_dir"' EXIT
+  git bundle create "$temporary_dir/capability.bundle" --all
+  git bundle verify "$temporary_dir/capability.bundle" >/dev/null
+)
 
 architecture="$(uname -m)"
 operating_system="$(uname -s)"

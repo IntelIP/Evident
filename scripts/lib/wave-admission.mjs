@@ -410,6 +410,7 @@ function dateTime(value, path) {
   string(value, path, 64);
   const inputSecond = value.replace(/\.\d+Z$/, "Z");
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value)) invalidDateTime(path);
+  if (value.startsWith("0000-")) invalidDateTime(path);
   if (canonicalSecond(value) !== inputSecond) invalidDateTime(path);
 }
 

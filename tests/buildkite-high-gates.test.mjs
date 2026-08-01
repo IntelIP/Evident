@@ -12,6 +12,11 @@ async function repositoryFile(path) {
   return readFile(new URL(`../${path}`, import.meta.url), "utf8");
 }
 
+async function hostGitVersion() {
+  const {stdout} = await execFileAsync("git", ["version"]);
+  return stdout.match(/^git version (\d+\.\d+\.\d+)/)?.[1] ?? "";
+}
+
 test("Buildkite adds bounded pull-request quality gates without CI cutover", async () => {
   const [pipeline, productValidation, repositoryCheck, fallow, packageCheck, gitToolchain] = await Promise.all([
     repositoryFile(".buildkite/pipeline.yml"),
@@ -108,11 +113,29 @@ test("Git capability gate accepts the supported range and rejects unsafe bounds"
   );
 });
 
-test("Git capability gate records the actual toolchain and exercised features", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "tabellio-git-toolchain-"));
-  const evidence = join(directory, "evidence.json");
+test("sourced Git capability gate records features and restores caller cleanup state", async (context) => {
+  const script = new URL("../.buildkite/scripts/verify-git-toolchain.sh", import.meta.url);
+  const hostVersion = await hostGitVersion();
   try {
-    await execFileAsync("bash", [".buildkite/scripts/verify-git-toolchain.sh"], {
+    await execFileAsync("bash", [script.pathname, "--check-version", hostVersion]);
+  } catch {
+    context.skip(`host Git ${hostVersion} is outside the supported runtime range`);
+    return;
+  }
+  const directory = await mkdtemp(join(tmpdir(), "tabellio-git-source-"));
+  const evidence = join(directory, "evidence.json");
+  const sourceCheck = [
+    "temporary_dir=caller-owned",
+    "trap 'true' EXIT",
+    "before=\"$(trap -p EXIT)\"",
+    `. ${JSON.stringify(script.pathname)}`,
+    'test "$temporary_dir" = caller-owned',
+    'test "$before" = "$(trap -p EXIT)"',
+    `test -f ${JSON.stringify(evidence)}`,
+    `test -z "$(find ${JSON.stringify(directory)} -mindepth 1 -type d -print -quit)"`
+  ].join("\n");
+  try {
+    await execFileAsync("bash", ["-c", sourceCheck], {
       cwd: new URL("..", import.meta.url),
       env: {...process.env, TABELLIO_GIT_EVIDENCE_PATH: evidence}
     });

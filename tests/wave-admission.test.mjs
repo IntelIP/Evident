@@ -119,6 +119,16 @@ test("schema and runtime reject normalized invalid capture dates", async () => {
   assert.throws(() => validateWaveManifest(manifest), /UTC RFC 3339/);
 });
 
+test("schema and runtime reject year-zero capture timestamps", async () => {
+  const manifest = await fixture("accepted-three-repository.json");
+  const schema = JSON.parse(await readFile(
+    new URL("../schemas/wave-manifest.v0.1.schema.json", import.meta.url)
+  ));
+  manifest.capturedAt = "0000-01-01T00:00:00Z";
+  assert.notDeepEqual(validateJsonSchema(manifest, schema), []);
+  assert.throws(() => validateWaveManifest(manifest), /UTC RFC 3339/);
+});
+
 test("schema and runtime reject multiline bounded strings", async () => {
   const manifest = await fixture("accepted-three-repository.json");
   const schema = JSON.parse(await readFile(
