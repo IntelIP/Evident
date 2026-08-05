@@ -29,6 +29,7 @@ steps:
           image: "node:24-alpine3.23@sha256:244cc2b53f46f9e876304391d17682b0ddae9ac33491f4857e25e35a36ba7995"
           chown: false
           environment:
+            - "TABELLIO_SELF_HOSTED_INSTALLER_SHA256"
             - "BUILDKITE_BRANCH"
             - "BUILDKITE_COMMIT"
             - "BUILDKITE_PIPELINE_DEFAULT_BRANCH"
