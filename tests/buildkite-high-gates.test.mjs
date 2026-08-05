@@ -32,7 +32,11 @@ test("Buildkite adds bounded pull-request quality gates without CI cutover", asy
   assert.match(pipeline, /key: "package"/);
   assert.match(pipeline, /key: "product-validation"/);
   assert.match(pipeline, /tabellio-git-toolchain\.json/);
-  assert.match(pipeline, /^agents:\n  queue: "macos-medium"$/m);
+  assert.match(pipeline, /^agents:\n  queue: "docker-local-pilot"$/m);
+  assert.match(pipeline, /node:24-alpine3\.23@sha256:[a-f0-9]{64}/);
+  assert.match(pipeline, /concurrency_group: "intelip\/current-projects\/self-hosted"/);
+  assert.match(pipeline, /manual:\n\s+allowed: false/);
+  assert.doesNotMatch(pipeline, /queue: "macos-medium"/);
   assert.doesNotMatch(pipeline, /queue: "linux-small"/);
   assert.doesNotMatch(pipeline, /linux-amd64/);
   assert.doesNotMatch(pipeline, /build-modern-git/);

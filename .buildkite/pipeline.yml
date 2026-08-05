@@ -1,59 +1,107 @@
 env:
   CI: "1"
   NO_COLOR: "1"
+  TABELLIO_SELF_HOSTED_INSTALLER_SHA256: "7ebceec0be78a039fce502358a0ce7ad5b6ba8048bb03a3a11ae3e62243f0255"
 
 agents:
-  queue: "macos-medium"
+  queue: "docker-local-pilot"
 
 steps:
   - label: ":git: Supported Git"
     key: "git-toolchain"
-    command: "bash .buildkite/scripts/verify-git-toolchain.sh"
-    timeout_in_minutes: 2
+    command: |
+      installer=".buildkite/scripts/install-self-hosted-ci.sh"
+      printf '%s  %s\n' "$$TABELLIO_SELF_HOSTED_INSTALLER_SHA256" "$$installer" | sha256sum -c
+      sh "$$installer"
+      bash .buildkite/scripts/verify-git-toolchain.sh
+    timeout_in_minutes: 5
+    cancel_on_build_failing: true
+    concurrency: 1
+    concurrency_group: "intelip/current-projects/self-hosted"
+    retry: &no-retry
+      manual:
+        allowed: false
+        reason: "Create a new exact-SHA lease after local diagnosis."
     artifact_paths:
       - "tabellio-git-toolchain.json"
+    plugins: &docker-plugin
+      - docker#ae0bd411c9aa2dcba4194717e2d3a6c70f51ce2d:
+          image: "node:24-alpine3.23@sha256:244cc2b53f46f9e876304391d17682b0ddae9ac33491f4857e25e35a36ba7995"
+          chown: false
+          environment:
+            - "BUILDKITE_BRANCH"
+            - "BUILDKITE_COMMIT"
+            - "BUILDKITE_PIPELINE_DEFAULT_BRANCH"
+            - "BUILDKITE_PULL_REQUEST"
+            - "BUILDKITE_PULL_REQUEST_BASE_BRANCH"
+            - "TABELLIO_BASE_BRANCH"
+            - "TABELLIO_BUILD_CONTEXT"
 
   - label: ":test_tube: Repository check"
     key: "repository-check"
-    command: "bash .buildkite/scripts/tests.sh"
+    command: |
+      installer=".buildkite/scripts/install-self-hosted-ci.sh"
+      printf '%s  %s\n' "$$TABELLIO_SELF_HOSTED_INSTALLER_SHA256" "$$installer" | sha256sum -c
+      sh "$$installer"
+      bash .buildkite/scripts/tests.sh
     depends_on: "git-toolchain"
-    timeout_in_minutes: 10
+    timeout_in_minutes: 20
+    cancel_on_build_failing: true
+    concurrency: 1
+    concurrency_group: "intelip/current-projects/self-hosted"
+    retry: *no-retry
     artifact_paths:
       - "tabellio-pr-evidence.json"
-    plugins:
-      - mise#v1.1.4:
-          version: "2026.2.11"
+    plugins: *docker-plugin
 
   - label: ":mag: Fallow changed-code"
     key: "fallow"
-    command: "bash .buildkite/scripts/fallow.sh"
+    command: |
+      installer=".buildkite/scripts/install-self-hosted-ci.sh"
+      printf '%s  %s\n' "$$TABELLIO_SELF_HOSTED_INSTALLER_SHA256" "$$installer" | sha256sum -c
+      sh "$$installer"
+      bash .buildkite/scripts/fallow.sh
     depends_on: "git-toolchain"
-    timeout_in_minutes: 10
+    timeout_in_minutes: 15
+    cancel_on_build_failing: true
+    concurrency: 1
+    concurrency_group: "intelip/current-projects/self-hosted"
+    retry: *no-retry
     artifact_paths:
       - "fallow-audit.json"
-    plugins:
-      - mise#v1.1.4:
-          version: "2026.2.11"
+    plugins: *docker-plugin
 
   - label: ":package: Package dry-run"
     key: "package"
-    command: "bash .buildkite/scripts/package.sh"
+    command: |
+      installer=".buildkite/scripts/install-self-hosted-ci.sh"
+      printf '%s  %s\n' "$$TABELLIO_SELF_HOSTED_INSTALLER_SHA256" "$$installer" | sha256sum -c
+      sh "$$installer"
+      bash .buildkite/scripts/package.sh
     timeout_in_minutes: 10
+    cancel_on_build_failing: true
+    concurrency: 1
+    concurrency_group: "intelip/current-projects/self-hosted"
+    retry: *no-retry
     artifact_paths:
       - "package-dry-run.json"
-    plugins:
-      - mise#v1.1.4:
-          version: "2026.2.11"
+    plugins: *docker-plugin
 
   - label: ":shield: Product validation"
     key: "product-validation"
-    command: "bash .buildkite/scripts/product-validation.sh"
+    command: |
+      installer=".buildkite/scripts/install-self-hosted-ci.sh"
+      printf '%s  %s\n' "$$TABELLIO_SELF_HOSTED_INSTALLER_SHA256" "$$installer" | sha256sum -c
+      sh "$$installer"
+      bash .buildkite/scripts/product-validation.sh
     depends_on: "git-toolchain"
-    timeout_in_minutes: 50
+    timeout_in_minutes: 60
+    cancel_on_build_failing: true
+    concurrency: 1
+    concurrency_group: "intelip/current-projects/self-hosted"
+    retry: *no-retry
     artifact_paths:
       - "tabellio-validation-result.json"
       - ".artifacts/tabellio/validation-ref.bundle"
       - ".artifacts/tabellio/validation-ref.sha"
-    plugins:
-      - mise#v1.1.4:
-          version: "2026.2.11"
+    plugins: *docker-plugin

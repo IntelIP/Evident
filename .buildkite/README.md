@@ -1,41 +1,29 @@
-# Tabellio Buildkite CI
+# Tabellio self-hosted Buildkite CI
 
-Buildkite runs repository checks on pull requests and the default branch.
-Pull-request builds also run changed-code Fallow, package inspection, and
-exact-head product validation.
-OS-neutral gates run on the included `macos-medium` M4 queue. Each Git-using
-step fails closed unless Git is at least 2.50.1 and below 3.0.0 and the exact
-bundle, ancestry, and commit-resolution capabilities used by Tabellio pass.
-The gate records the actual Git version, architecture, and OS as hosted
-evidence; CI does not build or download an architecture-specific Git artifact.
-Linux queues are reserved for an explicit published-artifact compatibility
-contract and are not used by this pipeline.
-The product-validation step exports the Git validation ref as a portable bundle
-instead of treating an internal `.git` ref as a workspace artifact.
+Buildkite remains the control plane. A locally managed agent executes every
+substantive step inside a pinned Node 24 Alpine container on the shared
+current-project queue.
 
-GitHub remains the source, pull-request, review, and merge authority. Existing
-GitHub Actions remain active for merged-head product validation and quality
-checks until Buildkite proves equivalent commit-to-pull-request association.
+The container installs and verifies Git against Tabellio's supported contract
+without consuming hosted M4 capacity. Every run is manual, exact-commit,
+lease-gated, limited to one current-project job at a time, and has manual
+retries disabled. The queue stays paused outside an explicitly approved run.
+
+GitHub remains source, review, merge, and merged-head validation authority.
+No pipeline step deploys, publishes, queries a paid provider, or receives
+production credentials.
 
 ## Local checks
 
 ```bash
-bk pipeline validate
+bk pipeline validate --file .buildkite/pipeline.yml
 npm run check
 ```
 
-When the GitHub integration does not emit a synchronized pull-request build,
-start an explicit exact-head preflight:
+Explicit Buildkite builds must set:
 
-```bash
-bk build create -y \
-  -p intelip/tabellio \
-  -b codex/example \
-  -c <exact-sha> \
-  -e TABELLIO_BUILD_CONTEXT=preflight \
-  -e TABELLIO_BASE_BRANCH=main
+```text
+INTELIP_CI_LEASE_ID=<approved-lease>
+TABELLIO_BUILD_CONTEXT=preflight
+TABELLIO_BASE_BRANCH=main
 ```
-
-No Buildkite step deploys, publishes, or receives production provider
-credentials. Pull requests from third-party forks remain disabled during the
-migration.
