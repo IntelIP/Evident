@@ -93,8 +93,28 @@ isolated cluster:
 node scripts/demo-provenance.mjs --verify-storage-tests true --out /tmp/tabellio-demo.json
 ```
 
+`review` returns the full current candidate, distinct review and security verdicts,
+actions for failed or blocked evidence, and matching GitHub status payloads. Known
+Git and provider records receive source links; other records retain their exact
+source identifiers and lineage digest. Load verified security finding locations
+with `--security-input <receipt.json> --policy-digest <expected-digest>`.
+`--report-url` supplies a credential-free report link for both status contexts.
+
+`review-intent` prepares an immutable publication intent from the same scoped
+lineage query. `publish-review` accepts `--intent-input` and `--approval-input`,
+uses `GH_TOKEN`, rechecks the current candidate and GitHub origin,
+and publishes separate `Tabellio / provenance review` and
+`Tabellio / provenance security` contexts. The approval uses
+`tabellio-provenance-status-approval/v0.1` with `id`, `intentDigest`, `approved: true`,
+`approvedBy`, `approvedAt`, `expiresAt`, and `reason`; its lifetime is at most one
+hour. Publication receipts report delivery separately from review verdicts.
+Each approval is reserved in `refs/tabellio/provenance-statuses` before delivery;
+repeated requests reuse the receipt, and uncertain attempts require inspection
+before a new approval. The local demo exercises this flow through a fake GitHub
+transport and compares the delivered states with the CLI result.
+
 The `tabellio-provenance` CLI supports `capture`, `import`, `import-sources`, `replay`, `replay-sources`,
-`show`, `review`, and `packet`. `import-sources` normalizes a bundle of Plane,
+`show`, `review`, `review-intent`, `publish-review`, and `packet`. `import-sources` normalizes a bundle of Plane,
 Entire, GitHub, and Buildkite snapshots and captures Git directly from `--repo`.
 Readers preserve healthy sources while reporting authentication, permission,
 missing-record, outage, and malformed-input failures as blocked. The demo imports
@@ -117,8 +137,8 @@ never an inherited application's `DATABASE_URL`.
 
 The capture and retention boundary lives in `tabellio.data-boundary.json`.
 Raw prompts, transcripts, provider bodies, and credentials are excluded. The
-remaining rebuild work includes independent security evidence,
-GitHub presentation, and the final release decision. No cloud provisioning,
+remaining release work includes failure/recovery acceptance and the explicit
+release decision. No cloud provisioning,
 automatic publication, deployment, or learning is introduced.
 
 The native engine runs through the installed `git` executable. It never constructs shell commands.
