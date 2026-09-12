@@ -9,12 +9,15 @@ import { LocalProvenanceStore } from "./lib/local-provenance-store.mjs";
 import { captureCandidate } from "./lib/provenance-ledger.mjs";
 import { sampleObservations } from "../examples/provenance/sample.mjs";
 import { sampleSourceBundle } from "../examples/provenance/sources.mjs";
+import { runSecurityReview, SECURITY_CHECKS } from "./lib/provenance-security.mjs";
+import { SECURITY_POLICY_DIGEST } from "./lib/provenance-security-scanners.mjs";
 import { parseOptionPairs, writeJsonOutput } from "./lib/cli-options.mjs";
 
 const execute = promisify(execFile);
 const options = parseOptionPairs(process.argv.slice(2));
-if (Object.keys(options).some((key) => !["out", "verifyStorageTests"].includes(key))) throw new Error("Unsupported demo option.");
+if (Object.keys(options).some((key) => !["out", "verifyStorageTests", "verifySecurityScanners", "gitleaks"].includes(key))) throw new Error("Unsupported demo option.");
 if (options.verifyStorageTests !== undefined && options.verifyStorageTests !== "true") throw new Error("--verify-storage-tests accepts true.");
+if (options.verifySecurityScanners !== undefined && options.verifySecurityScanners !== "true") throw new Error("--verify-security-scanners accepts true.");
 const startedAt = Date.now();
 const root = await mkdtemp(join(tmpdir(), "tbl-"));
 // Unix socket names have a small OS limit; validation TMPDIR can be much longer.
@@ -44,8 +47,10 @@ try {
   if (options.verifyStorageTests === "true") {
     const testFile = fileURLToPath(new URL("../tests/local-provenance-store.test.mjs", import.meta.url));
     const lineageTests = fileURLToPath(new URL("../tests/provenance-ledger.test.mjs", import.meta.url));
-    const sourceTests = fileURLToPath(new URL("../tests/provenance-sources.test.mjs", import.meta.url));
-    await execute(process.execPath, ["--test", testFile, lineageTests, sourceTests], {
+  const sourceTests = fileURLToPath(new URL("../tests/provenance-sources.test.mjs", import.meta.url));
+  const securityTests = fileURLToPath(new URL("../tests/provenance-security.test.mjs", import.meta.url));
+  const scannerTests = fileURLToPath(new URL("../tests/provenance-security-scanners.test.mjs", import.meta.url));
+  await execute(process.execPath, ["--test", testFile, lineageTests, sourceTests, securityTests, scannerTests], {
       cwd: root, env: { ...env, TABELLIO_REQUIRE_POSTGRES: "1", TABELLIO_TEST_PG_SOCKET: socketRoot, TABELLIO_TEST_PG_USER: "tabellio" },
       timeout: 60000, maxBuffer: 2 * 1024 * 1024,
     });
@@ -84,6 +89,24 @@ try {
   if (sourceImport.status !== "stored" || !sourceImport.sources.every((source) => source.status === "present")) throw new Error("Source fixture import failed.");
   const sourcePacket = await invokeBlocked("packet", "--repo", repo, "--database-url", databaseUrl, "--digest", sourceImport.lineage.digest, "--project-key", "SAMPLE", "--repository-id", "sample/repository", "--now", now);
   if (sourcePacket.status !== "blocked" || sourcePacket.reasons.length !== 1 || sourcePacket.reasons[0].kind !== "security") throw new Error("Source fixture must block only on missing independent security review.");
+  // Synthetic readers exercise the real CLI/storage boundary, not scanner effectiveness.
+  const policyDigest = options.verifySecurityScanners ? SECURITY_POLICY_DIGEST : "f".repeat(64);
+  const securityChecks = Object.fromEntries(SECURITY_CHECKS.map((category) => [category, async ({ candidateId, packetDigest, policyDigest }) => ({ candidateId, packetDigest, policyDigest, status: "passed", findings: [] })]));
+  const lineagePath = join(root, "source-lineage.json");
+  await writeFile(lineagePath, JSON.stringify(sourceImport.lineage));
+  const securityReview = options.verifySecurityScanners
+    ? await invoke("security", "--repo", repo, "--input", lineagePath, "--now", now, "--gitleaks", options.gitleaks ?? "gitleaks")
+    : await runSecurityReview({ lineage: sourceImport.lineage, now, policyDigest, checks: securityChecks });
+  const securityPath = join(root, "security.json");
+  await writeFile(securityPath, JSON.stringify(securityReview));
+  const securityArgs = ["import-security", "--repo", repo, "--database-url", databaseUrl, "--digest", sourceImport.lineage.digest, "--project-key", "SAMPLE", "--repository-id", "sample/repository", "--now", now, "--policy-digest", policyDigest, "--input", securityPath];
+  const securityImport = await invoke(...securityArgs);
+  const securedPacket = await invoke("packet", "--repo", repo, "--database-url", databaseUrl, "--digest", securityImport.digest, "--project-key", "SAMPLE", "--repository-id", "sample/repository", "--now", now);
+  if (securityImport.status !== "passed" || securedPacket.status !== "passed") throw new Error("Synthetic security receipt import failed.");
+  const unavailableSecurity = await runSecurityReview({ lineage: sourceImport.lineage, now, policyDigest, checks: {} });
+  await writeFile(securityPath, JSON.stringify(unavailableSecurity));
+  const blockedSecurityImport = await invokeBlocked(...securityArgs);
+  if (blockedSecurityImport.status !== "blocked") throw new Error("Missing security readers must block.");
   const imported = await invoke("import", "--database-url", databaseUrl, "--input", inputPath);
   const query = ["--database-url", databaseUrl, "--digest", imported.digest, "--project-key", "SAMPLE", "--repository-id", "sample/repository"];
   const reviewArgs = [...query, "--repo", repo, "--now", now];
@@ -136,7 +159,7 @@ try {
     moved = JSON.parse(error.stdout);
     if (moved.status !== "blocked" || !moved.reasons.some((reason) => reason.state === "stale")) throw new Error("Moved base did not block readiness.");
   }
-  receipt = { status: "passed", candidate, lineageDigest: imported.digest, checks: { cliImport: "passed", sourceImport: sourceImport.status, sourceReplay: "passed", changedSourceReplay: changedSource.status, missingSourceReplay: missingSource.status, gitOutage: unavailableGit.status, missingSecurity: sourcePacket.status, review: initial.status, postgresServerRestart: "passed", deleteAndReplay: "passed", safePacket: packet.status, movedBase: moved.status }, sources: { git: "real temporary sample repository", plane: "synthetic fixture", entire: "synthetic fixture", github: "synthetic fixture", buildkite: "synthetic fixture", security: "synthetic fixture" }, cost: { usd: 0, modelCalls: 0, cloudCalls: 0 } };
+  receipt = { status: "passed", candidate, lineageDigest: imported.digest, checks: { cliImport: "passed", sourceImport: sourceImport.status, sourceReplay: "passed", changedSourceReplay: changedSource.status, missingSourceReplay: missingSource.status, gitOutage: unavailableGit.status, missingSecurity: sourcePacket.status, securityImport: securityImport.status, unavailableSecurityImport: blockedSecurityImport.status, review: initial.status, postgresServerRestart: "passed", deleteAndReplay: "passed", safePacket: packet.status, movedBase: moved.status }, sources: { git: "real temporary sample repository", plane: "synthetic fixture", entire: "synthetic fixture", github: "synthetic fixture", buildkite: "synthetic fixture", security: options.verifySecurityScanners ? "real bounded scanners over immutable Git content" : "synthetic fixture" }, cost: { usd: 0, modelCalls: 0, cloudCalls: 0 } };
 } catch (error) {
   const postgresLog = await readFile(join(root, "postgres.log"), "utf8").catch(() => "");
   const socketPathFailure = /Unix-domain socket path.*too long/i.test(postgresLog);

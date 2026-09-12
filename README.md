@@ -54,6 +54,30 @@ Git and PostgreSQL operations are real; Plane, Entire, GitHub, Buildkite, and
 security observations in this sample are explicitly synthetic. This is not a
 live-provider or security-scanner certification.
 
+To replace the sample security observation with real bounded checks, install
+Gitleaks 8.30.1 and ast-grep 0.45.1 on `PATH`, then run:
+
+```bash
+node scripts/demo-provenance.mjs --verify-security-scanners true
+```
+
+The scanner reads immutable Git blobs without running candidate code. It uses
+Gitleaks defaults and explicit JavaScript/TypeScript rules for unverified JWT
+decoding, unsigned JWT configuration, disabled TLS verification, and dynamic
+`eval`. Candidate ignore files and suppression comments cannot grant a pass.
+Insecure HTTP dependency references fail; other declared npm dependencies remain
+blocked pending vulnerability evidence. These checks cover the listed rules;
+they do not establish the absence of all authorization or dependency defects.
+
+`tabellio-provenance security --input <lineage.json> --repo <repo> --now <time>`
+produces a separate security receipt. `import-security` accepts that receipt with
+the scoped lineage query, current repository candidate, and expected
+`--policy-digest`. It binds the receipt to the same safe packet and candidate,
+rejects modified receipts, and preserves failed or unavailable checks as blocking
+evidence. Findings contain rule IDs, severity, file locations, and content
+digests; matched secrets and source snippets are omitted. The findings contract
+is `schemas/provenance-security-review.schema.json`.
+
 For development validation, include PostgreSQL integration tests in that same
 isolated cluster:
 
