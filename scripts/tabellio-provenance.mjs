@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { parseCommandOptions, requireOptions, writeJsonOutput } from "./lib/cli-options.mjs";
 import { LocalProvenanceStore } from "./lib/local-provenance-store.mjs";
 import { assembleLineage, buildReviewPacket, captureCandidate, evaluateLineage, verifyLineage } from "./lib/provenance-ledger.mjs";
+import { captureGitSource, collectProvenanceSources } from "./lib/provenance-sources.mjs";
 
 main().catch(() => {
   // Provider content and database errors must not escape through CLI diagnostics.
@@ -20,12 +21,17 @@ async function main() {
   const query = ["databaseUrl", "digest", "projectKey", "repositoryId"];
   const options = parseCommandOptions(process.argv.slice(2), {
     capture: ["repo", "projectKey", "repositoryId", "base", "head", "out"],
+    "import-sources": ["input", "repo", "databaseUrl", "now", "out"],
     import: ["input", "databaseUrl", "out"],
     replay: ["input", "databaseUrl", "out"],
     show: [...query, "out"],
     review: [...query, "repo", "base", "head", "now", "out"],
     packet: [...query, "repo", "base", "head", "now", "out"],
   });
+  if (options.command === "import-sources") {
+    await importSources(options);
+    return;
+  }
   if (options.command === "capture") {
     requireOptions(options, ["repo", "projectKey", "repositoryId"], "capture");
     await writeJsonOutput(await captureCandidate(options), options.out);
@@ -58,4 +64,18 @@ async function main() {
   const result = options.command === "packet" ? buildReviewPacket(lineage, evaluation) : evaluateLineage(lineage, evaluation);
   await writeJsonOutput(result, options.out);
   if (result.status !== "passed") process.exitCode = 1;
+}
+
+async function importSources(options) {
+  requireOptions(options, ["input", "repo", "databaseUrl"], "import-sources");
+  const input = await readInput(options.input);
+  const snapshots = { ...input.snapshots, git: await captureGitSource({ repo: options.repo, candidate: input.candidate, capturedAt: options.now }) };
+  const readers = Object.fromEntries(Object.entries(snapshots).map(([source, snapshot]) => [source, async () => snapshot]));
+  const result = await collectProvenanceSources({ candidate: input.candidate, selection: input.selection, readers, now: options.now });
+  const store = new LocalProvenanceStore({ databaseUrl: options.databaseUrl });
+  await store.migrate();
+  await store.putLineage(result.lineage);
+  const status = result.sources.every((source) => source.status === "present") ? "stored" : "blocked";
+  await writeJsonOutput({ status, ...result }, options.out);
+  if (status === "blocked") process.exitCode = 1;
 }
