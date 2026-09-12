@@ -137,6 +137,11 @@ test("local provenance enforces metadata boundaries without PostgreSQL", functio
     () => normalizeRecord({ ...record, sourceId: "contains\ud800surrogate" }),
     /unsupported PostgreSQL text/,
   );
+  for (const invalidText of ["trailing\ud800", "\udfff", "\ud800\ud800"]) {
+    assert.throws(() => normalizeRecord({ ...record, sourceId: invalidText }), /unsupported PostgreSQL text/);
+    assert.throws(() => normalizeRecord({ ...record, payload: { note: invalidText } }), /unsupported PostgreSQL text/);
+  }
+  assert.equal(normalizeRecord({ ...record, payload: { note: "valid\ud83d\ude00" } }).payload.note, "valid\ud83d\ude00");
   for (const pullRequestNumber of [0, 2_147_483_648]) {
     assert.throws(
       () => normalizeRecord({ ...record, pullRequestNumber }),

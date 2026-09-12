@@ -191,7 +191,7 @@ function hasUnsupportedPostgresText(value) {
     const code = value.charCodeAt(index);
     if (code >= 0xD800 && code <= 0xDBFF) {
       const next = value.charCodeAt(index + 1);
-      if (next < 0xDC00 || next > 0xDFFF) return true;
+      if (!(next >= 0xDC00 && next <= 0xDFFF)) return true;
       index += 1;
     } else if (code >= 0xDC00 && code <= 0xDFFF) {
       return true;
