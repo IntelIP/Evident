@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -8,11 +8,46 @@ import test from "node:test";
 import { assembleLineage, buildReviewPacket, candidateIdentity, captureCandidate, evaluateLineage, verifyLineage } from "../scripts/lib/provenance-ledger.mjs";
 import { sampleObservations } from "../examples/provenance/sample.mjs";
 import { captureGitSource } from "../scripts/lib/provenance-sources.mjs";
+import { validateJsonSchema } from "../scripts/lib/json-schema-validator.mjs";
 
 const execute = promisify(execFile);
 const candidate = candidateIdentity({ projectKey: "SAMPLE", repositoryId: "sample/repository", baseCommit: "a".repeat(40), headCommit: "b".repeat(40), mergeBase: "a".repeat(40) });
 const now = "2026-09-12T12:00:01Z";
 const input = () => ({ candidate, observations: sampleObservations(candidate) });
+
+test("review packet schema accepts generated packets and rejects unsafe envelopes", async () => {
+  const schema = JSON.parse(await readFile(new URL("../schemas/provenance-review-packet.schema.json", import.meta.url), "utf8"));
+  const complete = buildReviewPacket(assembleLineage(input()), { now });
+  const missing = buildReviewPacket(assembleLineage({ candidate, observations: [] }), { now });
+  for (const packet of [complete, missing]) assert.deepEqual(validateJsonSchema(packet, schema), []);
+  assert.ok(missing.reasons.length > 0);
+  for (const evidenceId of [null, "a".repeat(64)]) {
+    const packet = structuredClone(missing);
+    packet.reasons[0].evidenceId = evidenceId;
+    assert.deepEqual(validateJsonSchema(packet, schema), []);
+  }
+  const mutations = [
+    (packet) => { packet.authoritative = true; },
+    (packet) => { packet.privatePayload = "private"; },
+    (packet) => { delete packet.digest; },
+    (packet) => { packet.candidate.headCommit = "main"; },
+    (packet) => { packet.candidate.id = "invalid"; },
+    (packet) => { packet.status = "approved"; },
+    (packet) => { packet.reasons[0].evidenceId = "invalid"; },
+    (packet) => { packet.reasons[0].evidenceId = 7; },
+    (packet) => { packet.reasons[0].privatePayload = "private"; },
+    (packet) => { packet.redactions = []; },
+  ];
+  for (const mutate of mutations) {
+    const packet = structuredClone(missing);
+    mutate(packet);
+    assert.notDeepEqual(validateJsonSchema(packet, schema), []);
+  }
+  const invalidDate = structuredClone(complete);
+  assert.ok(invalidDate.facts.length > 0);
+  invalidDate.facts[0].observedAt = "2026-02-30T12:00:00Z";
+  assert.notDeepEqual(validateJsonSchema(invalidDate, schema), []);
+});
 
 test("complete lineage is deterministic under reordered and duplicate input", () => {
   const a = assembleLineage(input());

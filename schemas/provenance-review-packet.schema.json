@@ -15,7 +15,7 @@
     "status": { "enum": ["passed", "failed", "blocked"] },
     "reasons": { "type": "array", "items": { "$ref": "#/$defs/reason" } },
     "facts": { "type": "array", "maxItems": 256, "items": { "$ref": "#/$defs/fact" } },
-    "redactions": { "const": ["Source payloads, raw content, and private checkpoint metadata are omitted."] }
+    "redactions": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "const": "Source payloads, raw content, and private checkpoint metadata are omitted." } }
   },
   "$defs": {
     "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
@@ -48,7 +48,7 @@
         "state": { "enum": ["failed", "missing", "stale", "conflicting", "inferred", "blocked"] },
         "kind": { "enum": ["candidate", "task", "run", "commit", "checkpoint", "pull_request", "validation", "review", "security"] },
         "message": { "$ref": "#/$defs/text" },
-        "evidenceId": { "anyOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }] }
+        "evidenceId": { "oneOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }] }
       }
     }
   }
