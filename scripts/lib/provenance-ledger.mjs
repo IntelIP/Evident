@@ -162,6 +162,8 @@ export function buildReviewPacket(lineage, options) {
     reasons: result.reasons, facts,
     redactions: ["Source payloads, raw content, and private checkpoint metadata are omitted."],
   };
-  if (Buffer.byteLength(JSON.stringify(packet)) > 65536) throw new Error("Review packet exceeds 65536 bytes; narrow the evidence set.");
-  return { ...packet, digest: digest(packet) };
+  const envelope = { ...packet, digest: digest(packet) };
+  // Include the CLI's two-space formatting and final newline in the wire limit.
+  if (Buffer.byteLength(`${JSON.stringify(envelope, null, 2)}\n`) > 65536) throw new Error("Review packet exceeds 65536 bytes; narrow the evidence set.");
+  return envelope;
 }

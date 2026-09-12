@@ -81,7 +81,7 @@ test("review packet excludes payloads and foreign candidate facts; credentials a
   assert.throws(() => assembleLineage(data), /forbidden/);
 });
 
-test("sample Git repository binds real base/head/merge-base and rejects moved base", async (t) => {
+test("sample Git repository binds real candidates and rejects moved refs and unrelated histories", async (t) => {
   const repo = await mkdtemp(join(tmpdir(), "tabellio-provenance-sample-"));
   t.after(() => rm(repo, { recursive: true, force: true }));
   const git = (...args) => execute("git", ["-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", ...args], { cwd: repo, env: { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_AUTHOR_NAME: "Sample", GIT_AUTHOR_EMAIL: "sample@example.invalid", GIT_COMMITTER_NAME: "Sample", GIT_COMMITTER_EMAIL: "sample@example.invalid" } });
@@ -106,4 +106,36 @@ test("sample Git repository binds real base/head/merge-base and rejects moved ba
   await git("branch", "-f", "main", first.headCommit);
   const moved = await captureCandidate({ repo, projectKey: "SAMPLE", repositoryId: "sample/repository" });
   assert.equal(evaluateLineage(lineage, { candidate: moved, now }).status, "blocked");
+  await git("commit", "--allow-empty", "-m", "Move candidate head");
+  const changedHead = await captureCandidate({ repo, projectKey: "SAMPLE", repositoryId: "sample/repository" });
+  assert.notEqual(changedHead.headCommit, first.headCommit);
+  assert.equal(evaluateLineage(lineage, { candidate: changedHead, now }).status, "blocked");
+  assert.equal(buildReviewPacket(lineage, { candidate: changedHead, now }).facts.length, 0);
+  await git("checkout", "--orphan", "unrelated-history");
+  await git("commit", "-m", "Create unrelated root");
+  await assert.rejects(captureCandidate({ repo, projectKey: "SAMPLE", repositoryId: "sample/repository" }));
+  await assert.rejects(captureCandidate({ repo, projectKey: "SAMPLE", repositoryId: "sample/repository", head: "missing-ref" }));
+  await git("branch", "-f", "sample-change", first.baseCommit);
+  const rewrittenRef = await captureCandidate({ repo, projectKey: "SAMPLE", repositoryId: "sample/repository", head: "sample-change" });
+  assert.notEqual(rewrittenRef.id, first.id);
+  assert.equal(evaluateLineage(lineage, { candidate: rewrittenRef, now }).status, "blocked");
+});
+test("packet byte limit includes integrity digest and rejects one byte beyond the boundary", () => {
+  const data = input();
+  const extras = Array.from({ length: 100 }, (_, index) => ({ ...data.observations[0], sourceId: `extra-${index}`, metadata: {} }));
+  data.observations.push(...extras);
+  const packet = () => buildReviewPacket(assembleLineage(data), { now });
+  let remaining = 65536 - Buffer.byteLength(`${JSON.stringify(packet(), null, 2)}\n`);
+  for (const item of extras) {
+    const added = Math.min(512 - item.sourceId.length, remaining);
+    item.sourceId += "x".repeat(added);
+    remaining -= added;
+  }
+  assert.equal(remaining, 0);
+  assert.equal(Buffer.byteLength(`${JSON.stringify(packet(), null, 2)}\n`), 65536);
+  extras.find((item) => item.sourceId.length < 512).sourceId += "x";
+  assert.throws(packet, /exceeds 65536 bytes/);
+  const unicode = input();
+  unicode.observations.push(...Array.from({ length: 60 }, (_, index) => ({ ...unicode.observations[0], sourceId: `${index}-${"é".repeat(500)}`, metadata: {} })));
+  assert.throws(() => buildReviewPacket(assembleLineage(unicode), { now }), /exceeds 65536 bytes/);
 });
