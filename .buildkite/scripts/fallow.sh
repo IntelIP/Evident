@@ -11,6 +11,7 @@ fi
 
 base_branch="${BUILDKITE_PULL_REQUEST_BASE_BRANCH:-${TABELLIO_BASE_BRANCH:-main}}"
 git fetch --no-tags origin "+refs/heads/${base_branch}:refs/remotes/origin/${base_branch}"
+. .buildkite/scripts/security-tools.sh
 npm install --global fallow@2.89.0 c8@10.1.3
 bash .buildkite/scripts/provenance-coverage.sh
 

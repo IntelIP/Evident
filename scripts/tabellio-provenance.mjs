@@ -4,6 +4,8 @@ import { parseCommandOptions, requireOptions, writeJsonOutput } from "./lib/cli-
 import { LocalProvenanceStore } from "./lib/local-provenance-store.mjs";
 import { assembleLineage, buildReviewPacket, captureCandidate, evaluateLineage, verifyLineage } from "./lib/provenance-ledger.mjs";
 import { captureGitSource, collectProvenanceSources } from "./lib/provenance-sources.mjs";
+import { attachSecurityReview } from "./lib/provenance-security.mjs";
+import { scanCandidateSecurity } from "./lib/provenance-security-scanners.mjs";
 
 main().catch(() => {
   // Provider content and database errors must not escape through CLI diagnostics.
@@ -28,6 +30,8 @@ async function main() {
     show: [...query, "out"],
     review: [...query, "repo", "base", "head", "now", "out"],
     packet: [...query, "repo", "base", "head", "now", "out"],
+    "import-security": [...query, "input", "policyDigest", "repo", "base", "head", "now", "out"],
+    security: ["input", "repo", "base", "head", "now", "gitleaks", "astGrep", "out"],
   });
   if (["import-sources", "replay-sources"].includes(options.command)) {
     await importSources(options);
@@ -37,6 +41,9 @@ async function main() {
     requireOptions(options, ["repo", "projectKey", "repositoryId"], "capture");
     await writeJsonOutput(await captureCandidate(options), options.out);
     return;
+  }
+  if (options.command === "security") {
+    return runSecurityCommand(options);
   }
   if (["import", "replay"].includes(options.command)) {
     requireOptions(options, ["input", "databaseUrl"], options.command);
@@ -62,9 +69,30 @@ async function main() {
   requireOptions(options, ["repo"], options.command);
   const candidate = await captureCandidate(options);
   const evaluation = { candidate, now: options.now ?? new Date().toISOString() };
+  if (options.command === "import-security") {
+    return importSecurityCommand(options, { store, lineage, ...evaluation });
+  }
   const result = options.command === "packet" ? buildReviewPacket(lineage, evaluation) : evaluateLineage(lineage, evaluation);
   await writeJsonOutput(result, options.out);
   if (result.status !== "passed") process.exitCode = 1;
+}
+
+async function runSecurityCommand(options) {
+  requireOptions(options, ["input", "repo"], options.command);
+  const lineage = verifyLineage(await readInput(options.input));
+  const result = await scanCandidateSecurity({ ...options, lineage, now: options.now ?? new Date().toISOString() });
+  await writeJsonOutput(result, options.out);
+  if (result.status !== "passed") process.exitCode = 1;
+}
+
+async function importSecurityCommand(options, { store, lineage, candidate, now }) {
+  requireOptions(options, ["input", "policyDigest"], options.command);
+  if (candidate.id !== lineage.candidate.id) throw new Error("Security candidate changed.");
+  const review = await readInput(options.input);
+  const secured = attachSecurityReview({ lineage, review, policyDigest: options.policyDigest, now });
+  const digest = await store.putLineage(secured);
+  await writeJsonOutput({ status: review.status, candidate, digest, securityDigest: review.digest }, options.out);
+  if (review.status !== "passed") process.exitCode = 1;
 }
 
 async function importSources(options) {
