@@ -5,6 +5,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      base_branch:
+        description: Branch to compare for changed-code checks
+        required: true
+        default: main
+        type: string
 
 permissions:
   contents: read
@@ -50,9 +56,10 @@ jobs:
       - name: Enforce changed-code quality gate
         env:
           FALLOW_AGENT_SOURCE: codex
+          FALLOW_BASE_BRANCH: ${{ github.base_ref || inputs.base_branch || 'main' }}
         run: |
           fallow audit \
-            --base "origin/${{ github.base_ref }}" \
+            --base "origin/$FALLOW_BASE_BRANCH" \
             --gate new-only \
             --health-baseline quality-baselines/fallow-health.json \
             --dupes-baseline quality-baselines/fallow-dupes.json \
