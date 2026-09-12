@@ -5,7 +5,7 @@
   "requireEntireCheckpoint": true,
   "acceptance": {
     "id": "tabellio-v0.5-control-plane-and-analytics",
-    "source": "repository product contract, docs/product-validation.md, INTB-261, and INTB-282",
+    "source": "repository product contract, docs/product-validation.md, INTB-261, and INTB-282, TAB-18 through TAB-29 rebuild plan (incremental implementation)",
     "risk": "high",
     "outcomes": [
       "Agent runs, checkpoints, reviews, and validation results remain bound to exact Git state.",
@@ -14,7 +14,8 @@
       "Validation worktrees and isolated home directories remain outside the repository and Git common directory and are removed after each run.",
       "Analytics validator evidence distinguishes malformed inputs from valid contract failures.",
       "The packaged cross-repository baseline binds exact repository heads, provider snapshots, and a reproducible report.",
-      "Wave admission accepts only Ready, dependency-satisfied, non-overlapping, current-base work with explicit WIP and integration ownership."
+      "Wave admission accepts only Ready, dependency-satisfied, non-overlapping, current-base work with explicit WIP and integration ownership.",
+      "Local provenance survives a PostgreSQL server restart, replays deterministically, and blocks moved candidates and weak evidence."
     ],
     "invariants": [
       "Validation never publishes, deploys, or mutates a live external system.",
@@ -49,6 +50,7 @@
     {"id": "wave-admission-schema", "type": "schema", "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "wave-admission-schema", "--validator-id", "wave-admission-schema", "--out", ".artifacts/tabellio/wave-admission-schema.json"], "cwd": ".", "timeoutMs": 300000, "required": true, "evidence": {"path": ".artifacts/tabellio/wave-admission-schema.json"}, "policy": {"metricThresholds": [{"metric": "wave_admission_schema_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}},
     {"id": "wave-admission-negative", "type": "semantic", "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "wave-admission-semantic", "--validator-id", "wave-admission-negative", "--out", ".artifacts/tabellio/wave-admission-negative.json"], "cwd": ".", "timeoutMs": 300000, "required": true, "evidence": {"path": ".artifacts/tabellio/wave-admission-negative.json"}, "policy": {"metricThresholds": [{"metric": "wave_admission_negative_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}},
     {"id": "wave-admission-workflow", "type": "workflow", "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "wave-admission-workflow", "--validator-id", "wave-admission-workflow", "--out", ".artifacts/tabellio/wave-admission-workflow.json"], "cwd": ".", "timeoutMs": 300000, "required": true, "evidence": {"path": ".artifacts/tabellio/wave-admission-workflow.json"}, "policy": {"metricThresholds": [{"metric": "wave_admission_workflow_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}},
-    {"id": "wave-admission-security", "type": "security", "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "wave-admission-security", "--validator-id", "wave-admission-security", "--out", ".artifacts/tabellio/wave-admission-security.json"], "cwd": ".", "timeoutMs": 300000, "required": true, "evidence": {"path": ".artifacts/tabellio/wave-admission-security.json"}, "policy": {"metricThresholds": [{"metric": "wave_admission_security_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}}
+    {"id": "wave-admission-security", "type": "security", "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "wave-admission-security", "--validator-id", "wave-admission-security", "--out", ".artifacts/tabellio/wave-admission-security.json"], "cwd": ".", "timeoutMs": 300000, "required": true, "evidence": {"path": ".artifacts/tabellio/wave-admission-security.json"}, "policy": {"metricThresholds": [{"metric": "wave_admission_security_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}},
+    {"id": "provenance-workflow", "type": "workflow", "argv": ["node", "scripts/tabellio-validator.mjs", "--profile", "provenance-workflow", "--validator-id", "provenance-workflow", "--out", ".artifacts/tabellio/provenance-workflow.json"], "cwd": ".", "timeoutMs": 300000, "required": true, "evidence": {"path": ".artifacts/tabellio/provenance-workflow.json"}, "policy": {"metricThresholds": [{"metric": "provenance_workflow_pass", "operator": "eq", "value": 1}], "maxCostUsd": 0, "requireCostTelemetry": true}}
   ]
 }

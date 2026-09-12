@@ -31,6 +31,50 @@ Tabellio attaches a structured evidence packet to a pull request. The packet is 
 
 ## Native Git Foundation
 
+### Local provenance rebuild
+
+The incremental TAB-18–29 rebuild adds a local PostgreSQL evidence projection.
+Its current foundation stores source-attributed observations, typed relationships,
+and exact base/head/merge-base identities. Imports are atomic and idempotent;
+replay preserves the same digest. Missing, stale, conflicting, inferred, or failed
+evidence prevents a passed review result. Review packets omit source payloads and
+facts belonging to another candidate.
+
+Run the sample on macOS or Linux with Node.js, Git, and PostgreSQL client/server binaries on `PATH`:
+
+```bash
+npm run tabellio:provenance:demo
+```
+
+The demo creates a temporary Git repository and private local PostgreSQL cluster,
+imports a synthetic provider journey, restarts the database server, deletes and
+replays the derived record, builds a review packet, and proves that a moved base
+blocks the old evidence. It stops its server and removes its temporary files.
+Git and PostgreSQL operations are real; Plane, Entire, GitHub, Buildkite, and
+security observations in this sample are explicitly synthetic. This is not a
+live-provider or security-scanner certification.
+
+For development validation, include PostgreSQL integration tests in that same
+isolated cluster:
+
+```bash
+node scripts/demo-provenance.mjs --verify-storage-tests true --out /tmp/tabellio-demo.json
+```
+
+The `tabellio-provenance` CLI supports `capture`, `import`, `replay`, `show`,
+`review`, and `packet`. Database operations require an explicit local
+`--database-url`; review and packet commands also require `--repo` so readiness
+is checked against current Git state. `--now` supplies a deterministic evaluation
+time for fixtures; normal operation uses current time. The lower-level
+`tabellio-local-store` CLI defaults to the dedicated local `tabellio` database,
+never an inherited application's `DATABASE_URL`.
+
+The capture and retention boundary lives in `tabellio.data-boundary.json`.
+Raw prompts, transcripts, provider bodies, and credentials are excluded. The
+remaining rebuild work includes source adapters, independent security evidence,
+GitHub presentation, and the final release decision. No cloud provisioning,
+automatic publication, deployment, or learning is introduced.
+
 The native engine runs through the installed `git` executable. It never constructs shell commands.
 
 | Component | Role |

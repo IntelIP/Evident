@@ -208,11 +208,11 @@ test("preflight accepts valid ULID checkpoint directory layouts", async (t) => {
   await commitCheckpointAndAssertValid(fixture, "Use ULID checkpoint layout");
 });
 
-test("preflight streams checkpoint transcripts larger than the Git command buffer", async (t) => {
+test("preflight streams large transcripts containing Unicode line separators", async (t) => {
   const fixture = await preparedFixture(t);
   const transcriptPath = join(fixture.seed, "ab", "cdef123456", "0", "full.jsonl");
   const contentHashPath = join(fixture.seed, "ab", "cdef123456", "0", "content_hash.txt");
-  const transcript = `${JSON.stringify({ payload: "x".repeat(2048) })}\n`.repeat(5200);
+  const transcript = `${JSON.stringify({ payload: "x".repeat(2048) + "\u2028\u2029終" })}\r\n`.repeat(5200);
   assert.ok(Buffer.byteLength(transcript) > 10 * 1024 * 1024);
   await writeFile(transcriptPath, transcript);
   await writeFile(contentHashPath, `sha256:${createHash("sha256").update(transcript).digest("hex")}\n`);

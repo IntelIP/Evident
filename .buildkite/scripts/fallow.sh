@@ -11,13 +11,15 @@ fi
 
 base_branch="${BUILDKITE_PULL_REQUEST_BASE_BRANCH:-${TABELLIO_BASE_BRANCH:-main}}"
 git fetch --no-tags origin "+refs/heads/${base_branch}:refs/remotes/origin/${base_branch}"
-npm install --global fallow@2.89.0
+npm install --global fallow@2.89.0 c8@10.1.3
+bash .buildkite/scripts/provenance-coverage.sh
 
 FALLOW_AGENT_SOURCE=codex fallow audit \
   --base "origin/${base_branch}" \
   --gate new-only \
   --health-baseline quality-baselines/fallow-health.json \
   --dupes-baseline quality-baselines/fallow-dupes.json \
+  --coverage coverage/fallow-coverage.json \
   --format json \
   --quiet \
   --explain \

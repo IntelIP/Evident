@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { createInterface } from "node:readline";
+import { StringDecoder } from "node:string_decoder";
 
 import { runExternalCommand } from "./external-command.mjs";
 import { runGit } from "./git-process.mjs";
@@ -265,8 +265,7 @@ async function readEffectiveCodexState({ binary, cwd, timeoutMs }) {
         if (error) finish(error);
       });
     };
-    const lines = createInterface({ input: child.stdout });
-    lines.on("line", (line) => handleCodexAppServerLine(line, { send, finish, state, cwd }));
+    readNewlineRecords(child.stdout, (line) => handleCodexAppServerLine(line, { send, finish, state, cwd }));
     child.stderr.setEncoding("utf8");
     child.stderr.on("data", (chunk) => { stderr += chunk; });
     child.stdin.on("error", finish);
@@ -594,8 +593,7 @@ async function gitTranscriptEvidence(store, ref, path) {
     let lineCount = 0;
     let linesValid = true;
     child.stdout.on("data", (chunk) => hash.update(chunk));
-    const lines = createInterface({ input: child.stdout, crlfDelay: Infinity });
-    lines.on("line", (line) => {
+    readNewlineRecords(child.stdout, (line) => {
       if (line.trim() === "") return;
       lineCount += 1;
       try { JSON.parse(line); } catch { linesValid = false; }
@@ -624,6 +622,22 @@ function validSessionMetadata(source, checkpointId) {
 
 function parseJson(source) {
   try { return JSON.parse(source); } catch { return null; }
+}
+
+function readNewlineRecords(stream, onLine) {
+  // JSON permits literal Unicode line separators inside strings. NDJSON only
+  // separates records at LF; readline's broader line splitting corrupts them.
+  const decoder = new StringDecoder("utf8");
+  let pending = "";
+  stream.on("data", (chunk) => {
+    const lines = (pending + decoder.write(chunk)).split("\n");
+    pending = lines.pop();
+    for (const line of lines) onLine(line);
+  });
+  stream.on("end", () => {
+    pending += decoder.end();
+    if (pending) onLine(pending);
+  });
 }
 
 function validCheckpointMetadata(metadata, path, files, explicitCheckpointId = null) {

@@ -8,6 +8,7 @@ tabellio-context.json
 tabellio-stack.json
 tabellio-ledger.json
 .DS_Store
+coverage/
 .env
 .env.*
 !.env.example
