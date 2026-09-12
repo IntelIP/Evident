@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "tabellio-data-boundary/v0.1",
+  "scope": "Local Tabellio rebuild and synthetic sample repository",
+  "workItems": ["TAB-18", "TAB-19", "TAB-20", "TAB-21", "TAB-22", "TAB-23", "TAB-24", "TAB-25", "TAB-26", "TAB-27", "TAB-28", "TAB-29"],
+  "authority": {
+    "plane": "Work requests and execution state",
+    "git": "Commit identity and ancestry",
+    "entire": "Agent session and checkpoint identity",
+    "github": "Pull requests and review records",
+    "buildkite": "Build and validation observations",
+    "tabellio": "Derived correlations, local validation, and explicit gate decisions"
+  },
+  "capture": ["stable source identifiers", "observation times", "project and repository identifiers", "run and checkpoint references", "immutable commit identifiers", "validation and review results", "typed explicit relationships", "bounded allowlisted metadata", "content digests"],
+  "exclude": ["credentials", "raw prompts", "raw transcripts", "raw tool or provider bodies", "environment values", "code snapshots"],
+  "checkpointSensitivity": "private",
+  "inference": "Inferred links are unverified and cannot satisfy readiness",
+  "retention": {
+    "syntheticFixtures": "Retain with tests until fixtures are deliberately removed",
+    "sampleDatabase": "Delete the task-owned sample database after each demo",
+    "operatorDatabase": "Retained until explicit operator deletion; no scheduled retention or source deletion",
+    "rawContent": "Never ingested",
+    "production": "Not authorized by this local prototype contract"
+  },
+  "limits": {"metadataTextCharacters": 512, "recordPayloadBytes": 65536, "recordPayloadDepth": 8, "recordPayloadValues": 512},
+  "externalActions": {"providerWrites": false, "cloudProvisioning": false, "automaticMerge": false, "automaticPublication": false, "deployment": false, "automaticLearning": false}
+}

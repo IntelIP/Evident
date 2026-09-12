@@ -372,6 +372,7 @@
       "metrics": [{"name": "wave_admission_security_pass", "unit": "boolean", "passValue": 1, "failValue": 0}],
       "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0},
       "summary": "Repository path safety and no-external-action boundary"
-    }
+    },
+    "provenance-workflow": {"commands": [["node", "scripts/demo-provenance.mjs", "--verify-storage-tests", "true", "--out", ".artifacts/tabellio/provenance-demo.json"], ["node", "--test", "tests/provenance-ledger.test.mjs"]], "metrics": [{"name": "provenance_workflow_pass", "unit": "boolean", "passValue": 1, "failValue": 0}], "cost": {"telemetry": "available", "usd": 0, "modelCalls": 0, "toolCalls": 0}, "summary": "Local PostgreSQL restart and replay, real sample Git candidate, scoped packet, and negative evidence cases"}
   }
 }
