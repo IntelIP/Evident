@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { LocalProvenanceStore } from "./lib/local-provenance-store.mjs";
 import { captureCandidate } from "./lib/provenance-ledger.mjs";
 import { sampleObservations } from "../examples/provenance/sample.mjs";
+import { sampleSourceBundle } from "../examples/provenance/sources.mjs";
 import { parseOptionPairs, writeJsonOutput } from "./lib/cli-options.mjs";
 
 const execute = promisify(execFile);
@@ -43,7 +44,8 @@ try {
   if (options.verifyStorageTests === "true") {
     const testFile = fileURLToPath(new URL("../tests/local-provenance-store.test.mjs", import.meta.url));
     const lineageTests = fileURLToPath(new URL("../tests/provenance-ledger.test.mjs", import.meta.url));
-    await execute(process.execPath, ["--test", testFile, lineageTests], {
+    const sourceTests = fileURLToPath(new URL("../tests/provenance-sources.test.mjs", import.meta.url));
+    await execute(process.execPath, ["--test", testFile, lineageTests, sourceTests], {
       cwd: root, env: { ...env, TABELLIO_REQUIRE_POSTGRES: "1", TABELLIO_TEST_PG_SOCKET: socketRoot, TABELLIO_TEST_PG_USER: "tabellio" },
       timeout: 60000, maxBuffer: 2 * 1024 * 1024,
     });
@@ -58,7 +60,7 @@ try {
   await git("checkout", "-b", "sample-change");
   await writeFile(join(repo, "app.mjs"), "export const greeting = 'Hello, Tabellio';\n");
   await git("add", "app.mjs");
-  await git("commit", "-m", "Update sample greeting");
+  await git("commit", "-m", "Update sample greeting\n\nPlane-Work-Item: SAMPLE-1\nEntire-Checkpoint: abcdef123456");
   const candidate = await captureCandidate({ repo, projectKey: "SAMPLE", repositoryId: "sample/repository" });
   const now = new Date().toISOString();
   const input = { candidate, observations: sampleObservations(candidate, now) };
@@ -66,6 +68,15 @@ try {
   await writeFile(inputPath, JSON.stringify(input));
   const cli = fileURLToPath(new URL("./tabellio-provenance.mjs", import.meta.url));
   const invoke = async (...args) => JSON.parse((await run(process.execPath, [cli, ...args])).stdout);
+  const sourcePath = join(root, "sources.json");
+  await writeFile(sourcePath, JSON.stringify(await sampleSourceBundle(candidate, now)));
+  const sourceImport = await invoke("import-sources", "--repo", repo, "--database-url", databaseUrl, "--input", sourcePath, "--now", now);
+  if (sourceImport.status !== "stored" || !sourceImport.sources.every((source) => source.status === "present")) throw new Error("Source fixture import failed.");
+  const sourcePacket = await invoke("packet", "--repo", repo, "--database-url", databaseUrl, "--digest", sourceImport.lineage.digest, "--project-key", "SAMPLE", "--repository-id", "sample/repository", "--now", now).catch((error) => {
+    if (error.code !== 1 || !error.stdout) throw error;
+    return JSON.parse(error.stdout);
+  });
+  if (sourcePacket.status !== "blocked" || sourcePacket.reasons.length !== 1 || sourcePacket.reasons[0].kind !== "security") throw new Error("Source fixture must block only on missing independent security review.");
   const imported = await invoke("import", "--database-url", databaseUrl, "--input", inputPath);
   const query = ["--database-url", databaseUrl, "--digest", imported.digest, "--project-key", "SAMPLE", "--repository-id", "sample/repository"];
   const reviewArgs = [...query, "--repo", repo, "--now", now];
@@ -91,7 +102,7 @@ try {
     moved = JSON.parse(error.stdout);
     if (moved.status !== "blocked" || !moved.reasons.some((reason) => reason.state === "stale")) throw new Error("Moved base did not block readiness.");
   }
-  receipt = { status: "passed", candidate, lineageDigest: imported.digest, checks: { cliImport: "passed", review: initial.status, postgresServerRestart: "passed", deleteAndReplay: "passed", safePacket: packet.status, movedBase: moved.status }, sources: { git: "real temporary sample repository", plane: "synthetic fixture", entire: "synthetic fixture", github: "synthetic fixture", buildkite: "synthetic fixture", security: "synthetic fixture" }, cost: { usd: 0, modelCalls: 0, cloudCalls: 0 } };
+  receipt = { status: "passed", candidate, lineageDigest: imported.digest, checks: { cliImport: "passed", sourceImport: sourceImport.status, missingSecurity: sourcePacket.status, review: initial.status, postgresServerRestart: "passed", deleteAndReplay: "passed", safePacket: packet.status, movedBase: moved.status }, sources: { git: "real temporary sample repository", plane: "synthetic fixture", entire: "synthetic fixture", github: "synthetic fixture", buildkite: "synthetic fixture", security: "synthetic fixture" }, cost: { usd: 0, modelCalls: 0, cloudCalls: 0 } };
 } catch (error) {
   const postgresLog = await readFile(join(root, "postgres.log"), "utf8").catch(() => "");
   const socketPathFailure = /Unix-domain socket path.*too long/i.test(postgresLog);

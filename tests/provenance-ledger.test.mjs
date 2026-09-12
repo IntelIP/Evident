@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import test from "node:test";
 import { assembleLineage, buildReviewPacket, candidateIdentity, captureCandidate, evaluateLineage, verifyLineage } from "../scripts/lib/provenance-ledger.mjs";
 import { sampleObservations } from "../examples/provenance/sample.mjs";
+import { captureGitSource } from "../scripts/lib/provenance-sources.mjs";
 
 const execute = promisify(execFile);
 const candidate = candidateIdentity({ projectKey: "SAMPLE", repositoryId: "sample/repository", baseCommit: "a".repeat(40), headCommit: "b".repeat(40), mergeBase: "a".repeat(40) });
@@ -91,10 +92,15 @@ test("sample Git repository binds real base/head/merge-base and rejects moved ba
   await git("checkout", "-b", "sample-change");
   await writeFile(join(repo, "sample.txt"), "changed\n");
   await git("add", "sample.txt");
-  await git("commit", "-m", "Change sample");
+  await git("commit", "-m", "Change sample\n\nPlane-Work-Item: SAMPLE-1\nEntire-Checkpoint: abcdef123456");
   const first = await captureCandidate({ repo, projectKey: "SAMPLE", repositoryId: "sample/repository" });
   assert.notEqual(first.baseCommit, first.headCommit);
   assert.equal(first.mergeBase, first.baseCommit);
+  const source = await captureGitSource({ repo, candidate: first, capturedAt: now });
+  assert.equal(source.taskIdentifier, "SAMPLE-1");
+  assert.equal(source.checkpointId, "abcdef123456");
+  assert.equal(source.candidate.id, first.id);
+  await assert.rejects(captureGitSource({ repo, candidate: { ...first, mergeBase: first.headCommit }, capturedAt: now }), /blocked/);
   const lineage = assembleLineage({ candidate: first, observations: sampleObservations(first) });
   assert.equal(evaluateLineage(lineage, { now }).status, "passed");
   await git("branch", "-f", "main", first.headCommit);

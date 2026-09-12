@@ -61,8 +61,14 @@ isolated cluster:
 node scripts/demo-provenance.mjs --verify-storage-tests true --out /tmp/tabellio-demo.json
 ```
 
-The `tabellio-provenance` CLI supports `capture`, `import`, `replay`, `show`,
-`review`, and `packet`. Database operations require an explicit local
+The `tabellio-provenance` CLI supports `capture`, `import`, `import-sources`, `replay`,
+`show`, `review`, and `packet`. `import-sources` normalizes a bundle of Plane,
+Entire, GitHub, and Buildkite snapshots and captures Git directly from `--repo`.
+Readers preserve healthy sources while reporting authentication, permission,
+missing-record, outage, and malformed-input failures as blocked. The demo imports
+all five sources, then verifies missing independent security evidence blocks review.
+External snapshots remain explicitly synthetic in the sample.
+Database operations require an explicit local
 `--database-url`; review and packet commands also require `--repo` so readiness
 is checked against current Git state. `--now` supplies a deterministic evaluation
 time for fixtures; normal operation uses current time. The lower-level
@@ -71,7 +77,7 @@ never an inherited application's `DATABASE_URL`.
 
 The capture and retention boundary lives in `tabellio.data-boundary.json`.
 Raw prompts, transcripts, provider bodies, and credentials are excluded. The
-remaining rebuild work includes source adapters, independent security evidence,
+remaining rebuild work includes independent security evidence,
 GitHub presentation, and the final release decision. No cloud provisioning,
 automatic publication, deployment, or learning is introduced.
 
