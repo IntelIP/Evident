@@ -40,7 +40,7 @@ replay preserves the same digest. Missing, stale, conflicting, inferred, or fail
 evidence prevents a passed review result. Review packets omit source payloads and
 facts belonging to another candidate.
 
-Run the sample with Node.js, Git, and PostgreSQL client/server binaries on `PATH`:
+Run the sample on macOS or Linux with Node.js, Git, and PostgreSQL client/server binaries on `PATH`:
 
 ```bash
 npm run tabellio:provenance:demo
