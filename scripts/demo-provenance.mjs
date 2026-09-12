@@ -11,6 +11,8 @@ import { sampleObservations } from "../examples/provenance/sample.mjs";
 import { sampleSourceBundle } from "../examples/provenance/sources.mjs";
 import { runSecurityReview, SECURITY_CHECKS } from "./lib/provenance-security.mjs";
 import { SECURITY_POLICY_DIGEST } from "./lib/provenance-security-scanners.mjs";
+import { publishProvenanceStatuses } from "./lib/provenance-review-publication.mjs";
+import { GitHubStatusPublisher } from "./providers/github-status-publisher.mjs";
 import { parseOptionPairs, writeJsonOutput } from "./lib/cli-options.mjs";
 
 const execute = promisify(execFile);
@@ -50,7 +52,9 @@ try {
   const sourceTests = fileURLToPath(new URL("../tests/provenance-sources.test.mjs", import.meta.url));
   const securityTests = fileURLToPath(new URL("../tests/provenance-security.test.mjs", import.meta.url));
   const scannerTests = fileURLToPath(new URL("../tests/provenance-security-scanners.test.mjs", import.meta.url));
-  await execute(process.execPath, ["--test", testFile, lineageTests, sourceTests, securityTests, scannerTests], {
+  const resultTests = fileURLToPath(new URL("../tests/provenance-review-result.test.mjs", import.meta.url));
+  const publicationTests = fileURLToPath(new URL("../tests/provenance-review-publication.test.mjs", import.meta.url));
+  await execute(process.execPath, ["--test", testFile, lineageTests, sourceTests, securityTests, scannerTests, resultTests, publicationTests], {
       cwd: root, env: { ...env, TABELLIO_REQUIRE_POSTGRES: "1", TABELLIO_TEST_PG_SOCKET: socketRoot, TABELLIO_TEST_PG_USER: "tabellio" },
       timeout: 60000, maxBuffer: 2 * 1024 * 1024,
     });
@@ -59,6 +63,7 @@ try {
   await mkdir(repo);
   const git = (...args) => run("git", ["-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", ...args], repo);
   await git("init", "-b", "main");
+  await git("remote", "add", "origin", "https://github.com/sample/repository.git");
   await writeFile(join(repo, "app.mjs"), "export const greeting = 'Hello';\n");
   await git("add", "app.mjs");
   await git("commit", "-m", "Create sample application");
@@ -116,6 +121,8 @@ try {
   await start();
   const afterRestart = await invoke("show", ...query);
   if (afterRestart.digest !== imported.digest) throw new Error("Restart changed the lineage.");
+  const statusIntent = await invoke("review-intent", ...reviewArgs);
+  const statusPublication = await publishSampleStatuses({ repo, lineage: afterRestart, intent: statusIntent, cli: initial, now });
   const store = new LocalProvenanceStore({ databaseUrl }); await store.migrate();
   const sourceQuery = { digest: sourceImport.lineage.digest, projectKey: candidate.projectKey, repositoryId: candidate.repositoryId };
   await store.removeLineage(sourceQuery);
@@ -159,7 +166,7 @@ try {
     moved = JSON.parse(error.stdout);
     if (moved.status !== "blocked" || !moved.reasons.some((reason) => reason.state === "stale")) throw new Error("Moved base did not block readiness.");
   }
-  receipt = { status: "passed", candidate, lineageDigest: imported.digest, checks: { cliImport: "passed", sourceImport: sourceImport.status, sourceReplay: "passed", changedSourceReplay: changedSource.status, missingSourceReplay: missingSource.status, gitOutage: unavailableGit.status, missingSecurity: sourcePacket.status, securityImport: securityImport.status, unavailableSecurityImport: blockedSecurityImport.status, review: initial.status, postgresServerRestart: "passed", deleteAndReplay: "passed", safePacket: packet.status, movedBase: moved.status }, sources: { git: "real temporary sample repository", plane: "synthetic fixture", entire: "synthetic fixture", github: "synthetic fixture", buildkite: "synthetic fixture", security: options.verifySecurityScanners ? "real bounded scanners over immutable Git content" : "synthetic fixture" }, cost: { usd: 0, modelCalls: 0, cloudCalls: 0 } };
+  receipt = { status: "passed", candidate, lineageDigest: imported.digest, checks: { cliImport: "passed", sourceImport: sourceImport.status, sourceReplay: "passed", changedSourceReplay: changedSource.status, missingSourceReplay: missingSource.status, gitOutage: unavailableGit.status, missingSecurity: sourcePacket.status, securityImport: securityImport.status, unavailableSecurityImport: blockedSecurityImport.status, review: initial.status, githubRepresentation: statusPublication.status, postgresServerRestart: "passed", deleteAndReplay: "passed", safePacket: packet.status, movedBase: moved.status }, sources: { git: "real temporary sample repository", plane: "synthetic fixture", entire: "synthetic fixture", github: "synthetic records and local fake status transport", buildkite: "synthetic fixture", security: options.verifySecurityScanners ? "real bounded scanners over immutable Git content" : "synthetic fixture" }, cost: { usd: 0, modelCalls: 0, cloudCalls: 0 } };
 } catch (error) {
   const postgresLog = await readFile(join(root, "postgres.log"), "utf8").catch(() => "");
   const socketPathFailure = /Unix-domain socket path.*too long/i.test(postgresLog);
@@ -188,4 +195,21 @@ try {
   }
   receipt.durationMs = Date.now() - startedAt;
   await writeJsonOutput(receipt, options.out);
+}
+
+async function publishSampleStatuses({ repo, lineage, intent, cli, now }) {
+  const requests = [];
+  const publisher = new GitHubStatusPublisher({ token: "synthetic-local-demo", fetchImpl: async (url, options) => {
+    const body = JSON.parse(options.body);
+    requests.push({ url: String(url), body });
+    return new Response(JSON.stringify({ ...body, id: requests.length, created_at: now }), { status: 201 });
+  } });
+  const approval = { schemaVersion: "tabellio-provenance-status-approval/v0.1", id: "sample-review-status", intentDigest: intent.integrity.digest, approved: true, approvedBy: "Synthetic demo", approvedAt: now, expiresAt: new Date(Date.parse(now) + 60000).toISOString(), reason: "Local fake GitHub transport only." };
+  const publication = await publishProvenanceStatuses({ repo, lineage, intent, approval, publisher, now });
+  if (publication.status !== "published" || requests.length !== 2) throw new Error("Sample status publication failed.");
+  for (const [index, request] of requests.entries()) {
+    const expected = cli.github[index];
+    if (!request.url.endsWith(`/statuses/${expected.commit}`) || request.body.state !== expected.state || request.body.context !== expected.context || request.body.description !== expected.description || (request.body.target_url ?? null) !== expected.targetUrl) throw new Error("CLI and GitHub status differ.");
+  }
+  return publication;
 }
