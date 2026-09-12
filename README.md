@@ -61,13 +61,18 @@ isolated cluster:
 node scripts/demo-provenance.mjs --verify-storage-tests true --out /tmp/tabellio-demo.json
 ```
 
-The `tabellio-provenance` CLI supports `capture`, `import`, `import-sources`, `replay`,
+The `tabellio-provenance` CLI supports `capture`, `import`, `import-sources`, `replay`, `replay-sources`,
 `show`, `review`, and `packet`. `import-sources` normalizes a bundle of Plane,
 Entire, GitHub, and Buildkite snapshots and captures Git directly from `--repo`.
 Readers preserve healthy sources while reporting authentication, permission,
 missing-record, outage, and malformed-input failures as blocked. The demo imports
 all five sources, then verifies missing independent security evidence blocks review.
 External snapshots remain explicitly synthetic in the sample.
+`replay-sources` rebuilds from the original source bundle using `--repo`, `--input`,
+the original capture time in `--now`, and `--expected-digest` from the import receipt.
+It writes only when the rebuilt digest matches; changed or missing sources return
+blocked evidence without storing a replacement. Reordering snapshots and repeating
+the replay preserve the same record. Source snapshots are never modified.
 Database operations require an explicit local
 `--database-url`; review and packet commands also require `--repo` so readiness
 is checked against current Git state. `--now` supplies a deterministic evaluation

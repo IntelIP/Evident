@@ -68,14 +68,21 @@ try {
   await writeFile(inputPath, JSON.stringify(input));
   const cli = fileURLToPath(new URL("./tabellio-provenance.mjs", import.meta.url));
   const invoke = async (...args) => JSON.parse((await run(process.execPath, [cli, ...args])).stdout);
+  const invokeBlocked = async (...args) => {
+    try {
+      await invoke(...args);
+    } catch (error) {
+      if (error.code !== 1 || !error.stdout) throw error;
+      return JSON.parse(error.stdout);
+    }
+    throw new Error("Expected blocked CLI exit.");
+  };
   const sourcePath = join(root, "sources.json");
-  await writeFile(sourcePath, JSON.stringify(await sampleSourceBundle(candidate, now)));
+  const sourceBundle = await sampleSourceBundle(candidate, now);
+  await writeFile(sourcePath, JSON.stringify(sourceBundle));
   const sourceImport = await invoke("import-sources", "--repo", repo, "--database-url", databaseUrl, "--input", sourcePath, "--now", now);
   if (sourceImport.status !== "stored" || !sourceImport.sources.every((source) => source.status === "present")) throw new Error("Source fixture import failed.");
-  const sourcePacket = await invoke("packet", "--repo", repo, "--database-url", databaseUrl, "--digest", sourceImport.lineage.digest, "--project-key", "SAMPLE", "--repository-id", "sample/repository", "--now", now).catch((error) => {
-    if (error.code !== 1 || !error.stdout) throw error;
-    return JSON.parse(error.stdout);
-  });
+  const sourcePacket = await invokeBlocked("packet", "--repo", repo, "--database-url", databaseUrl, "--digest", sourceImport.lineage.digest, "--project-key", "SAMPLE", "--repository-id", "sample/repository", "--now", now);
   if (sourcePacket.status !== "blocked" || sourcePacket.reasons.length !== 1 || sourcePacket.reasons[0].kind !== "security") throw new Error("Source fixture must block only on missing independent security review.");
   const imported = await invoke("import", "--database-url", databaseUrl, "--input", inputPath);
   const query = ["--database-url", databaseUrl, "--digest", imported.digest, "--project-key", "SAMPLE", "--repository-id", "sample/repository"];
@@ -87,6 +94,33 @@ try {
   const afterRestart = await invoke("show", ...query);
   if (afterRestart.digest !== imported.digest) throw new Error("Restart changed the lineage.");
   const store = new LocalProvenanceStore({ databaseUrl }); await store.migrate();
+  const sourceQuery = { digest: sourceImport.lineage.digest, projectKey: candidate.projectKey, repositoryId: candidate.repositoryId };
+  await store.removeLineage(sourceQuery);
+  if (await store.getLineage(sourceQuery) !== null) throw new Error("Source replay did not start from an empty derived record.");
+  sourceBundle.snapshots = Object.fromEntries(Object.entries(sourceBundle.snapshots).reverse());
+  await writeFile(sourcePath, JSON.stringify(sourceBundle));
+  const replaySourceArgs = ["replay-sources", "--repo", repo, "--database-url", databaseUrl, "--input", sourcePath, "--now", now, "--expected-digest", sourceImport.lineage.digest];
+  for (let replay = 0; replay < 2; replay += 1) {
+    const rebuilt = await invoke(...replaySourceArgs);
+    if (rebuilt.status !== "stored" || rebuilt.lineage.digest !== sourceImport.lineage.digest) throw new Error("Source replay changed the record.");
+  }
+  if (JSON.stringify(sourceBundle) !== await readFile(sourcePath, "utf8")) throw new Error("Replay modified original source snapshots.");
+  sourceBundle.snapshots.github.reviews[0].state = "changes_requested";
+  await writeFile(sourcePath, JSON.stringify(sourceBundle));
+  const changedSource = await invokeBlocked(...replaySourceArgs);
+  if (changedSource.status !== "blocked" || changedSource.lineage.digest === sourceQuery.digest) throw new Error("Changed source replay was accepted.");
+  if (await store.getLineage({ ...sourceQuery, digest: changedSource.lineage.digest }) !== null) throw new Error("Rejected replay was persisted.");
+  if ((await store.getLineage(sourceQuery))?.digest !== sourceQuery.digest) throw new Error("Rejected replay changed the original record.");
+  sourceBundle.snapshots.github.reviews[0].state = "approved";
+  await writeFile(sourcePath, JSON.stringify(sourceBundle));
+  const unavailableGitArgs = [...replaySourceArgs];
+  unavailableGitArgs[2] = join(root, "missing-repository");
+  const unavailableGit = await invokeBlocked(...unavailableGitArgs);
+  if (unavailableGit.status !== "blocked" || unavailableGit.sources.find((source) => source.source === "git")?.status !== "blocked" || !unavailableGit.sources.filter((source) => source.source !== "git").every((source) => source.status === "present")) throw new Error("Git outage discarded healthy source evidence.");
+  delete sourceBundle.snapshots.entire;
+  await writeFile(sourcePath, JSON.stringify(sourceBundle));
+  const missingSource = await invokeBlocked(...replaySourceArgs);
+  if (missingSource.status !== "blocked" || missingSource.sources.find((source) => source.source === "entire")?.status !== "blocked") throw new Error("Missing source replay was accepted.");
   await store.removeLineage({ digest: imported.digest, projectKey: "SAMPLE", repositoryId: "sample/repository" });
   const replayed = await invoke("replay", "--database-url", databaseUrl, "--input", inputPath);
   if (replayed.digest !== imported.digest) throw new Error("Replay changed the lineage.");
@@ -102,7 +136,7 @@ try {
     moved = JSON.parse(error.stdout);
     if (moved.status !== "blocked" || !moved.reasons.some((reason) => reason.state === "stale")) throw new Error("Moved base did not block readiness.");
   }
-  receipt = { status: "passed", candidate, lineageDigest: imported.digest, checks: { cliImport: "passed", sourceImport: sourceImport.status, missingSecurity: sourcePacket.status, review: initial.status, postgresServerRestart: "passed", deleteAndReplay: "passed", safePacket: packet.status, movedBase: moved.status }, sources: { git: "real temporary sample repository", plane: "synthetic fixture", entire: "synthetic fixture", github: "synthetic fixture", buildkite: "synthetic fixture", security: "synthetic fixture" }, cost: { usd: 0, modelCalls: 0, cloudCalls: 0 } };
+  receipt = { status: "passed", candidate, lineageDigest: imported.digest, checks: { cliImport: "passed", sourceImport: sourceImport.status, sourceReplay: "passed", changedSourceReplay: changedSource.status, missingSourceReplay: missingSource.status, gitOutage: unavailableGit.status, missingSecurity: sourcePacket.status, review: initial.status, postgresServerRestart: "passed", deleteAndReplay: "passed", safePacket: packet.status, movedBase: moved.status }, sources: { git: "real temporary sample repository", plane: "synthetic fixture", entire: "synthetic fixture", github: "synthetic fixture", buildkite: "synthetic fixture", security: "synthetic fixture" }, cost: { usd: 0, modelCalls: 0, cloudCalls: 0 } };
 } catch (error) {
   const postgresLog = await readFile(join(root, "postgres.log"), "utf8").catch(() => "");
   const socketPathFailure = /Unix-domain socket path.*too long/i.test(postgresLog);

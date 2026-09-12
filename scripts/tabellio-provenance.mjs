@@ -22,13 +22,14 @@ async function main() {
   const options = parseCommandOptions(process.argv.slice(2), {
     capture: ["repo", "projectKey", "repositoryId", "base", "head", "out"],
     "import-sources": ["input", "repo", "databaseUrl", "now", "out"],
+    "replay-sources": ["input", "repo", "databaseUrl", "now", "expectedDigest", "out"],
     import: ["input", "databaseUrl", "out"],
     replay: ["input", "databaseUrl", "out"],
     show: [...query, "out"],
     review: [...query, "repo", "base", "head", "now", "out"],
     packet: [...query, "repo", "base", "head", "now", "out"],
   });
-  if (options.command === "import-sources") {
+  if (["import-sources", "replay-sources"].includes(options.command)) {
     await importSources(options);
     return;
   }
@@ -67,11 +68,21 @@ async function main() {
 }
 
 async function importSources(options) {
-  requireOptions(options, ["input", "repo", "databaseUrl"], "import-sources");
+  requireOptions(options, ["input", "repo", "databaseUrl"], options.command);
+  if (options.command === "replay-sources") {
+    requireOptions(options, ["now", "expectedDigest"], options.command);
+    if (!/^[a-f0-9]{64}$/.test(options.expectedDigest)) throw new Error("Expected lineage digest must be SHA-256.");
+  }
   const input = await readInput(options.input);
-  const snapshots = { ...input.snapshots, git: await captureGitSource({ repo: options.repo, candidate: input.candidate, capturedAt: options.now }) };
+  const snapshots = { ...input.snapshots };
   const readers = Object.fromEntries(Object.entries(snapshots).map(([source, snapshot]) => [source, async () => snapshot]));
+  readers.git = () => captureGitSource({ repo: options.repo, candidate: input.candidate, capturedAt: options.now });
   const result = await collectProvenanceSources({ candidate: input.candidate, selection: input.selection, readers, now: options.now });
+  if (options.expectedDigest && result.lineage.digest !== options.expectedDigest) {
+    await writeJsonOutput({ status: "blocked", reason: "Source replay differs from the original record. Reconcile changed or unavailable source evidence before accepting a new record.", expectedDigest: options.expectedDigest, ...result }, options.out);
+    process.exitCode = 1;
+    return;
+  }
   const store = new LocalProvenanceStore({ databaseUrl: options.databaseUrl });
   await store.migrate();
   await store.putLineage(result.lineage);
