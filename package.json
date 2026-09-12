@@ -109,7 +109,8 @@
     "check": "npm test && npm run tabellio:platform:check && npm run tabellio:run:example:check && npm run tabellio:stack:example:check && npm run tabellio:stack:operation:example:check && npm run tabellio:review:example:check && npm run tabellio:validate:example:check && npm run tabellio:design-memory:example:check && npm run tabellio:ledger:example:check && npm run tabellio:release:example:check && npm run tabellio:context:example:check && npm run tabellio:analytics:product:check && npm run tabellio:evidence:example:check && npm run tabellio:deployment:check && node scripts/check-tabellio-external-actions.mjs --evidence examples/tabellio-evidence/minimal-evidence.json",
     "tabellio:local-store": "node scripts/tabellio-local-store.mjs",
     "tabellio:provenance": "node scripts/tabellio-provenance.mjs",
-    "tabellio:provenance:demo": "node scripts/demo-provenance.mjs"
+    "tabellio:provenance:demo": "node scripts/demo-provenance.mjs",
+    "tabellio:provenance:security:check": "node scripts/check-provenance-security.mjs"
   },
   "engines": {
     "node": ">=20"

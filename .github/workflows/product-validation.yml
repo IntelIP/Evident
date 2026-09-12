@@ -28,6 +28,8 @@ jobs:
           test -x "$postgres_bin/initdb"
           test -x "$postgres_bin/pg_ctl"
           echo "$postgres_bin" >> "$GITHUB_PATH"
+      - name: Install pinned security scanners
+        run: bash .buildkite/scripts/security-tools.sh
       - name: Resolve squash-merge checkpoint revision
         id: checkpoint
         if: github.event_name == 'push'

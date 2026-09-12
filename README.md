@@ -61,6 +61,14 @@ Gitleaks 8.30.1 and ast-grep 0.45.1 on `PATH`, then run:
 node scripts/demo-provenance.mjs --verify-security-scanners true
 ```
 
+On Apple Silicon macOS or x86-64 Linux, `. .buildkite/scripts/security-tools.sh`
+installs the pinned tools into a temporary directory and exposes them on `PATH`.
+Set `TABELLIO_SECURITY_TOOLS_DIR` to reuse a tool directory. The installer verifies
+the Gitleaks archive checksum and does not run npm package install scripts.
+Configured CI uses this setup before checks; the required security
+validator fails when scanners are missing instead of skipping scanner fixtures.
+Run the same required check locally with `npm run tabellio:provenance:security:check`.
+
 The scanner reads immutable Git blobs without running candidate code. It uses
 Gitleaks defaults and explicit JavaScript/TypeScript rules for unverified JWT
 decoding, unsigned JWT configuration, disabled TLS verification, and dynamic
