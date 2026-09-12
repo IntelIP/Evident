@@ -68,6 +68,9 @@ Readers preserve healthy sources while reporting authentication, permission,
 missing-record, outage, and malformed-input failures as blocked. The demo imports
 all five sources, then verifies missing independent security evidence blocks review.
 External snapshots remain explicitly synthetic in the sample.
+The packet contract is `schemas/provenance-review-packet.schema.json`. Packets
+contain only candidate-scoped facts and fixed failure explanations; their complete
+JSON envelope, including its digest, is limited to 65,536 UTF-8 bytes.
 `replay-sources` rebuilds from the original source bundle using `--repo`, `--input`,
 the original capture time in `--now`, and `--expected-digest` from the import receipt.
 It writes only when the rebuilt digest matches; changed or missing sources return

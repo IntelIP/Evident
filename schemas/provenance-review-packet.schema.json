@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tabellio:schema:provenance-review-packet:v0.1",
+  "title": "Tabellio Provenance Review Packet",
+  "$comment": "Non-authoritative derived context. The producer enforces a 65536-byte UTF-8 limit including the digest, exact-candidate binding, credential screening, and source-authority rules.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "authoritative", "candidate", "lineageDigest", "status", "reasons", "facts", "redactions", "digest"],
+  "properties": {
+    "schemaVersion": { "const": "tabellio-review-packet/v0.1" },
+    "authoritative": { "const": false },
+    "candidate": { "$ref": "#/$defs/candidate" },
+    "lineageDigest": { "$ref": "#/$defs/digest" },
+    "digest": { "$ref": "#/$defs/digest" },
+    "status": { "enum": ["passed", "failed", "blocked"] },
+    "reasons": { "type": "array", "items": { "$ref": "#/$defs/reason" } },
+    "facts": { "type": "array", "maxItems": 256, "items": { "$ref": "#/$defs/fact" } },
+    "redactions": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "const": "Source payloads, raw content, and private checkpoint metadata are omitted." } }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "oid": { "type": "string", "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$" },
+    "text": { "type": "string", "minLength": 1, "maxLength": 512, "pattern": "\\S" },
+    "candidate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["projectKey", "repositoryId", "baseCommit", "headCommit", "mergeBase", "id"],
+      "properties": {
+        "projectKey": { "$ref": "#/$defs/text" }, "repositoryId": { "$ref": "#/$defs/text" },
+        "baseCommit": { "$ref": "#/$defs/oid" }, "headCommit": { "$ref": "#/$defs/oid" },
+        "mergeBase": { "$ref": "#/$defs/oid" }, "id": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "fact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "source", "sourceId", "observedAt", "kind", "status", "candidateId"],
+      "properties": {
+        "id": { "$ref": "#/$defs/digest" }, "candidateId": { "$ref": "#/$defs/digest" },
+        "source": { "enum": ["plane", "git", "entire", "github", "buildkite", "tabellio"] },
+        "sourceId": { "$ref": "#/$defs/text" }, "observedAt": { "type": "string", "format": "date-time" },
+        "kind": { "enum": ["task", "run", "commit", "checkpoint", "pull_request", "validation", "review", "security"] },
+        "status": { "enum": ["present", "passed", "failed", "missing", "stale", "conflicting", "inferred", "blocked"] }
+      }
+    },
+    "reason": {
+      "type": "object", "additionalProperties": false,
+      "required": ["state", "kind", "message", "evidenceId"],
+      "properties": {
+        "state": { "enum": ["failed", "missing", "stale", "conflicting", "inferred", "blocked"] },
+        "kind": { "enum": ["candidate", "task", "run", "commit", "checkpoint", "pull_request", "validation", "review", "security"] },
+        "message": { "$ref": "#/$defs/text" },
+        "evidenceId": { "oneOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }] }
+      }
+    }
+  }
+}

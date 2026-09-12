@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -8,11 +8,46 @@ import test from "node:test";
 import { assembleLineage, buildReviewPacket, candidateIdentity, captureCandidate, evaluateLineage, verifyLineage } from "../scripts/lib/provenance-ledger.mjs";
 import { sampleObservations } from "../examples/provenance/sample.mjs";
 import { captureGitSource } from "../scripts/lib/provenance-sources.mjs";
+import { validateJsonSchema } from "../scripts/lib/json-schema-validator.mjs";
 
 const execute = promisify(execFile);
 const candidate = candidateIdentity({ projectKey: "SAMPLE", repositoryId: "sample/repository", baseCommit: "a".repeat(40), headCommit: "b".repeat(40), mergeBase: "a".repeat(40) });
 const now = "2026-09-12T12:00:01Z";
 const input = () => ({ candidate, observations: sampleObservations(candidate) });
+
+test("review packet schema accepts generated packets and rejects unsafe envelopes", async () => {
+  const schema = JSON.parse(await readFile(new URL("../schemas/provenance-review-packet.schema.json", import.meta.url), "utf8"));
+  const complete = buildReviewPacket(assembleLineage(input()), { now });
+  const missing = buildReviewPacket(assembleLineage({ candidate, observations: [] }), { now });
+  for (const packet of [complete, missing]) assert.deepEqual(validateJsonSchema(packet, schema), []);
+  assert.ok(missing.reasons.length > 0);
+  for (const evidenceId of [null, "a".repeat(64)]) {
+    const packet = structuredClone(missing);
+    packet.reasons[0].evidenceId = evidenceId;
+    assert.deepEqual(validateJsonSchema(packet, schema), []);
+  }
+  const mutations = [
+    (packet) => { packet.authoritative = true; },
+    (packet) => { packet.privatePayload = "private"; },
+    (packet) => { delete packet.digest; },
+    (packet) => { packet.candidate.headCommit = "main"; },
+    (packet) => { packet.candidate.id = "invalid"; },
+    (packet) => { packet.status = "approved"; },
+    (packet) => { packet.reasons[0].evidenceId = "invalid"; },
+    (packet) => { packet.reasons[0].evidenceId = 7; },
+    (packet) => { packet.reasons[0].privatePayload = "private"; },
+    (packet) => { packet.redactions = []; },
+  ];
+  for (const mutate of mutations) {
+    const packet = structuredClone(missing);
+    mutate(packet);
+    assert.notDeepEqual(validateJsonSchema(packet, schema), []);
+  }
+  const invalidDate = structuredClone(complete);
+  assert.ok(invalidDate.facts.length > 0);
+  invalidDate.facts[0].observedAt = "2026-02-30T12:00:00Z";
+  assert.notDeepEqual(validateJsonSchema(invalidDate, schema), []);
+});
 
 test("complete lineage is deterministic under reordered and duplicate input", () => {
   const a = assembleLineage(input());
@@ -81,7 +116,7 @@ test("review packet excludes payloads and foreign candidate facts; credentials a
   assert.throws(() => assembleLineage(data), /forbidden/);
 });
 
-test("sample Git repository binds real base/head/merge-base and rejects moved base", async (t) => {
+test("sample Git repository binds real candidates and rejects moved refs and unrelated histories", async (t) => {
   const repo = await mkdtemp(join(tmpdir(), "tabellio-provenance-sample-"));
   t.after(() => rm(repo, { recursive: true, force: true }));
   const git = (...args) => execute("git", ["-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", ...args], { cwd: repo, env: { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_AUTHOR_NAME: "Sample", GIT_AUTHOR_EMAIL: "sample@example.invalid", GIT_COMMITTER_NAME: "Sample", GIT_COMMITTER_EMAIL: "sample@example.invalid" } });
@@ -106,4 +141,36 @@ test("sample Git repository binds real base/head/merge-base and rejects moved ba
   await git("branch", "-f", "main", first.headCommit);
   const moved = await captureCandidate({ repo, projectKey: "SAMPLE", repositoryId: "sample/repository" });
   assert.equal(evaluateLineage(lineage, { candidate: moved, now }).status, "blocked");
+  await git("commit", "--allow-empty", "-m", "Move candidate head");
+  const changedHead = await captureCandidate({ repo, projectKey: "SAMPLE", repositoryId: "sample/repository" });
+  assert.notEqual(changedHead.headCommit, first.headCommit);
+  assert.equal(evaluateLineage(lineage, { candidate: changedHead, now }).status, "blocked");
+  assert.equal(buildReviewPacket(lineage, { candidate: changedHead, now }).facts.length, 0);
+  await git("checkout", "--orphan", "unrelated-history");
+  await git("commit", "-m", "Create unrelated root");
+  await assert.rejects(captureCandidate({ repo, projectKey: "SAMPLE", repositoryId: "sample/repository" }));
+  await assert.rejects(captureCandidate({ repo, projectKey: "SAMPLE", repositoryId: "sample/repository", head: "missing-ref" }));
+  await git("branch", "-f", "sample-change", first.baseCommit);
+  const rewrittenRef = await captureCandidate({ repo, projectKey: "SAMPLE", repositoryId: "sample/repository", head: "sample-change" });
+  assert.notEqual(rewrittenRef.id, first.id);
+  assert.equal(evaluateLineage(lineage, { candidate: rewrittenRef, now }).status, "blocked");
+});
+test("packet byte limit includes integrity digest and rejects one byte beyond the boundary", () => {
+  const data = input();
+  const extras = Array.from({ length: 100 }, (_, index) => ({ ...data.observations[0], sourceId: `extra-${index}`, metadata: {} }));
+  data.observations.push(...extras);
+  const packet = () => buildReviewPacket(assembleLineage(data), { now });
+  let remaining = 65536 - Buffer.byteLength(`${JSON.stringify(packet(), null, 2)}\n`);
+  for (const item of extras) {
+    const added = Math.min(512 - item.sourceId.length, remaining);
+    item.sourceId += "x".repeat(added);
+    remaining -= added;
+  }
+  assert.equal(remaining, 0);
+  assert.equal(Buffer.byteLength(`${JSON.stringify(packet(), null, 2)}\n`), 65536);
+  extras.find((item) => item.sourceId.length < 512).sourceId += "x";
+  assert.throws(packet, /exceeds 65536 bytes/);
+  const unicode = input();
+  unicode.observations.push(...Array.from({ length: 60 }, (_, index) => ({ ...unicode.observations[0], sourceId: `${index}-${"é".repeat(500)}`, metadata: {} })));
+  assert.throws(() => buildReviewPacket(assembleLineage(unicode), { now }), /exceeds 65536 bytes/);
 });
