@@ -4,6 +4,7 @@ import { validatePlaneWorkItemSnapshot } from "./plane-work-item-collector.mjs";
 import { validateLedgerSnapshot } from "./ledger-provider.mjs";
 import { validateBuildkiteBuildSnapshot } from "./buildkite-build-collector.mjs";
 import { validateValidationResult } from "./validation-runner.mjs";
+import { SOURCE_FAILURES } from "./provenance-source-failures.mjs";
 
 const SOURCES = ["plane", "git", "entire", "github", "buildkite"];
 const PRIMARY_KIND = { plane: "task", git: "commit", entire: "checkpoint", github: "pull_request", buildkite: "validation" };
@@ -51,7 +52,7 @@ function importProvenanceSources({ candidate: input, selection, snapshots, now }
       sources.push({ source, status: "present", observationIds: checked.observations.map((item) => item.id) });
     } catch (error) {
       const reason = safeFailure(error);
-      observations.push(observe(context, source, `${source}:unavailable`, PRIMARY_KIND[source], "blocked", [], now, { reason }));
+      observations.push(observe(context, source, `${source}:unavailable`, PRIMARY_KIND[source], SOURCE_FAILURES[reason].state, [], now, { reason }));
       sources.push({ source, status: "blocked", reason });
     }
   }
@@ -144,11 +145,11 @@ function pullRequestId({ candidate, selection }) { return `${candidate.repositor
 function buildId({ selection }) { return `${selection.organization}/${selection.pipeline}/${selection.buildNumber}`; }
 function requireFact(condition, reason) { if (!condition) throw Object.assign(new Error("Source evidence is blocked."), { sourceFailure: reason }); }
 function transportFailure(error) {
+  if (error?.sourceFailure === "reader_missing") return "reader_missing";
   const status = error?.status ?? error?.statusCode;
   if (status === 401) return "authentication";
   if (status === 403) return "permission";
   if (status === 404) return "record_missing";
   return "source_unavailable";
 }
-const FAILURES = new Set(["authentication", "permission", "record_missing", "source_unavailable", "reader_missing", "source_missing", "selection_missing", "candidate_mismatch", "scope_mismatch", "association_missing", "malformed_response", "review_not_ready", "review_binding_missing", "manifest_mismatch"]);
-function safeFailure(error) { return FAILURES.has(error?.sourceFailure) ? error.sourceFailure : "malformed_response"; }
+function safeFailure(error) { return Object.hasOwn(SOURCE_FAILURES, error?.sourceFailure) ? error.sourceFailure : "malformed_response"; }

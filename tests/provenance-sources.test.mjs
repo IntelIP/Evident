@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { candidateIdentity, evaluateLineage } from "../scripts/lib/provenance-ledger.mjs";
+import { assembleLineage, buildReviewPacket, candidateIdentity, evaluateLineage } from "../scripts/lib/provenance-ledger.mjs";
 import { collectProvenanceSources } from "../scripts/lib/provenance-sources.mjs";
 import { sampleSourceBundle } from "../examples/provenance/sources.mjs";
 
@@ -78,5 +78,34 @@ test("missing, malformed, mismatched, and unbound evidence fails closed", async 
     const result = await collect(snapshots);
     assert.equal(result.sources.find((item) => item.source === source).reason, reason, source);
     assert.equal(evaluateLineage(result.lineage, { now }).status, "blocked");
+  }
+});
+test("review packets distinguish missing, conflicting, stale, and access-blocked source evidence", async () => {
+  const cases = [
+    ["missing", "checkpoint", (snapshots) => { delete snapshots.entire; }, /source reader/],
+    ["conflicting", "commit", (snapshots) => { snapshots.git.candidate = { ...candidate, headCommit: "d".repeat(40) }; }, /another code candidate/],
+    ["stale", "commit", (snapshots) => { snapshots.git.capturedAt = "2026-07-01T12:00:00.000Z"; }, /Refresh observation/],
+    ["blocked", "task", (snapshots) => { snapshots.plane = { failure: "permission" }; }, /read permission/],
+  ];
+  for (const [state, kind, mutate, message] of cases) {
+    const snapshots = await fixture();
+    mutate(snapshots);
+    const { lineage } = await collect(snapshots);
+    const packet = buildReviewPacket(lineage, { now });
+    assert.equal(packet.status, "blocked");
+    assert.ok(packet.reasons.some((reason) => reason.state === state && reason.kind === kind && message.test(reason.message)), `${state}: ${JSON.stringify(packet.reasons)}`);
+  }
+});
+test("review packets expose only fixed source failure explanations", async () => {
+  const result = await collect(await fixture(), { plane: async () => { throw Object.assign(new Error("private provider body"), { status: 401 }); } });
+  const packet = buildReviewPacket(result.lineage, { now });
+  assert.ok(packet.reasons.some((reason) => /Authenticate the source reader/.test(reason.message)));
+  assert.ok(!JSON.stringify(packet).includes("private provider body"));
+  for (const untrustedReason of ["private narrative", "constructor", "__proto__"]) {
+    const altered = structuredClone(result.lineage);
+    altered.observations.find((item) => item.source === "plane").metadata.reason = untrustedReason;
+    const safe = buildReviewPacket(assembleLineage(altered), { now });
+    assert.ok(safe.reasons.some((reason) => reason.message === "Resolve source evidence before review readiness."));
+    assert.ok(!JSON.stringify(safe).includes(untrustedReason));
   }
 });
